@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
 using Yxy.Api.Data;
 using Yxy.Api.Services;
@@ -5,6 +6,19 @@ using Yxy.Api.Services;
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddMemoryCache();
 builder.Services.AddControllers();
+builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+    .AddCookie(o =>
+    {
+        o.Cookie.Name = "yxy.auth";
+        o.Cookie.HttpOnly = true;
+        o.Events.OnRedirectToLogin = ctx =>
+        {
+            ctx.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            ctx.Response.ContentType = "application/json";
+            return ctx.Response.WriteAsync("{\"ok\":false,\"error\":\"未登录\"}");
+        };
+    });
+builder.Services.AddAuthorization();
 builder.Services.AddSingleton<IPasswordHasher, BcryptPasswordHasher>();
 builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
 builder.Services.AddScoped<EmailCodeService>();
@@ -19,6 +33,8 @@ using (var scope = app.Services.CreateScope())
 {
     scope.ServiceProvider.GetRequiredService<WebDb>().Database.EnsureCreated();
 }
+app.UseAuthentication();
+app.UseAuthorization();
 app.MapControllers();
 app.Run();
 public partial class Program { }

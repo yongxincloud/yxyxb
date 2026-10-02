@@ -77,6 +77,48 @@ public sealed class AccountService
         return new AuthResult(true, null, account.Id, account.Email);
     }
 
+    public async Task<AuthResult> LoginPasswordAsync(string? emailRaw, string? password, string? ip)
+    {
+        var email = Norm(emailRaw);
+        if (await IsLocked(email, "password"))
+            return Fail("登录已锁定，请 15 分钟后再试");
+        var account = await _db.Accounts.SingleOrDefaultAsync(x => x.Email == email);
+        if (account == null || account.Status != 1 || !_hasher.Verify(password ?? "", account.PasswordHash))
+        {
+            await WriteLog(account?.Id, email, "password", ip, 0);
+            return Fail("邮箱或密码错误");
+        }
+        await WriteLog(account.Id, email, "password", ip, 1);
+        var now = _time.GetUtcNow().UtcDateTime;
+        account.LastLoginAt = now;
+        account.UpdatedAt = now;
+        await _db.SaveChangesAsync();
+        return new AuthResult(true, null, account.Id, account.Email);
+    }
+
+    async Task<bool> IsLocked(string email, string way)
+    {
+        var now = _time.GetUtcNow().UtcDateTime;
+        var recent = await _db.LoginLogs.Where(x => x.Email == email && x.Way == way)
+            .OrderByDescending(x => x.Id).Take(5).ToListAsync();
+        if (recent.Count < 5 || recent.Any(x => x.Success == 1)) return false;
+        return recent[0].CreatedAt.AddMinutes(15) > now;
+    }
+
+    async Task WriteLog(long? accountId, string email, string way, string? ip, int success)
+    {
+        _db.LoginLogs.Add(new AccountLoginLog
+        {
+            AccountId = accountId,
+            Email = email,
+            Way = way,
+            Ip = ip,
+            Success = success,
+            CreatedAt = _time.GetUtcNow().UtcDateTime
+        });
+        await _db.SaveChangesAsync();
+    }
+
     async Task<bool> IpRegisterCapped(string? ip)
     {
         if (string.IsNullOrEmpty(ip)) return false;

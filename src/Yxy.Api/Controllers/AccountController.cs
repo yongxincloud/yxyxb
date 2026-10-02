@@ -1,3 +1,7 @@
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -7,6 +11,7 @@ namespace Yxy.Api.Controllers;
 
 public sealed record ApiResult(bool Ok, string? Error, string? Email = null);
 public sealed record SendCodeBody(string? Email, string? Scene, string? CaptchaId, string? CaptchaAnswer);
+public sealed record LoginBody(string? Email, string? Password);
 
 [ApiController]
 [Route("api/account")]
@@ -40,6 +45,25 @@ public sealed class AccountController : ControllerBase
         var result = await _accounts.RegisterAsync(body, ClientIp());
         return ToJson(result);
     }
+
+    [HttpPost("login")]
+    public async Task<IActionResult> Login([FromBody] LoginBody body)
+    {
+        var result = await _accounts.LoginPasswordAsync(body.Email, body.Password, ClientIp());
+        if (!result.Ok) return ToJson(result);
+        await HttpContext.SignInAsync(
+            CookieAuthenticationDefaults.AuthenticationScheme,
+            new ClaimsPrincipal(new ClaimsIdentity(new[]
+            {
+                new Claim(ClaimTypes.NameIdentifier, result.AccountId!.Value.ToString()),
+                new Claim(ClaimTypes.Email, result.Email!)
+            }, CookieAuthenticationDefaults.AuthenticationScheme)));
+        return ToJson(result);
+    }
+
+    [Authorize]
+    [HttpGet("me")]
+    public IActionResult Me() => Ok(new ApiResult(true, null, User.FindFirstValue(ClaimTypes.Email)));
 
     protected IActionResult ToJson(AuthResult result)
     {
