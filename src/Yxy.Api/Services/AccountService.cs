@@ -40,10 +40,14 @@ public sealed class AccountService
     public async Task<AuthResult> RegisterAsync(RegisterInput input, string? ip)
     {
         var email = Norm(input.Email);
+        if (!string.IsNullOrEmpty(ip))
+        {
+            if (await IpRegisterCapped(ip)) return Fail("注册过于频繁");
+            await WriteLog(null, email, "register", ip, 0);
+        }
         if (!IsEmail(email)) return Fail("邮箱格式不正确");
         if (input.Password != input.Confirm) return Fail("两次密码不一致");
         if (!PasswordRules.IsStrong(input.Password)) return Fail("密码至少 8 位且同时包含字母和数字");
-        if (await IpRegisterCapped(ip)) return Fail("注册过于频繁");
         if (await _db.Accounts.AnyAsync(x => x.Email == email)) return Fail("该邮箱已注册");
         if (!await _codes.ConsumeAsync(email, "register", input.EmailCode ?? ""))
             return Fail("邮箱或验证码错误");
@@ -154,7 +158,7 @@ public sealed class AccountService
     {
         if (string.IsNullOrEmpty(ip)) return false;
         var hourAgo = _time.GetUtcNow().UtcDateTime.AddHours(-1);
-        var count = await _db.EmailCodes.CountAsync(x => x.Scene == "register" && x.ReqIp == ip && x.Used == 1 && x.CreatedAt >= hourAgo);
+        var count = await _db.LoginLogs.CountAsync(x => x.Way == "register" && x.Ip == ip && x.CreatedAt >= hourAgo);
         return count >= 10;
     }
 

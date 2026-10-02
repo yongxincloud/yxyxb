@@ -125,4 +125,27 @@ public sealed class RegisterTests
         var db = scope.ServiceProvider.GetRequiredService<WebDb>();
         Assert.That((await db.Customers.SingleAsync()).DirectProviderId, Is.Null);
     }
+
+    [Test]
+    public async Task Register_Ip_Hourly_Cap_Counts_Every_Submit()
+    {
+        await using var factory = new WebAppFactory();
+        var client = factory.CreateClient();
+        const string ip = "10.9.9.9";
+        const string email = "cap-test@example.com";
+        await AccountApi.SendRegisterCode(factory, client, email);
+
+        var payload = new
+        {
+            email,
+            password = "abc12345",
+            confirm = "abc12345",
+            emailCode = "000000"
+        };
+        for (var i = 0; i < 10; i++)
+            await AccountApi.Post(client, "/api/account/register", payload, ip);
+
+        var body = await AccountApi.Body(await AccountApi.Post(client, "/api/account/register", payload, ip));
+        Assert.That(body, Does.Contain("注册过于频繁"));
+    }
 }
