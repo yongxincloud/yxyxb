@@ -1,0 +1,16 @@
+.vs/
+bin/
+obj/
+node_modules/
+.superpowers/
+.worktrees/
+dist/
+dist-ui/
+*.user
+*.suo
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+packages/
+TestResults/
