@@ -5,6 +5,10 @@ using Yxy.Api.Services;
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddSingleton<IPasswordHasher, BcryptPasswordHasher>();
+builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
+builder.Services.AddScoped<EmailCodeService>();
+builder.Services.AddSingleton<FakeEmailSender>();
+builder.Services.AddSingleton<IEmailSender>(sp => sp.GetRequiredService<FakeEmailSender>());
 builder.Services.AddDbContext<WebDb>(o =>
     o.UseSqlite(builder.Configuration.GetConnectionString("Web")));
 var app = builder.Build();
