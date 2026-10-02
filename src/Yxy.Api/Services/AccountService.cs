@@ -96,6 +96,22 @@ public sealed class AccountService
         return new AuthResult(true, null, account.Id, account.Email);
     }
 
+    public async Task<AuthResult> LoginCodeAsync(string? emailRaw, string? code, string? ip)
+    {
+        var email = Norm(emailRaw);
+        if (!await _codes.ConsumeAsync(email, "login", code ?? ""))
+            return Fail("邮箱或验证码错误");
+        var account = await _db.Accounts.SingleOrDefaultAsync(x => x.Email == email);
+        if (account == null || account.Status != 1)
+            return Fail("邮箱或验证码错误");
+        await WriteLog(account.Id, email, "code", ip, 1);
+        var now = _time.GetUtcNow().UtcDateTime;
+        account.LastLoginAt = now;
+        account.UpdatedAt = now;
+        await _db.SaveChangesAsync();
+        return new AuthResult(true, null, account.Id, account.Email);
+    }
+
     async Task<bool> IsLocked(string email, string way)
     {
         var now = _time.GetUtcNow().UtcDateTime;

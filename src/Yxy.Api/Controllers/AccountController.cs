@@ -12,6 +12,7 @@ namespace Yxy.Api.Controllers;
 public sealed record ApiResult(bool Ok, string? Error, string? Email = null);
 public sealed record SendCodeBody(string? Email, string? Scene, string? CaptchaId, string? CaptchaAnswer);
 public sealed record LoginBody(string? Email, string? Password);
+public sealed record LoginCodeBody(string? Email, string? Code);
 
 [ApiController]
 [Route("api/account")]
@@ -51,6 +52,21 @@ public sealed class AccountController : ControllerBase
     {
         var result = await _accounts.LoginPasswordAsync(body.Email, body.Password, ClientIp());
         if (!result.Ok) return ToJson(result);
+        await SignIn(result);
+        return ToJson(result);
+    }
+
+    [HttpPost("login-code")]
+    public async Task<IActionResult> LoginCode([FromBody] LoginCodeBody body)
+    {
+        var result = await _accounts.LoginCodeAsync(body.Email, body.Code, ClientIp());
+        if (!result.Ok) return ToJson(result);
+        await SignIn(result);
+        return ToJson(result);
+    }
+
+    async Task SignIn(AuthResult result)
+    {
         await HttpContext.SignInAsync(
             CookieAuthenticationDefaults.AuthenticationScheme,
             new ClaimsPrincipal(new ClaimsIdentity(new[]
@@ -58,7 +74,6 @@ public sealed class AccountController : ControllerBase
                 new Claim(ClaimTypes.NameIdentifier, result.AccountId!.Value.ToString()),
                 new Claim(ClaimTypes.Email, result.Email!)
             }, CookieAuthenticationDefaults.AuthenticationScheme)));
-        return ToJson(result);
     }
 
     [Authorize]
