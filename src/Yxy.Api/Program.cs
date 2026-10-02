@@ -9,6 +9,7 @@ builder.Services.AddSingleton<IPasswordHasher, BcryptPasswordHasher>();
 builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
 builder.Services.AddScoped<EmailCodeService>();
 builder.Services.AddScoped<CaptchaService>();
+builder.Services.AddScoped<AccountService>();
 builder.Services.AddSingleton<FakeEmailSender>();
 builder.Services.AddSingleton<IEmailSender>(sp => sp.GetRequiredService<FakeEmailSender>());
 builder.Services.AddDbContext<WebDb>(o =>
