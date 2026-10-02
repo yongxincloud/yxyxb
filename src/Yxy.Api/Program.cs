@@ -1,8 +1,10 @@
 using Microsoft.EntityFrameworkCore;
 using Yxy.Api.Data;
+using Yxy.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
+builder.Services.AddSingleton<IPasswordHasher, BcryptPasswordHasher>();
 builder.Services.AddDbContext<WebDb>(o =>
     o.UseSqlite(builder.Configuration.GetConnectionString("Web")));
 var app = builder.Build();
