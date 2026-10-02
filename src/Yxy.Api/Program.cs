@@ -1,5 +1,7 @@
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
+using Yxy.Api.Controllers;
 using Yxy.Api.Data;
 using Yxy.Api.Services;
 
@@ -17,6 +19,17 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
             ctx.Response.ContentType = "application/json";
             return ctx.Response.WriteAsync("{\"ok\":false,\"error\":\"未登录\"}");
         };
+    })
+    .AddCookie(VendorController.VendorScheme, o =>
+    {
+        o.Cookie.Name = "yxy.vendor";
+        o.Cookie.HttpOnly = true;
+        o.Events.OnRedirectToLogin = ctx =>
+        {
+            ctx.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            ctx.Response.ContentType = "application/json";
+            return ctx.Response.WriteAsync("{\"ok\":false,\"error\":\"未登录\"}");
+        };
     });
 builder.Services.AddAuthorization();
 builder.Services.AddSingleton<IPasswordHasher, BcryptPasswordHasher>();
@@ -27,7 +40,9 @@ builder.Services.AddScoped<AccountService>();
 builder.Services.AddScoped<ClientAuthService>();
 builder.Services.AddScoped<OrderService>();
 builder.Services.AddSingleton<FakeEmailSender>();
-builder.Services.AddSingleton<IEmailSender>(sp => sp.GetRequiredService<FakeEmailSender>());
+builder.Services.AddScoped<MailSettingsService>();
+builder.Services.AddScoped<IEmailSender, RoutingEmailSender>();
+builder.Services.AddHostedService<SiteMaintenance>();
 builder.Services.AddDbContext<WebDb>(o =>
     o.UseSqlite(builder.Configuration.GetConnectionString("Web")));
 var app = builder.Build();
@@ -112,8 +127,136 @@ using (var scope = app.Services.CreateScope())
           "UpdatedAt" TEXT NOT NULL
         );
         """);
+    db.Database.ExecuteSqlRaw("""
+        CREATE TABLE IF NOT EXISTS "AdminUsers" (
+          "Id" INTEGER NOT NULL CONSTRAINT "PK_AdminUsers" PRIMARY KEY AUTOINCREMENT,
+          "Username" TEXT NOT NULL,
+          "PasswordHash" TEXT NOT NULL,
+          "CreatedAt" TEXT NOT NULL
+        );
+        CREATE UNIQUE INDEX IF NOT EXISTS "IX_AdminUsers_Username" ON "AdminUsers" ("Username");
+        CREATE TABLE IF NOT EXISTS "Commissions" (
+          "Id" INTEGER NOT NULL CONSTRAINT "PK_Commissions" PRIMARY KEY AUTOINCREMENT,
+          "OrderId" INTEGER NOT NULL,
+          "ProviderId" INTEGER NOT NULL,
+          "LevelId" INTEGER NOT NULL,
+          "CommissionRateSnapshot" TEXT NOT NULL,
+          "EntryType" INTEGER NOT NULL,
+          "Amount" TEXT NOT NULL,
+          "Settled" INTEGER NOT NULL,
+          "SettlementId" INTEGER NULL,
+          "CreatedAt" TEXT NOT NULL
+        );
+        CREATE UNIQUE INDEX IF NOT EXISTS "IX_Commissions_OrderId_ProviderId_EntryType" ON "Commissions" ("OrderId", "ProviderId", "EntryType");
+        CREATE TABLE IF NOT EXISTS "Settlements" (
+          "Id" INTEGER NOT NULL CONSTRAINT "PK_Settlements" PRIMARY KEY AUTOINCREMENT,
+          "SettlementNo" TEXT NOT NULL,
+          "ProviderId" INTEGER NOT NULL,
+          "PeriodStart" TEXT NOT NULL,
+          "PeriodEnd" TEXT NOT NULL,
+          "Amount" TEXT NOT NULL,
+          "Status" INTEGER NOT NULL,
+          "InvoiceFile" TEXT NULL,
+          "PayVoucherNo" TEXT NULL,
+          "PaidAt" TEXT NULL,
+          "CreatedAt" TEXT NOT NULL,
+          "UpdatedAt" TEXT NOT NULL
+        );
+        CREATE UNIQUE INDEX IF NOT EXISTS "IX_Settlements_SettlementNo" ON "Settlements" ("SettlementNo");
+        CREATE TABLE IF NOT EXISTS "OperationLogs" (
+          "Id" INTEGER NOT NULL CONSTRAINT "PK_OperationLogs" PRIMARY KEY AUTOINCREMENT,
+          "OperatorType" TEXT NOT NULL,
+          "Module" TEXT NOT NULL,
+          "Action" TEXT NOT NULL,
+          "BeforeValue" TEXT NULL,
+          "AfterValue" TEXT NULL,
+          "CreatedAt" TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS "Messages" (
+          "Id" INTEGER NOT NULL CONSTRAINT "PK_Messages" PRIMARY KEY AUTOINCREMENT,
+          "AccountId" INTEGER NOT NULL,
+          "Title" TEXT NOT NULL,
+          "Content" TEXT NULL,
+          "IsRead" INTEGER NOT NULL,
+          "CreatedAt" TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS "ProviderApplies" (
+          "Id" INTEGER NOT NULL CONSTRAINT "PK_ProviderApplies" PRIMARY KEY AUTOINCREMENT,
+          "AccountId" INTEGER NOT NULL,
+          "CompanyName" TEXT NOT NULL,
+          "TaxNo" TEXT NOT NULL,
+          "LicenseFile" TEXT NOT NULL,
+          "ContactName" TEXT NOT NULL,
+          "ContactEmail" TEXT NOT NULL,
+          "ContactPhone" TEXT NOT NULL,
+          "Status" INTEGER NOT NULL,
+          "CreatedAt" TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS "InvoiceApplies" (
+          "Id" INTEGER NOT NULL CONSTRAINT "PK_InvoiceApplies" PRIMARY KEY AUTOINCREMENT,
+          "ApplyNo" TEXT NOT NULL,
+          "CustomerId" INTEGER NOT NULL,
+          "LicenseFile" TEXT NULL,
+          "Amount" TEXT NOT NULL,
+          "TitleName" TEXT NULL,
+          "TaxNo" TEXT NULL,
+          "Email" TEXT NULL,
+          "Issuer" INTEGER NOT NULL,
+          "Status" INTEGER NOT NULL,
+          "CreatedAt" TEXT NOT NULL,
+          "UpdatedAt" TEXT NOT NULL
+        );
+        CREATE UNIQUE INDEX IF NOT EXISTS "IX_InvoiceApplies_ApplyNo" ON "InvoiceApplies" ("ApplyNo");
+        CREATE TABLE IF NOT EXISTS "ProviderLevels" (
+          "Id" INTEGER NOT NULL CONSTRAINT "PK_ProviderLevels" PRIMARY KEY AUTOINCREMENT,
+          "Name" TEXT NOT NULL,
+          "CommissionRate" TEXT NOT NULL,
+          "SortNo" INTEGER NOT NULL,
+          "Status" INTEGER NOT NULL,
+          "CreatedAt" TEXT NOT NULL,
+          "UpdatedAt" TEXT NOT NULL
+        );
+        CREATE UNIQUE INDEX IF NOT EXISTS "IX_ProviderLevels_Name" ON "ProviderLevels" ("Name");
+        CREATE TABLE IF NOT EXISTS "Providers" (
+          "Id" INTEGER NOT NULL CONSTRAINT "PK_Providers" PRIMARY KEY AUTOINCREMENT,
+          "ProviderNo" TEXT NOT NULL,
+          "AccountId" INTEGER NOT NULL,
+          "Name" TEXT NOT NULL,
+          "LevelId" INTEGER NOT NULL,
+          "Status" INTEGER NOT NULL,
+          "EffectiveAt" TEXT NULL,
+          "CreatedAt" TEXT NOT NULL,
+          "UpdatedAt" TEXT NOT NULL
+        );
+        CREATE UNIQUE INDEX IF NOT EXISTS "IX_Providers_ProviderNo" ON "Providers" ("ProviderNo");
+        CREATE UNIQUE INDEX IF NOT EXISTS "IX_Providers_AccountId" ON "Providers" ("AccountId");
+        """);
+    if (!db.AdminUsers.Any())
+    {
+        var username = app.Configuration["Admin:Username"];
+        var password = app.Configuration["Admin:Password"];
+        if (string.IsNullOrWhiteSpace(username)) username = VendorController.DefaultAdminUser;
+        if (string.IsNullOrWhiteSpace(password)) password = VendorController.DefaultAdminPassword;
+        db.AdminUsers.Add(new AdminUser
+        {
+            Username = username.Trim(),
+            PasswordHash = scope.ServiceProvider.GetRequiredService<IPasswordHasher>().Hash(password),
+            CreatedAt = DateTime.UtcNow
+        });
+        db.SaveChanges();
+    }
 }
 app.UseAuthentication();
+app.Use(async (ctx, next) =>
+{
+    if (ctx.Request.Path.StartsWithSegments("/api/vendor"))
+    {
+        var vendor = await ctx.AuthenticateAsync(VendorController.VendorScheme);
+        if (vendor.Succeeded && vendor.Principal != null)
+            ctx.User = vendor.Principal;
+    }
+    await next();
+});
 app.UseAuthorization();
 app.MapControllers();
 app.Run();

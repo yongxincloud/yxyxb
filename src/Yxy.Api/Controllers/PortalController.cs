@@ -73,6 +73,37 @@ public sealed class PortalController : ControllerBase
     }
 
     [Authorize]
+    [HttpGet("/api/portal/customers")]
+    public async Task<IActionResult> Customers()
+    {
+        var provider = await _db.Providers.SingleOrDefaultAsync(x => x.AccountId == AccountId());
+        if (provider == null) return Ok(new { ok = false, error = "还不是服务商" });
+        var ids = await _db.Customers.Where(x => x.DirectProviderId == provider.Id).Select(x => x.AccountId).ToListAsync();
+        var emails = await _db.Accounts.Where(x => ids.Contains(x.Id)).Select(x => x.Email).ToListAsync();
+        return Ok(new { ok = true, emails });
+    }
+
+    [Authorize]
+    [HttpGet("/api/portal/settlements")]
+    public async Task<IActionResult> MySettlements()
+    {
+        var provider = await _db.Providers.SingleOrDefaultAsync(x => x.AccountId == AccountId());
+        if (provider == null) return Ok(new { ok = false, error = "还不是服务商" });
+        var rows = await _db.Settlements.Where(x => x.ProviderId == provider.Id).OrderByDescending(x => x.Id)
+            .Select(x => new { x.SettlementNo, x.Amount, x.Status }).ToListAsync();
+        return Ok(new { ok = true, rows });
+    }
+
+    [Authorize]
+    [HttpGet("/api/portal/messages")]
+    public async Task<IActionResult> Messages()
+    {
+        var rows = await _db.Messages.Where(x => x.AccountId == AccountId()).OrderByDescending(x => x.Id)
+            .Select(x => new { x.Title, x.Content, x.IsRead, x.CreatedAt }).ToListAsync();
+        return Ok(new { ok = true, rows });
+    }
+
+    [Authorize]
     [HttpPost("/api/portal/settlements")]
     public async Task<IActionResult> StartSettlement([FromBody] SettlementBody body)
     {

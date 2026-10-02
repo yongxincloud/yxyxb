@@ -168,6 +168,48 @@ public sealed class OrderService
         });
     }
 
+    public async Task<OrderResult> RefundAsync(long accountId, string orderNo)
+    {
+        var customer = await _db.Customers.SingleOrDefaultAsync(x => x.AccountId == accountId);
+        if (customer == null) return new OrderResult(false, "请先注册");
+        var order = await _db.Orders.SingleOrDefaultAsync(x => x.OrderNo == orderNo && x.CustomerId == customer.Id);
+        if (order == null) return new OrderResult(false, "订单不存在");
+        if (order.PayStatus == 2) return new OrderResult(true, null, order.OrderNo, order.Amount);
+        if (order.PayStatus != 1 || order.PayTime == null) return new OrderResult(false, "订单未支付");
+        var now = _time.GetUtcNow().UtcDateTime;
+        if (now > order.PayTime.Value.AddDays(7)) return new OrderResult(false, "已超过 7 天退款窗口");
+        order.PayStatus = 2;
+        order.RefundTime = now;
+        order.UpdatedAt = now;
+        var auth = await _db.SubscriptionAuths.SingleOrDefaultAsync(x => x.OrderId == order.Id);
+        if (auth != null)
+        {
+            auth.Status = 0;
+            auth.UpdatedAt = now;
+        }
+        if (order.OrderType == 1 && order.ProviderId != null)
+        {
+            var sale = await _db.Commissions.SingleOrDefaultAsync(x => x.OrderId == order.Id && x.ProviderId == order.ProviderId && x.EntryType == 1);
+            var already = await _db.Commissions.AnyAsync(x => x.OrderId == order.Id && x.ProviderId == order.ProviderId && x.EntryType == 2);
+            if (sale != null && !already)
+            {
+                _db.Commissions.Add(new CommissionDetail
+                {
+                    OrderId = order.Id,
+                    ProviderId = sale.ProviderId,
+                    LevelId = sale.LevelId,
+                    CommissionRateSnapshot = sale.CommissionRateSnapshot,
+                    EntryType = 2,
+                    Amount = -sale.Amount,
+                    Settled = 0,
+                    CreatedAt = now
+                });
+            }
+        }
+        await _db.SaveChangesAsync();
+        return new OrderResult(true, null, order.OrderNo, order.Amount);
+    }
+
     public static string Sign(string secret, string orderNo, string tradeNo, string channel, decimal amount)
     {
         var payload = orderNo + "|" + tradeNo + "|" + channel + "|" + amount.ToString("0.00");

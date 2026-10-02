@@ -66,6 +66,14 @@ public sealed class OrderController : ControllerBase
     }
 
     [Authorize]
+    [HttpPost("{orderNo}/refund")]
+    public async Task<IActionResult> Refund(string orderNo)
+    {
+        var result = await _orders.RefundAsync(AccountId(), orderNo);
+        return result.Ok ? Ok(result) : BadRequest(result);
+    }
+
+    [Authorize]
     [HttpPost("{orderNo}/mock-pay")]
     public async Task<IActionResult> MockPay(string orderNo)
     {

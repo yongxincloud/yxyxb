@@ -33,7 +33,7 @@ namespace Yxy.Client.Pages
             var root = new ScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
             var stack = new StackPanel();
 
-            _txtTrial = AddCard(stack, "试用", "");
+            _txtTrial = AddCard(stack, "授权", "");
             var grid = new UniformGridTwo();
             _txtFile = AddMini(grid, "文件任务");
             _txtMssql = AddMini(grid, "库任务");
@@ -73,10 +73,7 @@ namespace Yxy.Client.Pages
 
         private void Refresh()
         {
-            var trial = _boot.Trial;
-            _txtTrial.Text = trial.IsExpired
-                ? "已到期（本期不拦截，下期网站接通后未登录将停跑）"
-                : "剩余 " + trial.RemainingDays + " 天";
+            _txtTrial.Text = SiteLogin.Load().Summary;
 
             var counts = TaskScheduleStore.GetHomeCounts(_boot.Db);
             _txtFile.Text = counts.FileTaskCount + " / 已执行 " + counts.FileExecutedCount;

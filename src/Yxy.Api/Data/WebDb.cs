@@ -5,6 +5,7 @@ namespace Yxy.Api.Data;
 public sealed class WebDb : DbContext
 {
     public WebDb(DbContextOptions<WebDb> options) : base(options) { }
+    public DbSet<AdminUser> AdminUsers => Set<AdminUser>();
     public DbSet<Account> Accounts => Set<Account>();
     public DbSet<EmailCodeRow> EmailCodes => Set<EmailCodeRow>();
     public DbSet<AccountLoginLog> LoginLogs => Set<AccountLoginLog>();
@@ -26,6 +27,7 @@ public sealed class WebDb : DbContext
 
     protected override void OnModelCreating(ModelBuilder b)
     {
+        b.Entity<AdminUser>().HasIndex(x => x.Username).IsUnique();
         b.Entity<Account>().HasIndex(x => x.Email).IsUnique();
         b.Entity<Customer>().HasIndex(x => x.AccountId).IsUnique();
         b.Entity<Customer>().HasIndex(x => x.CustomerNo).IsUnique();

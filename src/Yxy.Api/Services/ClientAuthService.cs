@@ -100,10 +100,14 @@ public sealed class ClientAuthService
         var customer = await _db.Customers.SingleOrDefaultAsync(x => x.AccountId == accountId);
         if (customer == null) return AuthView.None;
         var row = await _db.SubscriptionAuths
-            .Where(x => x.CustomerId == customer.Id)
+            .Where(x => x.CustomerId == customer.Id && x.Status != 0)
             .OrderByDescending(x => x.AuthEndTime)
             .FirstOrDefaultAsync();
-        if (row == null) return AuthView.None;
+        if (row == null)
+        {
+            var cancelled = await _db.SubscriptionAuths.AnyAsync(x => x.CustomerId == customer.Id && x.Status == 0);
+            return cancelled ? new AuthView(false, "cancelled", null) : AuthView.None;
+        }
         if (row.Status == 3) return new AuthView(false, "paused", row.AuthEndTime);
         if (row.Status == 0) return new AuthView(false, "cancelled", row.AuthEndTime);
         if (row.Status == 2) return new AuthView(false, "expired", row.AuthEndTime);

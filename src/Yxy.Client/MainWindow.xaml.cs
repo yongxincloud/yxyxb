@@ -63,10 +63,12 @@ namespace Yxy.Client
 
         private void BtnLogin_OnClick(object sender, RoutedEventArgs e)
         {
-            var days = _boot.Trial.IsExpired
-                ? "试用已到期（本期不拦截备份）。"
-                : "本机试用还剩 " + _boot.Trial.RemainingDays + " 天（到期不拦截）。";
-            MessageBox.Show(this, "授权登录后续开通。\n" + days + "\n本期无公网网站，不上报日志。", "登录", MessageBoxButton.OK, MessageBoxImage.Information);
+            SiteLogin.Prompt(this, delegate
+            {
+                var session = SiteLogin.Load();
+                BtnLogin.Content = session.LoggedIn ? "已登录" : "登录";
+                ShowPage("home");
+            });
         }
 
         private void Drag_OnDown(object sender, MouseButtonEventArgs e)
@@ -83,8 +85,8 @@ namespace Yxy.Client
             {
                 Title = "退出",
                 Owner = this,
-                Width = 400,
-                Height = 176,
+                Width = 480,
+                SizeToContent = SizeToContent.Height,
                 WindowStartupLocation = WindowStartupLocation.CenterOwner,
                 ResizeMode = ResizeMode.NoResize,
                 ShowInTaskbar = false,
@@ -97,9 +99,22 @@ namespace Yxy.Client
                 dialog.Style = style;
             }
 
-            var mini = new Button { Content = "最小化", Width = 96, Height = 36, Margin = new Thickness(0, 0, 8, 0) };
-            var exit = new Button { Content = "退出程序", Width = 96, Height = 36, Margin = new Thickness(0, 0, 8, 0) };
-            var cancel = new Button { Content = "取消", Width = 80, Height = 36, IsCancel = true };
+            var signOut = new Button { Content = "注销账号", Width = 120, Height = 40, Margin = new Thickness(8, 0, 0, 0), FontSize = 15 };
+            var mini = new Button { Content = "最小化", Width = 120, Height = 40, Margin = new Thickness(8, 0, 0, 0), FontSize = 15 };
+            var exit = new Button { Content = "退出程序", Width = 120, Height = 40, Margin = new Thickness(8, 0, 0, 0), FontSize = 15 };
+            signOut.Click += delegate
+            {
+                if (!SiteLogin.Load().LoggedIn)
+                {
+                    MessageBox.Show(dialog, "当前没有登录账号。", "注销账号", MessageBoxButton.OK, MessageBoxImage.Information);
+                    return;
+                }
+
+                SiteLogin.SignOut();
+                BtnLogin.Content = "登录";
+                dialog.Close();
+                ShowPage(_current);
+            };
             mini.Click += delegate
             {
                 dialog.Close();
@@ -117,16 +132,19 @@ namespace Yxy.Client
                 Orientation = Orientation.Horizontal,
                 HorizontalAlignment = HorizontalAlignment.Right
             };
+            buttons.Children.Add(signOut);
             buttons.Children.Add(mini);
             buttons.Children.Add(exit);
-            buttons.Children.Add(cancel);
 
-            var panel = new StackPanel { Margin = new Thickness(20) };
+            var panel = new StackPanel { Margin = new Thickness(28, 24, 28, 28) };
             panel.Children.Add(new TextBlock
             {
-                Text = "请选择：最小化到任务栏，或退出并关闭程序。",
+                Text = "请选择：最小化到任务栏、注销当前网站账号，或退出并关闭程序。",
+                FontSize = 18,
+                LineHeight = 30,
+                Foreground = (Brush)FindResource("TitleText"),
                 TextWrapping = TextWrapping.Wrap,
-                Margin = new Thickness(0, 0, 0, 16)
+                Margin = new Thickness(0, 4, 0, 28)
             });
             panel.Children.Add(buttons);
             dialog.Content = panel;
@@ -150,7 +168,7 @@ namespace Yxy.Client
                     break;
                 case "tasks":
                     TxtTitle.Text = "任务";
-                    PageHost.Content = new TasksPage(_boot);
+                    PageHost.Content = Licensed(key) ? (object)new TasksPage(_boot) : LockedPage();
                     break;
                 case "media":
                     TxtTitle.Text = "离线介质";
@@ -158,11 +176,11 @@ namespace Yxy.Client
                     break;
                 case "cloud":
                     TxtTitle.Text = "云备份";
-                    PageHost.Content = new CloudPage(_boot);
+                    PageHost.Content = Licensed(key) ? (object)new CloudPage(_boot) : LockedPage();
                     break;
                 case "instances":
                     TxtTitle.Text = "实例";
-                    PageHost.Content = new InstancesPage(_boot);
+                    PageHost.Content = Licensed(key) ? (object)new InstancesPage(_boot) : LockedPage();
                     break;
                 case "logs":
                     TxtTitle.Text = "日志";
@@ -175,6 +193,25 @@ namespace Yxy.Client
                 default:
                     break;
             }
+        }
+
+        private static bool Licensed(string key)
+        {
+            return SiteLogin.Load().Usable;
+        }
+
+        private static UserControl LockedPage()
+        {
+            var page = new UserControl();
+            var text = new TextBlock
+            {
+                Text = SiteLogin.Load().Summary + "\n\n文件备份、数据库备份、云、UNC、FTP、邮件需要有效授权。离线介质不受影响。",
+                TextWrapping = TextWrapping.Wrap,
+                FontSize = 16,
+                Margin = new Thickness(8)
+            };
+            page.Content = text;
+            return page;
         }
 
         private void Highlight(string key)

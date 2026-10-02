@@ -75,8 +75,13 @@ namespace Yxy.Engine
 
         private void Tick()
         {
-            var ran = FileBackupRunner.ExecuteDue(_boot.Db);
-            ran += MssqlRunner.ExecuteDue(_boot.Db);
+            var licensed = SiteGate.AllowsChannels();
+            var ran = 0;
+            if (licensed)
+            {
+                ran += FileBackupRunner.ExecuteDue(_boot.Db);
+                ran += MssqlRunner.ExecuteDue(_boot.Db);
+            }
             ran += MediaRunner.ExecuteDue(_boot.Db);
             if (PurgeRunner.ExecuteDue(_boot.Db))
             {
@@ -97,7 +102,7 @@ namespace Yxy.Engine
                 next = upcoming[0].Kind + ":" + upcoming[0].Name + " @ " + upcoming[0].NextRunUtc.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm");
             }
 
-            WriteStatus("ok ran=" + ran + " queued=" + upcoming.Count + " next=" + next);
+            WriteStatus("ok ran=" + ran + " licensed=" + (licensed ? "1" : "0") + " queued=" + upcoming.Count + " next=" + next);
         }
 
         private static void WriteStatus(string line)

@@ -21,10 +21,12 @@ public sealed class AccountController : ControllerBase
 {
     private readonly AccountService _accounts;
     private readonly CaptchaService _captcha;
-    public AccountController(AccountService accounts, CaptchaService captcha)
+    private readonly MailSettingsService _mail;
+    public AccountController(AccountService accounts, CaptchaService captcha, MailSettingsService mail)
     {
         _accounts = accounts;
         _captcha = captcha;
+        _mail = mail;
     }
 
     [HttpGet("captcha")]
@@ -40,7 +42,7 @@ public sealed class AccountController : ControllerBase
         var result = await _accounts.SendCodeAsync(body.Email, body.Scene, body.CaptchaId, body.CaptchaAnswer, ClientIp());
         if (!result.Ok) return ToJson(result);
         var env = HttpContext.RequestServices.GetRequiredService<IHostEnvironment>();
-        if (env.IsDevelopment() && !string.IsNullOrEmpty(result.DevCode))
+        if (env.IsDevelopment() && !await _mail.IsConfiguredAsync() && !string.IsNullOrEmpty(result.DevCode))
             return Ok(new { ok = true, error = (string?)null, devCode = result.DevCode });
         return ToJson(result);
     }

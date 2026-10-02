@@ -53,7 +53,8 @@ namespace Yxy.Core.Backup
                     log.Append("本机删除 ").Append(n).Append(" 个过期 zip。");
                 }
 
-                if (settings.PurgeNetwork)
+                var remote = SiteGate.AllowsChannels();
+                if (remote && settings.PurgeNetwork)
                 {
                     try
                     {
@@ -67,7 +68,7 @@ namespace Yxy.Core.Backup
                     }
                 }
 
-                if (settings.PurgeFtp)
+                if (remote && settings.PurgeFtp)
                 {
                     try
                     {
@@ -81,7 +82,7 @@ namespace Yxy.Core.Backup
                     }
                 }
 
-                if (settings.PurgeQiniu)
+                if (remote && settings.PurgeQiniu)
                 {
                     try
                     {

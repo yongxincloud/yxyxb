@@ -33,7 +33,14 @@ public sealed class AccountService
         var issued = await _codes.IssueAsync(email, scene, ip);
         if (!issued.Ok)
             return Fail(issued.Error == "too_soon" ? "发送过于频繁" : "今日发送次数已达上限");
-        await _mail.SendAsync(email, "用心云备份验证码", "验证码 " + issued.Code + " ，5 分钟内有效。");
+        try
+        {
+            await _mail.SendAsync(email, "用心云备份验证码", "验证码 " + issued.Code + " ，5 分钟内有效。");
+        }
+        catch (InvalidOperationException)
+        {
+            return Fail("邮件发送失败，请检查发信服务器");
+        }
         return new AuthResult(true, null, DevCode: issued.Code);
     }
 

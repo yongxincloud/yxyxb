@@ -1,3 +1,5 @@
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
@@ -11,14 +13,120 @@ public sealed record ApproveBody(long LevelId);
 public sealed record PayBody(string? VoucherNo);
 public sealed record GrantBody(string? Email, int? Days, DateTime? EndTime, string? Reason);
 public sealed record PriceBody(decimal Price);
+public sealed record AssignBody(string? ProviderNo);
+public sealed record VendorLoginBody(string? Username, string? Password);
+public sealed record MailBody(string? Host, int? Port, string? User, string? Password, string? From, bool? Ssl);
+public sealed record MailTestBody(string? Email);
 
 [ApiController]
 [Route("api/vendor")]
 public sealed class VendorController : ControllerBase
 {
     public const string VendorKey = "yxy-vendor";
+    public const string VendorScheme = "YxyVendor";
+    public const string DefaultAdminUser = "admin";
+    public const string DefaultAdminPassword = "Admin@yxy123";
     private readonly WebDb _db;
-    public VendorController(WebDb db) => _db = db;
+    private readonly MailSettingsService _mail;
+    public VendorController(WebDb db, MailSettingsService mail)
+    {
+        _db = db;
+        _mail = mail;
+    }
+
+    [HttpPost("login")]
+    public async Task<IActionResult> Login([FromBody] VendorLoginBody body)
+    {
+        var username = (body.Username ?? "").Trim();
+        var admin = await _db.AdminUsers.SingleOrDefaultAsync(x => x.Username == username);
+        var hasher = HttpContext.RequestServices.GetRequiredService<IPasswordHasher>();
+        if (admin == null || !hasher.Verify(body.Password ?? "", admin.PasswordHash))
+            return BadRequest(new { ok = false, error = "账号或密码不正确" });
+        await HttpContext.SignInAsync(VendorScheme, new ClaimsPrincipal(new ClaimsIdentity(new[]
+        {
+            new Claim(ClaimTypes.Name, admin.Username),
+            new Claim(ClaimTypes.Role, "vendor")
+        }, VendorScheme)));
+        return Ok(new { ok = true, username = admin.Username });
+    }
+
+    [HttpPost("logout")]
+    public async Task<IActionResult> Logout()
+    {
+        await HttpContext.SignOutAsync(VendorScheme);
+        return Ok(new { ok = true });
+    }
+
+    [HttpGet("me")]
+    public IActionResult Me()
+    {
+        if (!Vendor()) return Unauthorized(new { ok = false, error = "未登录" });
+        return Ok(new { ok = true, username = User.Identity?.Name ?? DefaultAdminUser });
+    }
+
+    [HttpGet("board")]
+    public async Task<IActionResult> Board()
+    {
+        if (!Vendor()) return Unauthorized(new { ok = false, error = "未登录" });
+        var accounts = await _db.Accounts.OrderByDescending(x => x.Id).Take(200)
+            .Select(x => new { x.Id, x.Email, x.Status, x.CreatedAt }).ToListAsync();
+        var emailOf = accounts.ToDictionary(x => x.Id, x => x.Email);
+        var customers = await _db.Customers.OrderByDescending(x => x.Id).Take(200)
+            .Select(x => new { x.Id, x.CustomerNo, x.AccountId, x.Name, x.DirectProviderId, x.Status, x.CreatedAt }).ToListAsync();
+        var customerEmail = customers.ToDictionary(x => x.Id, x => emailOf.TryGetValue(x.AccountId, out var email) ? email : "");
+        var orders = await _db.Orders.OrderByDescending(x => x.Id).Take(200)
+            .Select(x => new { x.Id, x.OrderNo, x.CustomerId, x.OrderType, x.Amount, x.PayStatus, x.PayChannel, x.PayTime, x.CreatedAt }).ToListAsync();
+        var auths = await _db.SubscriptionAuths.OrderByDescending(x => x.Id).Take(200)
+            .Select(x => new { x.Id, x.CustomerId, x.AuthEndTime, x.Status, x.GrantType, x.GrantReason }).ToListAsync();
+        var providers = await _db.Providers.OrderByDescending(x => x.Id).Take(200)
+            .Select(x => new { x.Id, x.ProviderNo, x.Name, x.LevelId, x.Status, x.AccountId }).ToListAsync();
+        var levels = await _db.ProviderLevels.OrderBy(x => x.Id)
+            .Select(x => new { x.Id, x.Name, x.CommissionRate, x.Status }).ToListAsync();
+        var commissions = await _db.Commissions.OrderByDescending(x => x.Id).Take(200)
+            .Select(x => new { x.Id, x.OrderId, x.ProviderId, x.EntryType, x.Amount, x.Settled }).ToListAsync();
+        var settlements = await _db.Settlements.OrderByDescending(x => x.Id).Take(200)
+            .Select(x => new { x.Id, x.SettlementNo, x.ProviderId, x.Amount, x.Status, x.InvoiceFile }).ToListAsync();
+        var invoices = await _db.InvoiceApplies.OrderByDescending(x => x.Id).Take(200)
+            .Select(x => new { x.Id, x.ApplyNo, x.TitleName, x.Amount, x.Email, x.Status }).ToListAsync();
+        var products = await _db.Products.OrderBy(x => x.Id)
+            .Select(x => new { x.Id, x.ProductNo, x.Name, x.Price, x.PeriodDays, x.Status }).ToListAsync();
+        var logs = await _db.OperationLogs.OrderByDescending(x => x.Id).Take(50)
+            .Select(x => new { x.Module, x.Action, x.BeforeValue, x.AfterValue, x.CreatedAt }).ToListAsync();
+        var applies = await _db.ProviderApplies.Where(x => x.Status == 0).OrderBy(x => x.Id)
+            .Select(x => new { x.Id, x.CompanyName, x.TaxNo, x.ContactName, x.ContactEmail }).ToListAsync();
+        return Ok(new
+        {
+            ok = true,
+            accounts,
+            customers = customers.Select(x => new
+            {
+                x.Id, x.CustomerNo, x.Name, x.Status, x.DirectProviderId, x.CreatedAt,
+                email = emailOf.TryGetValue(x.AccountId, out var email) ? email : ""
+            }),
+            orders = orders.Select(x => new
+            {
+                x.Id, x.OrderNo, x.OrderType, x.Amount, x.PayStatus, x.PayChannel, x.PayTime, x.CreatedAt,
+                email = customerEmail.TryGetValue(x.CustomerId, out var email) ? email : ""
+            }),
+            auths = auths.Select(x => new
+            {
+                x.Id, x.AuthEndTime, x.Status, x.GrantType, x.GrantReason,
+                email = customerEmail.TryGetValue(x.CustomerId, out var email) ? email : ""
+            }),
+            providers = providers.Select(x => new
+            {
+                x.Id, x.ProviderNo, x.Name, x.LevelId, x.Status,
+                email = emailOf.TryGetValue(x.AccountId, out var email) ? email : ""
+            }),
+            levels,
+            commissions,
+            settlements,
+            invoices,
+            products,
+            logs,
+            applies
+        });
+    }
 
     [HttpPost("levels")]
     public async Task<IActionResult> CreateLevel([FromBody] LevelBody body)
@@ -48,8 +156,17 @@ public sealed class VendorController : ControllerBase
             return BadRequest(new { ok = false, error = "佣金比例要在 0 和 1 之间" });
         var level = await _db.ProviderLevels.SingleOrDefaultAsync(x => x.Id == id);
         if (level == null) return BadRequest(new { ok = false, error = "等级不存在" });
+        var before = level.CommissionRate;
         level.CommissionRate = body.Rate;
         level.UpdatedAt = DateTime.UtcNow;
+        _db.OperationLogs.Add(new OperationLog
+        {
+            Module = "level",
+            Action = "rate",
+            BeforeValue = before.ToString("0.00"),
+            AfterValue = body.Rate.ToString("0.00"),
+            CreatedAt = level.UpdatedAt
+        });
         await _db.SaveChangesAsync();
         return Ok(new { ok = true });
     }
@@ -198,6 +315,52 @@ public sealed class VendorController : ControllerBase
         return Ok(new { ok = true });
     }
 
+    [HttpGet("mail")]
+    public async Task<IActionResult> Mail()
+    {
+        if (!Vendor()) return Unauthorized(new { ok = false, error = "未登录" });
+        var mail = await _mail.LoadAsync();
+        return Ok(new
+        {
+            ok = true,
+            host = mail.Host,
+            port = mail.Port,
+            user = mail.User,
+            from = mail.From,
+            ssl = mail.Ssl,
+            configured = mail.Configured,
+            hasPassword = !string.IsNullOrEmpty(mail.Password)
+        });
+    }
+
+    [HttpPost("mail")]
+    public async Task<IActionResult> SaveMail([FromBody] MailBody body)
+    {
+        if (!Vendor()) return NotFound();
+        var error = await _mail.SaveAsync(body.Host, body.Port, body.User, body.Password, body.From, body.Ssl != false);
+        if (error != null) return BadRequest(new { ok = false, error });
+        return Ok(new { ok = true });
+    }
+
+    [HttpPost("mail/test")]
+    public async Task<IActionResult> TestMail([FromBody] MailTestBody body)
+    {
+        if (!Vendor()) return NotFound();
+        var email = (body.Email ?? "").Trim();
+        if (!email.Contains('@')) return BadRequest(new { ok = false, error = "请填写测试收件邮箱" });
+        var mail = await _mail.LoadAsync();
+        if (!mail.Configured) return BadRequest(new { ok = false, error = "请先保存发信服务器" });
+        try
+        {
+            await MailSettingsService.SendAsync(mail, email, "用心云备份发信测试", "这是一封测试邮件。收到说明发信服务器可用。");
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { ok = false, error = ex.Message });
+        }
+        return Ok(new { ok = true });
+    }
+
     [HttpGet("logs")]
     public async Task<IActionResult> Logs()
     {
@@ -208,8 +371,94 @@ public sealed class VendorController : ControllerBase
         return Ok(new { ok = true, rows });
     }
 
+    [HttpGet("provider-applies")]
+    public async Task<IActionResult> Applies()
+    {
+        if (!Vendor()) return NotFound();
+        var rows = await _db.ProviderApplies.Where(x => x.Status == 0).OrderBy(x => x.Id)
+            .Select(x => new { x.Id, x.CompanyName, x.TaxNo, x.ContactName, x.ContactEmail }).ToListAsync();
+        return Ok(new { ok = true, rows });
+    }
+
+    [HttpGet("settlements")]
+    public async Task<IActionResult> Settlements()
+    {
+        if (!Vendor()) return NotFound();
+        var rows = await _db.Settlements.OrderByDescending(x => x.Id)
+            .Select(x => new { x.Id, x.SettlementNo, x.Amount, x.Status, x.InvoiceFile }).ToListAsync();
+        return Ok(new { ok = true, rows });
+    }
+
+    [HttpGet("invoice-applies")]
+    public async Task<IActionResult> Invoices()
+    {
+        if (!Vendor()) return NotFound();
+        var rows = await _db.InvoiceApplies.Where(x => x.Status == 1).OrderBy(x => x.Id)
+            .Select(x => new { x.Id, x.ApplyNo, x.TitleName, x.Amount, x.Email }).ToListAsync();
+        return Ok(new { ok = true, rows });
+    }
+
+    [HttpGet("customers")]
+    public async Task<IActionResult> Customers()
+    {
+        if (!Vendor()) return NotFound();
+        var rows = await _db.Customers.OrderByDescending(x => x.Id).Take(100)
+            .Select(x => new { x.Id, x.CustomerNo, x.DirectProviderId }).ToListAsync();
+        return Ok(new { ok = true, rows });
+    }
+
+    [HttpPost("customers/{id:long}/provider")]
+    public async Task<IActionResult> Assign(long id, [FromBody] AssignBody body)
+    {
+        if (!Vendor()) return NotFound();
+        var customer = await _db.Customers.SingleOrDefaultAsync(x => x.Id == id);
+        if (customer == null) return BadRequest(new { ok = false, error = "客户不存在" });
+        long? providerId = null;
+        if (!string.IsNullOrWhiteSpace(body.ProviderNo))
+        {
+            var provider = await _db.Providers.SingleOrDefaultAsync(x => x.ProviderNo == body.ProviderNo);
+            if (provider == null) return BadRequest(new { ok = false, error = "服务商不存在" });
+            providerId = provider.Id;
+        }
+        var before = customer.DirectProviderId?.ToString() ?? "";
+        customer.DirectProviderId = providerId;
+        customer.UpdatedAt = DateTime.UtcNow;
+        _db.OperationLogs.Add(new OperationLog
+        {
+            Module = "customer",
+            Action = "assign",
+            BeforeValue = before,
+            AfterValue = providerId?.ToString() ?? "",
+            CreatedAt = customer.UpdatedAt
+        });
+        await _db.SaveChangesAsync();
+        return Ok(new { ok = true });
+    }
+
+    [HttpPost("providers/{id:long}/freeze")]
+    public async Task<IActionResult> Freeze(long id)
+    {
+        if (!Vendor()) return NotFound();
+        var provider = await _db.Providers.SingleOrDefaultAsync(x => x.Id == id && x.Status != 2);
+        if (provider == null) return BadRequest(new { ok = false, error = "服务商不存在或已解约" });
+        provider.Status = 2;
+        provider.UpdatedAt = DateTime.UtcNow;
+        var customers = _db.Customers.Where(x => x.DirectProviderId == provider.Id).ToList();
+        foreach (var customer in customers) customer.DirectProviderId = null;
+        _db.OperationLogs.Add(new OperationLog
+        {
+            Module = "provider",
+            Action = "freeze",
+            AfterValue = provider.ProviderNo,
+            CreatedAt = provider.UpdatedAt
+        });
+        await _db.SaveChangesAsync();
+        return Ok(new { ok = true, moved = customers.Count });
+    }
+
     bool Vendor()
     {
+        if (User.Identity?.IsAuthenticated == true && User.IsInRole("vendor")) return true;
         var env = HttpContext.RequestServices.GetRequiredService<IHostEnvironment>();
         if (!env.IsDevelopment() && !env.IsEnvironment("Testing")) return false;
         return Request.Headers.TryGetValue("X-Vendor-Key", out var key) && key == VendorKey;

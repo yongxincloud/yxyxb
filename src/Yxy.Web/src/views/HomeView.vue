@@ -52,6 +52,7 @@ async function buy() {
     </section>
     <footer>
       <p>要开票由厂商开具，也可以选择不开票。一个账号不限台数。</p>
+      <p><router-link to="/terms">用户协议</router-link> <router-link to="/privacy">隐私政策</router-link></p>
     </footer>
   </div>
 </template>
