@@ -1,0 +1,38 @@
+:root {
+  --brand-primary: #3171FF;
+  --brand-cyan: #00ABD2;
+  --brand-green: #02C88C;
+  --c-title: #333333;
+  --c-text: #555555;
+  --c-text-muted: #999999;
+  --c-danger: #F14E4E;
+  --c-border: #E5E5E5;
+  --c-surface-alt: #F6F6F6;
+  --c-portal-bg: #F2F4F8;
+  --c-footer: #292834;
+  --c-hero-from: #0F1B2B;
+  --c-hero-to: #0F233E;
+  --content-width: 1400px;
+  --radius-pill: 22px;
+  --radius-card: 6px;
+  --radius-input: 3px;
+}
+body {
+  margin: 0;
+  font-family: "微软雅黑", "Microsoft YaHei", Arial, Helvetica, sans-serif;
+  font-size: 14px;
+  color: var(--c-text);
+  background: var(--c-portal-bg);
+}
+.page-wrap { max-width: var(--content-width); margin: 0 auto; padding: 65px 16px; }
+.card-yxy { background: #fff; border-radius: var(--radius-card); padding: 24px; display: grid; gap: 12px; }
+.btn-yxy {
+  height: 43px; border-radius: var(--radius-pill); border: 0;
+  background: var(--brand-primary); color: #fff; font-size: 16px; padding: 0 22px;
+}
+.btn-yxy:hover { background: var(--brand-cyan); color: #fff; }
+.field-yxy {
+  background: var(--c-surface-alt); border: 1px solid var(--c-border);
+  border-radius: var(--radius-input); height: 40px; width: 100%; padding: 0 10px; box-sizing: border-box;
+}
+.err { color: var(--c-danger); margin: 0; }
