@@ -16,5 +16,8 @@ onMounted(async () => {
 </script>
 
 <template>
-  <p class="card-yxy">{{ email }}</p>
+  <section class="card-yxy">
+    <p>{{ email }}</p>
+    <router-link to="/orders">我的订单</router-link>
+  </section>
 </template>

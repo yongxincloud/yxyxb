@@ -29,6 +29,7 @@ async function sendCode() {
     captchaAnswer: captchaAnswer.value
   })
   if (!data.ok) error.value = data.error || '发送失败'
+  if (data.devCode) emailCode.value = data.devCode
   await loadCaptcha()
 }
 

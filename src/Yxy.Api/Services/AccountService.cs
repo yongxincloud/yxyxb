@@ -5,7 +5,7 @@ using Yxy.Api.Data;
 namespace Yxy.Api.Services;
 
 public sealed record RegisterInput(string? Email, string? Password, string? Confirm, string? EmailCode, string? ProviderNo);
-public sealed record AuthResult(bool Ok, string? Error, long? AccountId = null, string? Email = null);
+public sealed record AuthResult(bool Ok, string? Error, long? AccountId = null, string? Email = null, string? DevCode = null);
 
 public sealed class AccountService
 {
@@ -34,7 +34,7 @@ public sealed class AccountService
         if (!issued.Ok)
             return Fail(issued.Error == "too_soon" ? "发送过于频繁" : "今日发送次数已达上限");
         await _mail.SendAsync(email, "用心云备份验证码", "验证码 " + issued.Code + " ，5 分钟内有效。");
-        return new AuthResult(true, null);
+        return new AuthResult(true, null, DevCode: issued.Code);
     }
 
     public async Task<AuthResult> RegisterAsync(RegisterInput input, string? ip)
@@ -126,7 +126,14 @@ public sealed class AccountService
         var account = await _db.Accounts.SingleOrDefaultAsync(x => x.Email == email);
         if (account == null) return Fail("邮箱或验证码错误");
         account.PasswordHash = _hasher.Hash(password!);
-        account.UpdatedAt = _time.GetUtcNow().UtcDateTime;
+        var now = _time.GetUtcNow().UtcDateTime;
+        account.UpdatedAt = now;
+        var tokens = _db.AuthTokens.Where(x => x.AccountId == account.Id && x.Revoked == 0).ToList();
+        foreach (var token in tokens)
+        {
+            token.Revoked = 1;
+            token.RevokedAt = now;
+        }
         await _db.SaveChangesAsync();
         return new AuthResult(true, null, account.Id, account.Email);
     }

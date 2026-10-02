@@ -14,6 +14,7 @@ async function sendCode() {
   error.value = ''
   const data = await post('/api/account/send-code', { email: email.value, scene: 'reset' })
   if (!data.ok) error.value = data.error || '发送失败'
+  if (data.devCode) code.value = data.devCode
 }
 
 async function submit() {

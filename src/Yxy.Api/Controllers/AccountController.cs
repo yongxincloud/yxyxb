@@ -38,6 +38,10 @@ public sealed class AccountController : ControllerBase
     public async Task<IActionResult> SendCode([FromBody] SendCodeBody body)
     {
         var result = await _accounts.SendCodeAsync(body.Email, body.Scene, body.CaptchaId, body.CaptchaAnswer, ClientIp());
+        if (!result.Ok) return ToJson(result);
+        var env = HttpContext.RequestServices.GetRequiredService<IHostEnvironment>();
+        if (env.IsDevelopment() && !string.IsNullOrEmpty(result.DevCode))
+            return Ok(new { ok = true, error = (string?)null, devCode = result.DevCode });
         return ToJson(result);
     }
 

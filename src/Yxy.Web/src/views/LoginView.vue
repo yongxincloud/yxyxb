@@ -24,6 +24,7 @@ async function sendLoginCode() {
   error.value = ''
   const data = await post('/api/account/send-code', { email: codeEmail.value, scene: 'login' })
   if (!data.ok) error.value = data.error || '发送失败'
+  if (data.devCode) code.value = data.devCode
 }
 
 async function loginCode() {
