@@ -1,12 +1,16 @@
+using System.Net.Http.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using NUnit.Framework;
 using Yxy.Api.Data;
+using Yxy.Api.Services;
 
 namespace Yxy.Api.Tests;
 
 public sealed class RegisterTests
 {
+    sealed record CaptchaDto(string Id, string Svg);
+
     [Test]
     public async Task Register_Creates_Account_And_Customer()
     {
@@ -20,6 +24,35 @@ public sealed class RegisterTests
         var customer = await db.Customers.SingleAsync();
         Assert.That(customer.DirectProviderId, Is.Null);
         Assert.That(customer.AccountId, Is.EqualTo(account.Id));
+    }
+
+    [Test]
+    public async Task Register_SendCode_For_Already_Registered_Email_Returns_Ok_Without_Mail()
+    {
+        await using var factory = new WebAppFactory();
+        var client = factory.CreateClient();
+        const string email = "user@example.com";
+        await AccountApi.Register(factory, client, email, "abc12345");
+
+        var sender = factory.Services.GetRequiredService<FakeEmailSender>();
+        var lastToBefore = sender.LastTo;
+        var lastBodyBefore = sender.LastBody;
+
+        var captcha = await client.GetFromJsonAsync<CaptchaDto>("/api/account/captcha");
+        var response = await AccountApi.Post(client, "/api/account/send-code", new
+        {
+            email,
+            scene = "register",
+            captchaId = captcha!.Id,
+            captchaAnswer = "0000"
+        }, "10.0.0.99");
+
+        Assert.That((int)response.StatusCode, Is.EqualTo(200));
+        var body = await AccountApi.Body(response);
+        Assert.That(body, Does.Contain("\"ok\":true"));
+        Assert.That(body, Does.Not.Contain("不存在"));
+        Assert.That(sender.LastTo, Is.EqualTo(lastToBefore));
+        Assert.That(sender.LastBody, Is.EqualTo(lastBodyBefore));
     }
 
     [Test]
