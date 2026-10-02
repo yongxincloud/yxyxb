@@ -112,6 +112,21 @@ public sealed class AccountService
         return new AuthResult(true, null, account.Id, account.Email);
     }
 
+    public async Task<AuthResult> ResetPasswordAsync(string? emailRaw, string? code, string? password, string? confirm)
+    {
+        var email = Norm(emailRaw);
+        if (password != confirm) return Fail("两次密码不一致");
+        if (!PasswordRules.IsStrong(password)) return Fail("密码至少 8 位且同时包含字母和数字");
+        if (!await _codes.ConsumeAsync(email, "reset", code ?? ""))
+            return Fail("邮箱或验证码错误");
+        var account = await _db.Accounts.SingleOrDefaultAsync(x => x.Email == email);
+        if (account == null) return Fail("邮箱或验证码错误");
+        account.PasswordHash = _hasher.Hash(password!);
+        account.UpdatedAt = _time.GetUtcNow().UtcDateTime;
+        await _db.SaveChangesAsync();
+        return new AuthResult(true, null, account.Id, account.Email);
+    }
+
     async Task<bool> IsLocked(string email, string way)
     {
         var now = _time.GetUtcNow().UtcDateTime;

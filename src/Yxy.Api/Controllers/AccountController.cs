@@ -13,6 +13,7 @@ public sealed record ApiResult(bool Ok, string? Error, string? Email = null);
 public sealed record SendCodeBody(string? Email, string? Scene, string? CaptchaId, string? CaptchaAnswer);
 public sealed record LoginBody(string? Email, string? Password);
 public sealed record LoginCodeBody(string? Email, string? Code);
+public sealed record ResetBody(string? Email, string? Code, string? Password, string? Confirm);
 
 [ApiController]
 [Route("api/account")]
@@ -62,6 +63,13 @@ public sealed class AccountController : ControllerBase
         var result = await _accounts.LoginCodeAsync(body.Email, body.Code, ClientIp());
         if (!result.Ok) return ToJson(result);
         await SignIn(result);
+        return ToJson(result);
+    }
+
+    [HttpPost("reset")]
+    public async Task<IActionResult> Reset([FromBody] ResetBody body)
+    {
+        var result = await _accounts.ResetPasswordAsync(body.Email, body.Code, body.Password, body.Confirm);
         return ToJson(result);
     }
 
