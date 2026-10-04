@@ -42,5 +42,11 @@ namespace Yxy.Core.Tests
             Assert.That(CloudChoice.Resolve(ready, true, "tencent"), Is.EqualTo("qiniu"));
             Assert.That(CloudChoice.Resolve(new List<string> { "baidu" }, true, null), Is.EqualTo("baidu"));
         }
+
+        [Test]
+        public void Choice_MysqlAndFileUseSameResolve()
+        {
+            Assert.That(CloudChoice.Resolve(new List<string> { "baidu" }, true, "qiniu"), Is.EqualTo("baidu"));
+        }
     }
 }

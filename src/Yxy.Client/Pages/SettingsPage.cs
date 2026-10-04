@@ -56,10 +56,12 @@ namespace Yxy.Client.Pages
         private readonly CheckBox _purgeNetwork;
         private readonly CheckBox _purgeFtp;
         private readonly CheckBox _purgeQiniu;
+        private readonly CheckBox _purgeBaidu;
         private readonly TextBox _retainLocal;
         private readonly TextBox _retainNetwork;
         private readonly TextBox _retainFtp;
         private readonly TextBox _retainQiniu;
+        private readonly TextBox _retainBaidu;
         private readonly TextBox _purgeTime;
 
         public SettingsPage(HostBootstrap boot)
@@ -117,10 +119,12 @@ namespace Yxy.Client.Pages
             _purgeNetwork = new CheckBox { Content = "删网络共享过期 zip" };
             _purgeFtp = new CheckBox { Content = "删 FTP 过期 zip" };
             _purgeQiniu = new CheckBox { Content = "删七牛本产品过期对象" };
+            _purgeBaidu = new CheckBox { Content = "删百度网盘本产品过期对象" };
             _retainLocal = new TextBox { Text = "7" };
             _retainNetwork = new TextBox { Text = "7" };
             _retainFtp = new TextBox { Text = "7" };
             _retainQiniu = new TextBox { Text = "7" };
+            _retainBaidu = new TextBox { Text = "7" };
             _purgeTime = new TextBox { Text = "00:30" };
             _nameFileSid = NameCheck("客户标识");
             _nameFileTask = NameCheck("任务名");
@@ -339,6 +343,9 @@ namespace Yxy.Client.Pages
             panel.Children.Add(_purgeQiniu);
             panel.Children.Add(Label("七牛保留天数"));
             panel.Children.Add(_retainQiniu);
+            panel.Children.Add(_purgeBaidu);
+            panel.Children.Add(Label("百度保留天数"));
+            panel.Children.Add(_retainBaidu);
             panel.Children.Add(SaveButton(SavePurge));
             return panel;
         }
@@ -404,10 +411,12 @@ namespace Yxy.Client.Pages
             _purgeNetwork.IsChecked = s.PurgeNetwork;
             _purgeFtp.IsChecked = s.PurgeFtp;
             _purgeQiniu.IsChecked = s.PurgeQiniu;
+            _purgeBaidu.IsChecked = s.PurgeBaidu;
             _retainLocal.Text = (s.LocalRetainDays <= 0 ? 7 : s.LocalRetainDays).ToString();
             _retainNetwork.Text = (s.NetworkRetainDays <= 0 ? 7 : s.NetworkRetainDays).ToString();
             _retainFtp.Text = (s.FtpRetainDays <= 0 ? 7 : s.FtpRetainDays).ToString();
             _retainQiniu.Text = (s.QiniuRetainDays <= 0 ? 7 : s.QiniuRetainDays).ToString();
+            _retainBaidu.Text = (s.BaiduRetainDays <= 0 ? 7 : s.BaiduRetainDays).ToString();
             _purgeTime.Text = string.IsNullOrEmpty(s.PurgeTime) ? "00:30" : s.PurgeTime;
             RefreshPreview();
         }
@@ -474,15 +483,17 @@ namespace Yxy.Client.Pages
         private void SavePurge()
         {
             var s = SettingsStore.Get(_boot.Db);
-            int a, b, c, d;
+            int a, b, c, d, e;
             s.PurgeLocal = _purgeLocal.IsChecked == true;
             s.PurgeNetwork = _purgeNetwork.IsChecked == true;
             s.PurgeFtp = _purgeFtp.IsChecked == true;
             s.PurgeQiniu = _purgeQiniu.IsChecked == true;
+            s.PurgeBaidu = _purgeBaidu.IsChecked == true;
             s.LocalRetainDays = int.TryParse(_retainLocal.Text, out a) && a > 0 ? a : 7;
             s.NetworkRetainDays = int.TryParse(_retainNetwork.Text, out b) && b > 0 ? b : 7;
             s.FtpRetainDays = int.TryParse(_retainFtp.Text, out c) && c > 0 ? c : 7;
             s.QiniuRetainDays = int.TryParse(_retainQiniu.Text, out d) && d > 0 ? d : 7;
+            s.BaiduRetainDays = int.TryParse(_retainBaidu.Text, out e) && e > 0 ? e : 7;
             s.PurgeTime = string.IsNullOrWhiteSpace(_purgeTime.Text) ? "00:30" : _purgeTime.Text.Trim();
             SettingsStore.Save(_boot.Db, s);
             MessageBox.Show(Window.GetWindow(this), "已保存。", "自动删除");

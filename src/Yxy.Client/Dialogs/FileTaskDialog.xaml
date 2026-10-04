@@ -76,10 +76,8 @@
                 <StackPanel Margin="12">
                     <CheckBox x:Name="ChkNetwork" Content="网络传输（UNC）" Margin="0,6"/>
                     <CheckBox x:Name="ChkFtp" Content="FTP 上传" Margin="0,6"/>
-                    <CheckBox x:Name="ChkCloud" Content="云上传（本期仅七牛）" Margin="0,6"/>
-                    <ComboBox x:Name="CmbCloud" Margin="0,0,0,6" Width="200" HorizontalAlignment="Left">
-                        <ComboBoxItem Content="七牛云" Tag="qiniu" IsSelected="True"/>
-                    </ComboBox>
+                    <CheckBox x:Name="ChkCloud" Content="云上传" Margin="0,6"/>
+                    <ComboBox x:Name="CmbCloud" Margin="0,0,0,6" Width="200" HorizontalAlignment="Left"/>
                     <CheckBox x:Name="ChkDelete" Content="立即删本次本地包（默认不勾）" Margin="0,6" Checked="ChkDelete_OnChecked"/>
                     <CheckBox x:Name="ChkEmail" Content="完成后发邮件" Margin="0,6"/>
                     <TextBlock Text="完成后运行程序" Margin="0,12,0,4"/>

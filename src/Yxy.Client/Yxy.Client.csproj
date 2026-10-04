@@ -27,6 +27,12 @@
     <ProjectReference Include="..\Yxy.Media\Yxy.Media.csproj" />
     <ProjectReference Include="..\Yxy.Mssql\Yxy.Mssql.csproj" />
     <ProjectReference Include="..\Yxy.Cloud\Yxy.Cloud.csproj" />
+    <ProjectReference Include="..\Yxy.Baidu\Yxy.Baidu.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\Yxy.Baidu\BaiduApp.example.json" Link="BaiduApp.example.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="MaterialDesignThemes" Version="4.9.0" />
