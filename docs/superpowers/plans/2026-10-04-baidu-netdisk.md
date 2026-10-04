@@ -440,7 +440,7 @@ Expected: FAIL（类型不存在或方法未实现）
 
 `BaiduSlices.Md5HexList`：按 4MB 读文件，每片 MD5 小写 hex。
 
-`BaiduOAuth.AuthorizeUrl`：`https://openapi.baidu.com/oauth/2.0/authorize?response_type=code&client_id={Uri.EscapeDataString(AppKey)}&redirect_uri={Uri.EscapeDataString(RedirectUri)}&scope=basic,netdisk&state={Uri.EscapeDataString(state)}`
+`BaiduOAuth.AuthorizeUrl`：`https://openapi.baidu.com/oauth/2.0/authorize?response_type=code&client_id={Uri.EscapeDataString(AppKey)}&redirect_uri={Uri.EscapeDataString(RedirectUri)}&scope=basic,netdisk&qrcode=1&state={Uri.EscapeDataString(state)}`
 
 `TryParseCallback`：解析 query 的 `code`/`state`/`error`；state 必须等于 `expectedState`；有 code 才成功。
 

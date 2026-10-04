@@ -70,7 +70,7 @@
 
 1. 云备份页点「授权百度」。
 2. 用配置里的 **固定** `RedirectUri`（默认 `http://127.0.0.1:17890/baidu/`）启动 `HttpListener`。端口必须与百度开放平台登记完全一致。端口被占用则提示失败，不改用随机端口。
-3. 打开系统浏览器：`https://openapi.baidu.com/oauth/2.0/authorize`，`response_type=code`，`scope=basic,netdisk`，带随机 `state`，回调校验 `state`。
+3. 打开系统浏览器：`https://openapi.baidu.com/oauth/2.0/authorize`，`response_type=code`，`scope=basic,netdisk`，`qrcode=1`（登录页带扫码入口），带随机 `state`，回调校验 `state`。
 4. 用 code 调 `https://openapi.baidu.com/oauth/2.0/token` 换 `access_token` 与 `refresh_token`，拉用户信息填 `DisplayName`，加密写入 `provider=baidu` 行。
 5. 关掉监听。超时、关页、`state` 不符：失败，不覆盖已有 token。
 6. 已授权显示脱敏用户名，按钮为「重新授权」。取消「启用」后任务里不再出现百度；token 留在库里直到下次授权覆盖。

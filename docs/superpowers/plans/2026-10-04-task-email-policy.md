@@ -2,6 +2,8 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+**状态：** 已落地（main：`e3b37d7` `8b6e303` `99835df`）。
+
 **Goal:** SMTP 配好后，EMAIL 页签用总开关和下拉（失败/成功/所有）控制发信；任务仍须勾选「完成后发邮件」。
 
 **Architecture:** 两字段进现有 `SmtpSettingsDto`（xfer JSON）。`MailUtil.SmtpReady` / `ShouldSend` 集中判定。`DistChannel.Finish` 与文件/MSSQL/MySQL Runner 的失败 catch 都调用 `ShouldSend`，禁止只改成功路径。设置页按主机+发件人+收件人是否非空显示控件。
