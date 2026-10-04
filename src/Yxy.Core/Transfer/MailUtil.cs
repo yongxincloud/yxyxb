@@ -16,6 +16,50 @@ namespace Yxy.Core.Transfer
             SendResult(settings, "测试", true, "这是一封测试邮件。");
         }
 
+        public static bool SmtpReady(SmtpSettingsDto settings)
+        {
+            return settings != null
+                && !string.IsNullOrWhiteSpace(settings.Host)
+                && !string.IsNullOrWhiteSpace(settings.From)
+                && !string.IsNullOrWhiteSpace(settings.To);
+        }
+
+        public static string NormalizeWhen(string value)
+        {
+            if (string.Equals(value, "success", StringComparison.OrdinalIgnoreCase))
+            {
+                return "success";
+            }
+
+            if (string.Equals(value, "all", StringComparison.OrdinalIgnoreCase))
+            {
+                return "all";
+            }
+
+            return "fail";
+        }
+
+        public static bool ShouldSend(SmtpSettingsDto settings, bool doEmail, bool success)
+        {
+            if (!doEmail || !SmtpReady(settings) || !settings.SendAfterTask)
+            {
+                return false;
+            }
+
+            var when = NormalizeWhen(settings.SendWhen);
+            if (when == "all")
+            {
+                return true;
+            }
+
+            if (when == "success")
+            {
+                return success;
+            }
+
+            return !success;
+        }
+
         public static void SendResult(SmtpSettingsDto settings, string taskName, bool ok, string detail)
         {
             string subject;

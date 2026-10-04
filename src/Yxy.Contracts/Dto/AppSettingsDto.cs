@@ -100,5 +100,9 @@ namespace Yxy.Contracts.Dto
         public string Body { get; set; }
 
         public string Footer { get; set; }
+
+        public bool SendAfterTask { get; set; }
+
+        public string SendWhen { get; set; }
     }
 }

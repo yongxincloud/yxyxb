@@ -28,6 +28,28 @@ namespace Yxy.Core.Tests
         }
 
         [Test]
+        public void ShouldSend_RequiresReadySwitchWhenAndTask()
+        {
+            var smtp = new SmtpSettingsDto { Host = "h", From = "a@b.c", To = "d@e.f", SendAfterTask = true, SendWhen = "fail" };
+            Assert.That(MailUtil.SmtpReady(smtp), Is.True);
+            Assert.That(MailUtil.ShouldSend(smtp, true, false), Is.True);
+            Assert.That(MailUtil.ShouldSend(smtp, true, true), Is.False);
+            smtp.SendWhen = "success";
+            Assert.That(MailUtil.ShouldSend(smtp, true, true), Is.True);
+            Assert.That(MailUtil.ShouldSend(smtp, true, false), Is.False);
+            smtp.SendWhen = "all";
+            Assert.That(MailUtil.ShouldSend(smtp, true, true), Is.True);
+            Assert.That(MailUtil.ShouldSend(smtp, true, false), Is.True);
+            smtp.SendAfterTask = false;
+            Assert.That(MailUtil.ShouldSend(smtp, true, false), Is.False);
+            smtp.SendAfterTask = true;
+            Assert.That(MailUtil.ShouldSend(smtp, false, false), Is.False);
+            Assert.That(MailUtil.ShouldSend(new SmtpSettingsDto { Host = "h", SendAfterTask = true, SendWhen = "all" }, true, false), Is.False);
+            Assert.That(MailUtil.NormalizeWhen("x"), Is.EqualTo("fail"));
+            Assert.That(MailUtil.NormalizeWhen(null), Is.EqualTo("fail"));
+        }
+
+        [Test]
         public void CloudMask_HidesMiddle()
         {
             Assert.That(CloudMask.Mask("abcdefghijkl"), Is.EqualTo("abcd****ijkl"));
