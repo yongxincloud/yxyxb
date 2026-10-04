@@ -7,6 +7,7 @@ import OrdersView from './views/OrdersView.vue'
 import PortalView from './views/PortalView.vue'
 import PortalLayout from './views/PortalLayout.vue'
 import InvoiceView from './views/InvoiceView.vue'
+import AccountView from './views/AccountView.vue'
 import ProviderApplyView from './views/ProviderApplyView.vue'
 import DownloadView from './views/DownloadView.vue'
 import CommissionView from './views/CommissionView.vue'
@@ -63,6 +64,7 @@ export const router = createRouter({
         { path: '/portal/customers', component: CustomersView },
         { path: '/portal/settlements', component: SettlementsView },
         { path: '/portal/messages', component: MessagesView },
+        { path: '/portal/account', component: AccountView },
         { path: '/forgot', component: ForgotView }
       ]
     },

@@ -36,7 +36,7 @@ public sealed class CommissionTests
         var buyer = factory.CreateClient();
         await AccountApi.Register(factory, buyer, "buyer@example.com", "abc12345", providerNo);
         await AccountApi.Post(buyer, "/api/account/login", new { email = "buyer@example.com", password = "abc12345" });
-        var created = await buyer.PostAsJsonAsync("/api/orders", new { productNo = "STD", orderType = 1, channel = "wechat" });
+        var created = await buyer.PostAsJsonAsync("/api/orders", new { productNo = "STD", orderType = 1, channel = "alipay" });
         var order = await created.Content.ReadFromJsonAsync<OrderResult>();
         await Notify(buyer, order!.OrderNo!, "C1", "wechat", 12m);
         await Notify(buyer, order.OrderNo!, "C1", "wechat", 12m);
@@ -82,7 +82,7 @@ public sealed class CommissionTests
         var trial = await buyer.PostAsJsonAsync("/api/orders", new { productNo = "STD", orderType = 2, channel = "alipay" });
         var trialOrder = await trial.Content.ReadFromJsonAsync<OrderResult>();
         await Notify(buyer, trialOrder!.OrderNo!, "T1", "alipay", 0.10m);
-        var formal = await buyer.PostAsJsonAsync("/api/orders", new { productNo = "STD", orderType = 1, channel = "wechat" });
+        var formal = await buyer.PostAsJsonAsync("/api/orders", new { productNo = "STD", orderType = 1, channel = "alipay" });
         var formalOrder = await formal.Content.ReadFromJsonAsync<OrderResult>();
         await Notify(buyer, formalOrder!.OrderNo!, "F1", "wechat", 12m);
 

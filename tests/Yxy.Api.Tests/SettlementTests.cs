@@ -46,7 +46,7 @@ public sealed class SettlementTests
             product.Price = 200m;
             await db.SaveChangesAsync();
         }
-        var created = await shop.PostAsJsonAsync("/api/orders", new { productNo = "STD", orderType = 1, channel = "wechat" });
+        var created = await shop.PostAsJsonAsync("/api/orders", new { productNo = "STD", orderType = 1, channel = "alipay" });
         var order = await created.Content.ReadFromJsonAsync<OrderResult>();
         await Notify(shop, order!.OrderNo!, "SET1", "wechat", 200m);
         await using (var scope = factory.Services.CreateAsyncScope())

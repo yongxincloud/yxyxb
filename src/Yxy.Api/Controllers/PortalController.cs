@@ -8,7 +8,7 @@ using Yxy.Api.Services;
 namespace Yxy.Api.Controllers;
 
 public sealed record ProviderApplyBody(string? CompanyName, string? TaxNo, string? LicenseFile, string? ContactName, string? ContactEmail, string? ContactPhone);
-public sealed record InvoiceApplyBody(string? TitleName, string? TaxNo, string? Email, string? LicenseFile);
+public sealed record InvoiceApplyBody(string? TitleName, string? TaxNo, string? Email, string? LicenseFile, string[]? OrderNos);
 public sealed record SettlementBody(string? InvoiceFile);
 
 [ApiController]
@@ -169,33 +169,50 @@ public sealed class PortalController : ControllerBase
     }
 
     [Authorize]
+    [HttpGet("/api/portal/invoice-orders")]
+    public async Task<IActionResult> InvoiceOrders()
+    {
+        var customer = await _db.Customers.SingleAsync(x => x.AccountId == AccountId());
+        var rows = await _db.Orders.Where(x => x.CustomerId == customer.Id && x.PayStatus == 1 && x.Amount > 0 && x.InvoiceApplyId == null)
+            .OrderByDescending(x => x.Id)
+            .Select(x => new { x.OrderNo, x.Amount, x.PayTime })
+            .ToListAsync();
+        return Ok(new { ok = true, orders = rows });
+    }
+
+    [Authorize]
     [HttpPost("/api/portal/invoice-apply")]
     public async Task<IActionResult> InvoiceApply([FromBody] InvoiceApplyBody body)
     {
-        if (string.IsNullOrWhiteSpace(body.TitleName) || string.IsNullOrWhiteSpace(body.TaxNo)
-            || string.IsNullOrWhiteSpace(body.Email) || string.IsNullOrWhiteSpace(body.LicenseFile))
-            return BadRequest(new { ok = false, error = "抬头、税号、邮箱和营业执照都要填写" });
-        if (!IsImage(body.LicenseFile))
-            return BadRequest(new { ok = false, error = "营业执照请上传 JPG 或 PNG" });
+        var orderNos = (body.OrderNos ?? []).Where(x => !string.IsNullOrWhiteSpace(x)).Distinct().ToArray();
+        if (orderNos.Length == 0) return BadRequest(new { ok = false, error = "请选择有金额且未开票的支付记录" });
         var customer = await _db.Customers.SingleAsync(x => x.AccountId == AccountId());
-        var amount = await _db.Orders.Where(x => x.CustomerId == customer.Id && x.PayStatus == 1).SumAsync(x => (decimal?)x.Amount) ?? 0m;
+        if (string.IsNullOrWhiteSpace(customer.InvoiceTitle) || string.IsNullOrWhiteSpace(customer.InvoiceTaxNo)
+            || string.IsNullOrWhiteSpace(customer.InvoiceEmail) || string.IsNullOrWhiteSpace(customer.InvoiceLicense))
+            return BadRequest(new { ok = false, error = "请先在账号信息里填写开票信息" });
+        var orders = await _db.Orders.Where(x => x.CustomerId == customer.Id && orderNos.Contains(x.OrderNo)).ToListAsync();
+        if (orders.Count != orderNos.Length || orders.Any(x => x.PayStatus != 1 || x.Amount <= 0 || x.InvoiceApplyId != null))
+            return BadRequest(new { ok = false, error = "请选择有金额且未开票的支付记录" });
         var now = DateTime.UtcNow;
-        _db.InvoiceApplies.Add(new InvoiceApply
+        var apply = new InvoiceApply
         {
             ApplyNo = "I" + now.ToString("yyyyMMddHHmmssfff"),
             CustomerId = customer.Id,
-            LicenseFile = body.LicenseFile.Trim(),
-            Amount = amount,
-            TitleName = body.TitleName.Trim(),
-            TaxNo = body.TaxNo.Trim(),
-            Email = body.Email.Trim(),
+            LicenseFile = customer.InvoiceLicense,
+            Amount = orders.Sum(x => x.Amount),
+            TitleName = customer.InvoiceTitle,
+            TaxNo = customer.InvoiceTaxNo,
+            Email = customer.InvoiceEmail,
             Issuer = 1,
             Status = 1,
             CreatedAt = now,
             UpdatedAt = now
-        });
+        };
+        _db.InvoiceApplies.Add(apply);
         await _db.SaveChangesAsync();
-        return Ok(new { ok = true });
+        foreach (var order in orders) order.InvoiceApplyId = apply.Id;
+        await _db.SaveChangesAsync();
+        return Ok(new { ok = true, amount = apply.Amount });
     }
 
     static bool IsImage(string name)

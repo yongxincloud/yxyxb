@@ -5,6 +5,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.EntityFrameworkCore;
+using Yxy.Api.Data;
 using Yxy.Api.Services;
 
 namespace Yxy.Api.Controllers;
@@ -14,6 +16,7 @@ public sealed record SendCodeBody(string? Email, string? Scene, string? CaptchaI
 public sealed record LoginBody(string? Email, string? Password);
 public sealed record LoginCodeBody(string? Email, string? Code);
 public sealed record ResetBody(string? Email, string? Code, string? Password, string? Confirm);
+public sealed record ProfileBody(string? Name, string? Nickname, string? CompanyName, string? Phone, string? InvoiceTitle, string? InvoiceTaxNo, string? InvoiceEmail, string? InvoiceLicense);
 
 [ApiController]
 [Route("api/account")]
@@ -22,11 +25,13 @@ public sealed class AccountController : ControllerBase
     private readonly AccountService _accounts;
     private readonly CaptchaService _captcha;
     private readonly MailSettingsService _mail;
-    public AccountController(AccountService accounts, CaptchaService captcha, MailSettingsService mail)
+    private readonly WebDb _db;
+    public AccountController(AccountService accounts, CaptchaService captcha, MailSettingsService mail, WebDb db)
     {
         _accounts = accounts;
         _captcha = captcha;
         _mail = mail;
+        _db = db;
     }
 
     [HttpGet("captcha")]
@@ -93,6 +98,68 @@ public sealed class AccountController : ControllerBase
     [Authorize]
     [HttpGet("me")]
     public IActionResult Me() => Ok(new ApiResult(true, null, User.FindFirstValue(ClaimTypes.Email)));
+
+    [Authorize]
+    [HttpPost("logout")]
+    public async Task<IActionResult> Logout()
+    {
+        await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+        return Ok(new { ok = true });
+    }
+
+    [Authorize]
+    [HttpGet("profile")]
+    public async Task<IActionResult> Profile()
+    {
+        var account = await _db.Accounts.SingleAsync(x => x.Id == AccountId());
+        var customer = await _db.Customers.SingleAsync(x => x.AccountId == account.Id);
+        return Ok(new
+        {
+            ok = true,
+            email = account.Email,
+            phone = account.Phone,
+            name = customer.Name,
+            nickname = customer.Nickname,
+            companyName = customer.CompanyName,
+            invoiceTitle = customer.InvoiceTitle,
+            invoiceTaxNo = customer.InvoiceTaxNo,
+            invoiceEmail = customer.InvoiceEmail,
+            invoiceLicense = customer.InvoiceLicense
+        });
+    }
+
+    [Authorize]
+    [HttpPost("profile")]
+    public async Task<IActionResult> SaveProfile([FromBody] ProfileBody body)
+    {
+        if (!string.IsNullOrWhiteSpace(body.InvoiceLicense) && !IsImage(body.InvoiceLicense))
+            return BadRequest(new { ok = false, error = "营业执照请上传 JPG 或 PNG" });
+        var account = await _db.Accounts.SingleAsync(x => x.Id == AccountId());
+        var customer = await _db.Customers.SingleAsync(x => x.AccountId == account.Id);
+        var now = DateTime.UtcNow;
+        account.Phone = Clean(body.Phone);
+        account.UpdatedAt = now;
+        customer.Name = Clean(body.Name);
+        customer.Nickname = Clean(body.Nickname);
+        customer.CompanyName = Clean(body.CompanyName);
+        customer.InvoiceTitle = Clean(body.InvoiceTitle);
+        customer.InvoiceTaxNo = Clean(body.InvoiceTaxNo);
+        customer.InvoiceEmail = Clean(body.InvoiceEmail);
+        customer.InvoiceLicense = Clean(body.InvoiceLicense);
+        customer.UpdatedAt = now;
+        await _db.SaveChangesAsync();
+        return Ok(new { ok = true });
+    }
+
+    static string? Clean(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    static bool IsImage(string name)
+    {
+        var lower = name.Trim().ToLowerInvariant();
+        return lower.EndsWith(".jpg") || lower.EndsWith(".jpeg") || lower.EndsWith(".png");
+    }
+
+    long AccountId() => long.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
     protected IActionResult ToJson(AuthResult result)
     {

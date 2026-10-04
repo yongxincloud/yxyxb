@@ -22,7 +22,7 @@
 
 ### 1.2 本期不做
 
-- Oracle / MySQL / DM / PostgreSQL（页签可灰显）
+- Oracle / 达梦 / PostgreSQL（页签可灰显）。MySQL 实例和任务已开通，备份调用 mysqldump
 - 恢复、工具插件
 - 腾讯云、天翼云的实际上传与删除（菜单占位即可）
 - 任务复制

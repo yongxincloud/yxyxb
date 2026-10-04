@@ -37,6 +37,33 @@ public sealed class ClientAuthTests
         Assert.That(stored.TokenHash, Is.Not.EqualTo(body.Token));
         Assert.That(stored.DeviceId, Is.EqualTo("pc-1"));
         Assert.That((stored.ExpiresAt - stored.IssuedAt).TotalDays, Is.EqualTo(44).Within(0.01));
+        Assert.That(body.Name, Is.Null.Or.Empty);
+        Assert.That(body.CompanyName, Is.Null.Or.Empty);
+    }
+
+    [Test]
+    public async Task Login_Shows_Company_And_Person_After_Profile_Is_Filled()
+    {
+        await using var factory = new WebAppFactory();
+        var client = factory.CreateClient();
+        await AccountApi.Register(factory, client, "named@example.com", "abc12345");
+        await AccountApi.Post(client, "/api/account/login", new { email = "named@example.com", password = "abc12345" });
+        var saved = await AccountApi.Post(client, "/api/account/profile", new
+        {
+            name = "张三",
+            nickname = "小张",
+            companyName = "甲公司"
+        });
+        Assert.That(saved.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+        var body = await Read(await AccountApi.Post(client, "/api/client/login", new
+        {
+            email = "named@example.com",
+            password = "abc12345",
+            deviceId = "pc-1"
+        }));
+        Assert.That(body.Name, Is.EqualTo("张三"));
+        Assert.That(body.Nickname, Is.EqualTo("小张"));
+        Assert.That(body.CompanyName, Is.EqualTo("甲公司"));
     }
 
     [Test]

@@ -17,6 +17,9 @@ namespace Yxy.Client
     {
         public bool LoggedIn { get; set; }
         public string Email { get; set; }
+        public string Name { get; set; }
+        public string Nickname { get; set; }
+        public string CompanyName { get; set; }
         public bool Valid { get; set; }
         public DateTime? AuthEndUtc { get; set; }
         public string AuthStatus { get; set; }
@@ -25,6 +28,29 @@ namespace Yxy.Client
         public bool Usable
         {
             get { return SiteGate.Allows(LoggedIn, Valid, AuthEndUtc, DateTime.UtcNow); }
+        }
+
+        public string DisplayName
+        {
+            get
+            {
+                var company = (CompanyName ?? "").Trim();
+                var person = (Name ?? "").Trim();
+                var nickname = (Nickname ?? "").Trim();
+                if (company.Length == 0 && person.Length == 0 && nickname.Length == 0)
+                {
+                    return Email ?? "";
+                }
+
+                if (nickname.Length > 0)
+                {
+                    person = person.Length == 0 ? nickname : person + "（" + nickname + "）";
+                }
+
+                if (company.Length == 0) return person;
+                if (person.Length == 0) return company;
+                return company + " " + person;
+            }
         }
 
         public string Summary
@@ -36,26 +62,29 @@ namespace Yxy.Client
                     return "未登录。请使用网站邮箱登录。";
                 }
 
+                var who = DisplayName;
                 if (AuthEndUtc == null || !Valid)
                 {
-                    return "已登录 " + Email + "，当前没有可用授权。文件备份、数据库备份、云、UNC、FTP、邮件已停用。离线介质仍可使用。";
+                    return "已登录 " + who + "，当前没有可用授权。文件备份、数据库备份、云、UNC、FTP、邮件已停用。离线介质仍可使用。";
                 }
 
                 var local = AuthEndUtc.Value.ToLocalTime();
                 var days = (int)Math.Ceiling((AuthEndUtc.Value - DateTime.UtcNow).TotalDays);
                 if (days > 0)
                 {
-                    return "已登录 " + Email + "。可用至 " + local.ToString("yyyy-MM-dd") + "，剩余 " + days + " 天。下次联网校验间隔 " + NextCheckDays + " 天。";
+                    var until = "已登录 " + who + "。可用至 " + local.ToString("yyyy-MM-dd");
+                    if (days > 30) return until + "。";
+                    return until + "，剩余 " + days + " 天。";
                 }
 
                 var grace = AuthEndUtc.Value.AddDays(7);
                 if (DateTime.UtcNow <= grace)
                 {
                     var left = (int)Math.Ceiling((grace - DateTime.UtcNow).TotalDays);
-                    return "已登录 " + Email + "。授权已于 " + local.ToString("yyyy-MM-dd") + " 到期，宽限还剩 " + left + " 天。请续费。";
+                    return "已登录 " + who + "。授权已于 " + local.ToString("yyyy-MM-dd") + " 到期，宽限还剩 " + left + " 天。请续费。";
                 }
 
-                return "已登录 " + Email + "。授权已到期。文件备份、数据库备份、云、UNC、FTP、邮件已停用。离线介质仍可使用。";
+                return "已登录 " + who + "。授权已到期。文件备份、数据库备份、云、UNC、FTP、邮件已停用。离线介质仍可使用。";
             }
         }
     }
@@ -94,6 +123,9 @@ namespace Yxy.Client
                     var key = line.Substring(0, index);
                     var value = line.Substring(index + 1);
                     if (key == "email") session.Email = value;
+                    else if (key == "name") session.Name = value;
+                    else if (key == "nickname") session.Nickname = value;
+                    else if (key == "company") session.CompanyName = value;
                     else if (key == "valid") session.Valid = value == "true";
                     else if (key == "status") session.AuthStatus = value;
                     else if (key == "days")
@@ -302,12 +334,23 @@ namespace Yxy.Client
             var end = Match(body, "\"authEndTime\"\\s*:\\s*\"([^\"]+)\"");
             var status = Match(body, "\"authStatus\"\\s*:\\s*\"([^\"]+)\"");
             var days = Match(body, "\"nextCheckDays\"\\s*:\\s*(\\d+)");
-            var text = "email=" + (email ?? "").Trim() + "\r\n"
+            var name = Match(body, "\"name\"\\s*:\\s*\"([^\"]*)\"");
+            var nickname = Match(body, "\"nickname\"\\s*:\\s*\"([^\"]*)\"");
+            var company = Match(body, "\"companyName\"\\s*:\\s*\"([^\"]*)\"");
+            var text = "email=" + OneLine(email) + "\r\n"
+                + "name=" + OneLine(name) + "\r\n"
+                + "nickname=" + OneLine(nickname) + "\r\n"
+                + "company=" + OneLine(company) + "\r\n"
                 + "valid=" + valid + "\r\n"
                 + "end=" + end + "\r\n"
                 + "status=" + status + "\r\n"
                 + "days=" + days + "\r\n";
             File.WriteAllText(SessionFile, text);
+        }
+
+        private static string OneLine(string value)
+        {
+            return (value ?? "").Replace("\r", "").Replace("\n", "").Trim();
         }
 
         private static string Match(string body, string pattern)

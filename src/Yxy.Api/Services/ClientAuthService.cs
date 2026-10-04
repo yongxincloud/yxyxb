@@ -13,7 +13,10 @@ public sealed record ClientSession(
     int? AccountStatus,
     string? AuthStatus,
     DateTime? AuthEndTime,
-    int? NextCheckDays);
+    int? NextCheckDays,
+    string? Name = null,
+    string? Nickname = null,
+    string? CompanyName = null);
 
 public sealed class ClientAuthService
 {
@@ -78,6 +81,7 @@ public sealed class ClientAuthService
     async Task<ClientSession> IssueAsync(long accountId, string? deviceId)
     {
         var account = await _db.Accounts.SingleAsync(x => x.Id == accountId);
+        var customer = await _db.Customers.SingleOrDefaultAsync(x => x.AccountId == accountId);
         var now = _time.GetUtcNow().UtcDateTime;
         var view = await LoadAuthAsync(accountId, now);
         var days = NextCheckDays(view.End, now);
@@ -92,7 +96,7 @@ public sealed class ClientAuthService
             Revoked = 0
         });
         await _db.SaveChangesAsync();
-        return new ClientSession(true, null, view.Usable, raw, account.Status, view.Status, view.End, days);
+        return new ClientSession(true, null, view.Usable, raw, account.Status, view.Status, view.End, days, customer?.Name, customer?.Nickname, customer?.CompanyName);
     }
 
     async Task<AuthView> LoadAuthAsync(long accountId, DateTime now)

@@ -1,9 +1,10 @@
 <script setup>
 import { onMounted, ref } from 'vue'
-import { useRoute } from 'vue-router'
-import { get } from '../api.js'
+import { useRoute, useRouter } from 'vue-router'
+import { get, post } from '../api.js'
 
 const route = useRoute()
+const router = useRouter()
 const email = ref('')
 
 const links = [
@@ -16,7 +17,7 @@ const links = [
   { to: '/portal/settlements', label: '结算单' },
   { to: '/portal/messages', label: '站内信' },
   { to: '/portal/download', label: '客户端下载' },
-  { to: '/forgot', label: '账号安全' }
+  { to: '/portal/account', label: '账号信息' }
 ]
 
 onMounted(async () => {
@@ -26,6 +27,11 @@ onMounted(async () => {
 
 function active(path) {
   return route.path === path
+}
+
+async function logout() {
+  await post('/api/account/logout')
+  router.replace('/login')
 }
 </script>
 
@@ -39,6 +45,7 @@ function active(path) {
           {{ link.label }}
         </router-link>
       </nav>
+      <button class="btn-yxy out" type="button" @click="logout">退出</button>
     </aside>
     <div class="main">
       <router-view />
@@ -71,6 +78,7 @@ nav a {
   text-decoration: none;
 }
 nav a.on, nav a:hover { background: #F8E8E8; color: var(--brand-primary); }
+.out { width: 100%; margin-top: 12px; }
 .main :deep(.card-yxy) { margin: 0; }
 .main :deep(h1) { margin: 0 0 8px; font-size: 22px; color: var(--c-title); }
 @media (max-width: 768px) {
