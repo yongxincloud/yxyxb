@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Text;
 using System.Web.Script.Serialization;
 
 namespace Yxy.Baidu
@@ -24,7 +25,7 @@ namespace Yxy.Baidu
                 throw new InvalidOperationException("未配置百度应用");
             }
 
-            var json = File.ReadAllText(path);
+            var json = File.ReadAllText(path, Encoding.UTF8);
             var cfg = new JavaScriptSerializer().Deserialize<BaiduAppConfig>(json) ?? new BaiduAppConfig();
             if (string.IsNullOrWhiteSpace(cfg.AppKey) || string.IsNullOrWhiteSpace(cfg.AppSecret))
             {

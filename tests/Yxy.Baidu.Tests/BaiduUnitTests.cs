@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Text;
 using NUnit.Framework;
 using Yxy.Baidu;
 
@@ -30,6 +31,23 @@ namespace Yxy.Baidu.Tests
         {
             var ex = Assert.Throws<InvalidOperationException>(() => BaiduAppConfig.Load(@"C:\no-such-baidu-app.json"));
             Assert.That(ex.Message, Is.EqualTo("未配置百度应用"));
+        }
+
+        [Test]
+        public void Config_LoadUtf8FolderName()
+        {
+            var path = Path.Combine(Path.GetTempPath(), "yxy-baidu-app-" + Guid.NewGuid().ToString("N") + ".json");
+            var json = "{\"AppKey\":\"k\",\"AppSecret\":\"s\",\"RedirectUri\":\"http://127.0.0.1:17890/baidu/\",\"AppFolderName\":\"用心云备份\"}";
+            File.WriteAllText(path, json, new UTF8Encoding(false));
+            try
+            {
+                var cfg = BaiduAppConfig.Load(path);
+                Assert.That(cfg.AppFolderName, Is.EqualTo("用心云备份"));
+            }
+            finally
+            {
+                File.Delete(path);
+            }
         }
 
         [Test]
