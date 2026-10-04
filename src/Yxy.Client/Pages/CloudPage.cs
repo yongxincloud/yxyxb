@@ -162,7 +162,7 @@ namespace Yxy.Client.Pages
                 return;
             }
 
-            _hint.Text = "点授权后，文件进入你自己的网盘「我的应用数据 / 用心云备份」。";
+            _hint.Text = "点授权后，文件进入你自己的网盘「我的应用数据 / 用心云备份」。控制台回调须与本机一致；改完约 1 小时生效。等待时窗口不应卡住。";
             ShowBaiduStatus(CloudAccountStore.Get(_boot.Db, CloudProviders.Baidu));
         }
 
