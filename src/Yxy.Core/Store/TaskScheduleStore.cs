@@ -56,6 +56,8 @@ LIMIT " + take.ToString(CultureInfo.InvariantCulture);
                 FileExecutedCount = ToInt(db.ExecuteScalar("SELECT COALESCE(SUM(run_count), 0) FROM file_tasks")),
                 MssqlTaskCount = ToInt(db.ExecuteScalar("SELECT COUNT(*) FROM mssql_tasks")),
                 MssqlExecutedCount = ToInt(db.ExecuteScalar("SELECT COALESCE(SUM(run_count), 0) FROM mssql_tasks")),
+                MysqlTaskCount = ToInt(db.ExecuteScalar("SELECT COUNT(*) FROM mysql_tasks")),
+                MysqlExecutedCount = ToInt(db.ExecuteScalar("SELECT COALESCE(SUM(run_count), 0) FROM mysql_tasks")),
                 TodayErrorCount = ToInt(db.ExecuteScalar(
                     "SELECT COUNT(*) FROM logs WHERE result = 'error' AND created_utc >= @d",
                     new System.Data.SQLite.SQLiteParameter("@d", today))),

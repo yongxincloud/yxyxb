@@ -48,9 +48,19 @@ namespace Yxy.Core
             get { return Path.Combine(InstallDirectory, "data"); }
         }
 
+        public const string DefaultBakDirectory = @"D:\yongxinyunbackup\bak";
+
         public static string BakDirectory
         {
-            get { return Path.Combine(InstallDirectory, "bak"); }
+            get
+            {
+                if (!string.IsNullOrEmpty(_rootOverride))
+                {
+                    return Path.Combine(_rootOverride, "bak");
+                }
+
+                return DefaultBakDirectory;
+            }
         }
 
         public static string DatabaseFile

@@ -77,7 +77,7 @@ namespace Yxy.Client.Pages
 
             var counts = TaskScheduleStore.GetHomeCounts(_boot.Db);
             _txtFile.Text = counts.FileTaskCount + " / 已执行 " + counts.FileExecutedCount;
-            _txtMssql.Text = counts.MssqlTaskCount + " / 已执行 " + counts.MssqlExecutedCount;
+            _txtMssql.Text = "MSSQL " + counts.MssqlTaskCount + "/" + counts.MssqlExecutedCount + " · MySQL " + counts.MysqlTaskCount + "/" + counts.MysqlExecutedCount;
             _txtError.Text = counts.TodayErrorCount.ToString();
             _txtLogs.Text = "自动 " + counts.AutoLogCount + " / 手动 " + counts.ManualLogCount;
 

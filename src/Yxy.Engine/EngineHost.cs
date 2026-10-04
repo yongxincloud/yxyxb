@@ -11,6 +11,7 @@ using Yxy.Cloud;
 using Yxy.Core.Store;
 using Yxy.Media;
 using Yxy.Mssql;
+using Yxy.MySql;
 
 namespace Yxy.Engine
 {
@@ -81,6 +82,7 @@ namespace Yxy.Engine
             {
                 ran += FileBackupRunner.ExecuteDue(_boot.Db);
                 ran += MssqlRunner.ExecuteDue(_boot.Db);
+                ran += MysqlRunner.ExecuteDue(_boot.Db);
             }
             ran += MediaRunner.ExecuteDue(_boot.Db);
             if (PurgeRunner.ExecuteDue(_boot.Db))

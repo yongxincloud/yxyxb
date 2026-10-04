@@ -129,6 +129,13 @@ namespace Yxy.Core.Data
                 new SQLiteParameter("@bak", AppPaths.BakDirectory),
                 new SQLiteParameter("@sid", AppPaths.ProductName),
                 new SQLiteParameter("@utc", now));
+            var legacy = Path.Combine(AppPaths.InstallDirectory, "bak");
+            Execute(
+                "UPDATE settings SET bak_path=@bak, updated_utc=@utc WHERE id=1 AND (bak_path=@old OR bak_path=@oldSlash)",
+                new SQLiteParameter("@bak", AppPaths.BakDirectory),
+                new SQLiteParameter("@utc", now),
+                new SQLiteParameter("@old", legacy),
+                new SQLiteParameter("@oldSlash", legacy + Path.DirectorySeparatorChar));
 
             Execute(
                 "INSERT OR IGNORE INTO license (id, first_run_utc) VALUES (1, @utc)",

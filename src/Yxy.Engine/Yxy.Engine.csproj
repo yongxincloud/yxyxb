@@ -17,6 +17,7 @@
     <ProjectReference Include="..\Yxy.Core\Yxy.Core.csproj" />
     <ProjectReference Include="..\Yxy.Media\Yxy.Media.csproj" />
     <ProjectReference Include="..\Yxy.Mssql\Yxy.Mssql.csproj" />
+    <ProjectReference Include="..\Yxy.MySql\Yxy.MySql.csproj" />
     <ProjectReference Include="..\Yxy.Cloud\Yxy.Cloud.csproj" />
   </ItemGroup>
 </Project>

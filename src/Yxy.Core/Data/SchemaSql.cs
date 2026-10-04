@@ -92,6 +92,41 @@ CREATE TABLE IF NOT EXISTS mssql_tasks (
     created_utc TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS mysql_instances (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    server TEXT NOT NULL DEFAULT 'localhost',
+    port INTEGER NOT NULL DEFAULT 3306,
+    username TEXT,
+    password_protected TEXT,
+    timeout_seconds INTEGER NOT NULL DEFAULT 30,
+    enabled INTEGER NOT NULL DEFAULT 1,
+    created_utc TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS mysql_tasks (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    instance_id INTEGER NOT NULL,
+    enabled INTEGER NOT NULL DEFAULT 1,
+    db_scope TEXT NOT NULL DEFAULT 'user',
+    selected_dbs TEXT,
+    retry_minutes INTEGER NOT NULL DEFAULT 5,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    cycle_kind TEXT NOT NULL DEFAULT 'day',
+    cycle_interval INTEGER NOT NULL DEFAULT 1,
+    next_run_utc TEXT,
+    last_run_utc TEXT,
+    run_count INTEGER NOT NULL DEFAULT 0,
+    do_network INTEGER NOT NULL DEFAULT 0,
+    do_ftp INTEGER NOT NULL DEFAULT 0,
+    do_cloud INTEGER NOT NULL DEFAULT 0,
+    cloud_provider TEXT,
+    do_delete_now INTEGER NOT NULL DEFAULT 0,
+    do_email INTEGER NOT NULL DEFAULT 0,
+    created_utc TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS media (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     serial_number TEXT NOT NULL,
@@ -154,6 +189,7 @@ CREATE TABLE IF NOT EXISTS logs (
 CREATE INDEX IF NOT EXISTS ix_logs_created ON logs(created_utc);
 CREATE INDEX IF NOT EXISTS ix_file_tasks_next ON file_tasks(next_run_utc);
 CREATE INDEX IF NOT EXISTS ix_mssql_tasks_next ON mssql_tasks(next_run_utc);
+CREATE INDEX IF NOT EXISTS ix_mysql_tasks_next ON mysql_tasks(next_run_utc);
 CREATE INDEX IF NOT EXISTS ix_media_tasks_next ON media_tasks(next_run_utc);
 ";
     }

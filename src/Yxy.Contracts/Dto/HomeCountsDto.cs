@@ -10,6 +10,10 @@ namespace Yxy.Contracts.Dto
 
         public int MssqlExecutedCount { get; set; }
 
+        public int MysqlTaskCount { get; set; }
+
+        public int MysqlExecutedCount { get; set; }
+
         public int TodayErrorCount { get; set; }
 
         public int AutoLogCount { get; set; }
