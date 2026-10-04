@@ -3,6 +3,7 @@ using System.IO;
 using NUnit.Framework;
 using Yxy.Contracts.Cloud;
 using Yxy.Contracts.Dto;
+using Yxy.Core.Backup;
 using Yxy.Core.Data;
 using Yxy.Core.Store;
 
@@ -61,6 +62,14 @@ namespace Yxy.Core.Tests
             {
                 try { File.Delete(file); } catch (IOException) { }
             }
+        }
+
+        [Test]
+        public void HasAnyPurge_TrueWhenOnlyBaidu()
+        {
+            var s = new AppSettingsDto { PurgeBaidu = true };
+            Assert.That(PurgeRunner.HasAnyPurge(s), Is.True);
+            Assert.That(PurgeRunner.HasAnyPurge(new AppSettingsDto()), Is.False);
         }
     }
 }

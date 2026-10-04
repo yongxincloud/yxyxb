@@ -28,11 +28,25 @@ namespace Yxy.Core.Backup
             return localNow.TimeOfDay >= hm;
         }
 
+        public static bool HasAnyPurge(AppSettingsDto settings)
+        {
+            if (settings == null)
+            {
+                return false;
+            }
+
+            return settings.PurgeLocal
+                || settings.PurgeNetwork
+                || settings.PurgeFtp
+                || settings.PurgeQiniu
+                || settings.PurgeBaidu;
+        }
+
         public static bool ExecuteDue(SqliteDb db)
         {
             var settings = SettingsStore.Get(db);
             var nowLocal = DateTime.Now;
-            if (!settings.PurgeLocal && !settings.PurgeNetwork && !settings.PurgeFtp && !settings.PurgeQiniu)
+            if (!HasAnyPurge(settings))
             {
                 return false;
             }
@@ -98,6 +112,26 @@ namespace Yxy.Core.Backup
                     {
                         ok = false;
                         log.Append(" 七牛删除失败：").Append(ex.Message).Append("。");
+                    }
+                }
+
+                if (remote && settings.PurgeBaidu)
+                {
+                    try
+                    {
+                        var prefix = CloudObjectKeys.ProductPrefix(settings.SoftwareId);
+                        var days = settings.BaiduRetainDays <= 0 ? 7 : settings.BaiduRetainDays;
+                        var older = DateTime.UtcNow.AddDays(-days);
+                        var n = CloudRuntime.Require().DeleteExpired(db, CloudProviders.Baidu, prefix, older, delegate(string key)
+                        {
+                            LogStore.Add(db, "purge", "auto", "ok", "百度", "删除调用成功：" + key);
+                        });
+                        log.Append(" 百度删除调用成功，共 ").Append(n).Append(" 个。");
+                    }
+                    catch (Exception ex)
+                    {
+                        ok = false;
+                        log.Append(" 百度删除失败：").Append(ex.Message).Append("。");
                     }
                 }
 
