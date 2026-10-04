@@ -1,4 +1,5 @@
 using System;
+using Yxy.Baidu;
 using Yxy.Contracts.Cloud;
 using Yxy.Contracts.Dto;
 using Yxy.Core.Cloud;
@@ -17,7 +18,7 @@ namespace Yxy.Cloud
             }
 
             var storage = CloudStorageFactory.Create(provider, CloudAccountStore.Get(db, provider));
-            return storage.IsImplemented && CloudAccountStore.Get(db, provider).IsReady;
+            return storage.IsImplemented && AccountReady(provider, CloudAccountStore.Get(db, provider));
         }
 
         public void Upload(SqliteDb db, string provider, string localPath, string remoteKey)
@@ -42,12 +43,36 @@ namespace Yxy.Cloud
                 throw new NotSupportedException("该云服务商后续开通。");
             }
 
-            if (!account.IsReady)
+            if (!AccountReady(provider, account))
             {
                 throw new InvalidOperationException("云账号未配置完成。");
             }
 
+            var baidu = storage as BaiduStorage;
+            if (baidu != null)
+            {
+                baidu.PersistAccount = delegate(CloudAccountDto updated)
+                {
+                    CloudAccountStore.Save(db, updated);
+                };
+            }
+
             return storage;
+        }
+
+        private static bool AccountReady(string provider, CloudAccountDto account)
+        {
+            if (account == null)
+            {
+                return false;
+            }
+
+            if (string.Equals(provider, CloudProviders.Baidu, StringComparison.OrdinalIgnoreCase))
+            {
+                return account.IsBaiduReady;
+            }
+
+            return account.IsReady;
         }
     }
 }

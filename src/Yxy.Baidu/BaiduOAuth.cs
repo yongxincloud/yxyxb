@@ -1,5 +1,8 @@
 using System;
+using System.Collections.Generic;
 using System.Web;
+using System.Web.Script.Serialization;
+using Yxy.Contracts.Dto;
 
 namespace Yxy.Baidu
 {
@@ -46,6 +49,38 @@ namespace Yxy.Baidu
             }
 
             return !string.IsNullOrEmpty(code);
+        }
+
+        public static void ApplyTokenJson(CloudAccountDto account, string json)
+        {
+            if (account == null)
+            {
+                throw new ArgumentNullException("account");
+            }
+
+            var map = new JavaScriptSerializer().Deserialize<Dictionary<string, object>>(json ?? "")
+                ?? new Dictionary<string, object>();
+            object at;
+            if (!map.TryGetValue("access_token", out at) || at == null || string.IsNullOrEmpty(at.ToString()))
+            {
+                throw new InvalidOperationException("请重新授权");
+            }
+
+            account.AccessToken = at.ToString();
+            object rt;
+            if (map.TryGetValue("refresh_token", out rt) && rt != null && !string.IsNullOrEmpty(rt.ToString()))
+            {
+                account.RefreshToken = rt.ToString();
+            }
+
+            object exp;
+            var seconds = 0;
+            if (map.TryGetValue("expires_in", out exp) && exp != null)
+            {
+                int.TryParse(exp.ToString(), out seconds);
+            }
+
+            account.TokenExpiryUtc = DateTime.UtcNow.AddSeconds(seconds > 0 ? seconds : 3600);
         }
     }
 }
