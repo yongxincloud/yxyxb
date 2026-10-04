@@ -10,8 +10,8 @@ test('customer paths use the customer theme', () => {
   expect(isCustomerPath('/terms')).toBe(true)
 })
 
-test('vendor paths keep the vendor theme', () => {
-  expect(isCustomerPath('/vendor')).toBe(false)
-  expect(isCustomerPath('/vendor/login')).toBe(false)
-  expect(isCustomerPath('/vendor/customers')).toBe(false)
+test('vendor paths use the same ink and red theme', () => {
+  expect(isCustomerPath('/vendor')).toBe(true)
+  expect(isCustomerPath('/vendor/login')).toBe(true)
+  expect(isCustomerPath('/vendor/customers')).toBe(true)
 })

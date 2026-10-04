@@ -41,6 +41,7 @@ async function logout() {
 <template>
   <div class="shell">
     <aside>
+      <img class="logo" src="/logo.jpg" alt="用心云" />
       <p class="brand">厂商后台</p>
       <p class="mail">{{ username || '未登录' }}</p>
       <nav>
@@ -70,6 +71,7 @@ aside {
   position: sticky;
   top: 16px;
 }
+.logo { height: 72px; width: auto; display: block; margin: 0 auto 8px; }
 .brand { margin: 0 8px 4px; font-size: 16px; font-weight: 700; color: var(--c-title); }
 .mail { margin: 0 8px 16px; color: var(--c-text-muted); font-size: 12px; }
 nav { display: grid; gap: 4px; }
@@ -80,7 +82,7 @@ nav a {
   color: var(--c-text);
   text-decoration: none;
 }
-nav a.on, nav a:hover { background: #eef3ff; color: var(--brand-primary); }
+nav a.on, nav a:hover { background: #F8E8E8; color: var(--brand-primary); }
 .out { width: 100%; margin-top: 16px; cursor: pointer; }
 .main :deep(h1) { margin: 0 0 8px; font-size: 22px; color: var(--c-title); }
 .main :deep(h2) { margin: 8px 0 0; font-size: 16px; color: var(--c-title); }

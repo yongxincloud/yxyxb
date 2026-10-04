@@ -30,8 +30,10 @@ test('logo appears on home, login, and the portal sidebar only', () => {
   expect(read('views/PortalLayout.vue')).toContain('height: 72px')
   expect(read('views/PortalLayout.vue')).toContain('#F8E8E8')
   expect(read('views/RegisterView.vue')).not.toContain('/logo.jpg')
-  expect(read('views/VendorLayout.vue')).toContain('#eef3ff')
-  expect(read('views/VendorLayout.vue')).not.toContain('#F8E8E8')
+  expect(read('views/VendorLayout.vue')).toContain('src="/logo.jpg"')
+  expect(read('views/VendorLayout.vue')).toContain('#F8E8E8')
+  expect(read('views/VendorLayout.vue')).not.toContain('#eef3ff')
+  expect(read('views/VendorLoginView.vue')).toContain('src="/logo.jpg"')
 })
 
 test('subscription page lists what the license covers', () => {

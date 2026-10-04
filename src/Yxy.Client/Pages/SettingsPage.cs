@@ -79,6 +79,7 @@ namespace Yxy.Client.Pages
             _theme.Items.Add(new ComboBoxItem { Content = "深色", Tag = "dark" });
             _theme.Items.Add(new ComboBoxItem { Content = "Windows 11", Tag = "win11" });
             _theme.Items.Add(new ComboBoxItem { Content = "Mac", Tag = "mac" });
+            _theme.Items.Add(new ComboBoxItem { Content = "用心云", Tag = "yongxin" });
             _uncPath = new TextBox();
             _uncDomain = new TextBox();
             _uncUser = new TextBox();

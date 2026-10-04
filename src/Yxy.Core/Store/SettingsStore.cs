@@ -162,6 +162,11 @@ namespace Yxy.Core.Store
                 return "mac";
             }
 
+            if (string.Equals(theme, "yongxin", StringComparison.OrdinalIgnoreCase))
+            {
+                return "yongxin";
+            }
+
             return "light";
         }
 

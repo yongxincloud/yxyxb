@@ -24,6 +24,11 @@ namespace Yxy.Client
                 return "mac";
             }
 
+            if (string.Equals(themeName, "yongxin", StringComparison.OrdinalIgnoreCase))
+            {
+                return "yongxin";
+            }
+
             return "light";
         }
 
@@ -55,6 +60,11 @@ namespace Yxy.Client
             if (name == "dark")
             {
                 return Color.FromRgb(34, 211, 238);
+            }
+
+            if (name == "yongxin")
+            {
+                return Color.FromRgb(0xDC, 0x06, 0x06);
             }
 
             return Color.FromRgb(14, 116, 144);
@@ -99,6 +109,26 @@ namespace Yxy.Client
                 Set("GridLine", "#EDEDED");
                 Set("GridHeader", "#FAFAFA");
                 Set("GridSelect", "#CCE4F7");
+                return;
+            }
+
+            if (name == "yongxin")
+            {
+                Set("NavBg", "#1C1214");
+                Set("NavHover", "#3A2224");
+                Set("NavActive", "#F8E8E8");
+                Set("NavText", "#FFFFFF");
+                Set("TitleText", "#2A211F");
+                Set("PageBg", "#F6F3F1");
+                Set("CardBg", "#FFFFFF");
+                Set("CardLine", "#E6E0DC");
+                Set("Muted", "#8A817C");
+                Set("Accent", "#DC0606");
+                Set("GridText", "#2A211F");
+                Set("GridAlt", "#F6F3F1");
+                Set("GridLine", "#E6E0DC");
+                Set("GridHeader", "#F8E8E8");
+                Set("GridSelect", "#F8E8E8");
                 return;
             }
 

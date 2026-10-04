@@ -22,7 +22,7 @@ async function submit() {
 <template>
   <section class="login">
     <aside>
-      <p class="brand">用心云备份</p>
+      <div class="plate"><img class="logo" src="/logo.jpg" alt="用心云" /></div>
       <h1>厂商后台</h1>
       <p>登录后可查看全部客户、订单、授权、服务商和结算。</p>
     </aside>
@@ -56,7 +56,8 @@ aside {
   color: #fff;
   padding: 48px 40px;
 }
-.brand { margin: 0 0 28px; font-size: 16px; letter-spacing: 1px; }
+.plate { display: inline-block; background: #fff; border-radius: 12px; padding: 6px 8px; margin-bottom: 22px; }
+.logo { height: 64px; width: auto; display: block; }
 aside h1 { margin: 0 0 12px; font-size: 26px; font-weight: 600; }
 aside p { margin: 0; max-width: 360px; line-height: 1.7; color: rgba(255,255,255,.86); }
 .panel { padding: 48px 40px; display: grid; align-content: center; gap: 14px; }

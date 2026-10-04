@@ -11,6 +11,16 @@ const busyId = ref(0)
 
 onMounted(load)
 
+async function remove(row) {
+  message.value = ''
+  if (!window.confirm('删除 ' + row.email + ' ？账号、订单和授权会一起去掉，不能恢复。')) return
+  busyId.value = row.id
+  const data = await post('/api/vendor/customers/' + row.id + '/delete', {})
+  busyId.value = 0
+  message.value = data.ok ? '已删除 ' + row.email : (data.error || '删除失败')
+  if (data.ok) await load()
+}
+
 async function extend(row) {
   message.value = ''
   const count = Number(days.value)
@@ -56,6 +66,7 @@ async function extend(row) {
           <td>{{ periodText(row.authEndTime) }}</td>
           <td>
             <button class="btn-yxy mini" type="button" :disabled="busyId === row.id" @click="extend(row)">增加期限</button>
+            <button class="btn-yxy mini" type="button" :disabled="busyId === row.id" @click="remove(row)">删除</button>
           </td>
         </tr>
         <tr v-if="!board.customers.length"><td colspan="7">暂无客户。用户先在网站注册，再回到这里开通。</td></tr>

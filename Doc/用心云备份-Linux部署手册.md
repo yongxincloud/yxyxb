@@ -146,17 +146,25 @@ sudo systemctl reload nginx
 
 ## 7. 客户电脑
 
-客户端只安装在使用备份的 Windows 电脑上，程序是开发机 `dist\Yxy.Client.exe`，并在该电脑上安装、启动「用心云备份 Service」。
-
-在客户端数据目录里新建文本文件 `site.url`，只写一行网站地址，末尾不要加斜杠：
+客户端只安装在使用备份的 Windows 电脑上，不装在这台 Linux 服务器上。安装包：
 
 ```text
-http://服务器IP
+http://download.yongxinyun.com/yongxinyunbackup/yongxinyunbackup.zip
 ```
 
-有证书时写成 `https://域名`。不写这个文件时，客户端会去连 `http://127.0.0.1:5080`。
+营销页的「下载」和登录后的「客户端下载」都指向这个地址。开发机重新打包时，客户端在 `publish\desktop\Yxy.Client.exe`，服务在同目录的 `Yxy.Engine.exe`。
 
-数据目录在客户端程序旁的 `data` 文件夹。改完后重新打开客户端再登录。
+客户端左下角「官网」打开 https://backup.yongxincloud.cn 。
+
+登录用的地址写在 `data\site.url`，只写一行，末尾不要加斜杠：
+
+```text
+https://backup.yongxincloud.cn
+```
+
+不写这个文件时，客户端会去连 `http://127.0.0.1:5080`。数据目录在客户端程序旁的 `data` 文件夹。改完后重新打开客户端再登录。
+
+网站页脚对外信息：常州用心软件有限公司，电话 400-051-9608，邮箱 market.yongxinyun.com，苏ICP备19043516号-6，苏公网安备32041102001697号。
 
 ## 8. 只有 IP 时的限制
 

@@ -153,7 +153,7 @@ namespace Yxy.Client
 
         private void BtnSite_OnClick(object sender, RoutedEventArgs e)
         {
-            MessageBox.Show(this, "官网地址后续配置。", "官网", MessageBoxButton.OK, MessageBoxImage.Information);
+            Process.Start(new ProcessStartInfo("https://backup.yongxincloud.cn") { UseShellExecute = true });
         }
 
         private void ShowPage(string key)

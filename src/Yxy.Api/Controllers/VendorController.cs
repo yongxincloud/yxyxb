@@ -446,6 +446,54 @@ public sealed class VendorController : ControllerBase
         return Ok(new { ok = true });
     }
 
+    [HttpPost("customers/{id:long}/delete")]
+    public async Task<IActionResult> DeleteCustomer(long id)
+    {
+        if (!Vendor()) return NotFound();
+        var customer = await _db.Customers.SingleOrDefaultAsync(x => x.Id == id);
+        if (customer == null) return BadRequest(new { ok = false, error = "客户不存在" });
+        var account = await _db.Accounts.SingleOrDefaultAsync(x => x.Id == customer.AccountId);
+        if (await _db.Providers.AnyAsync(x => x.AccountId == customer.AccountId))
+            return BadRequest(new { ok = false, error = "该账号是服务商，不能直接删除" });
+        var orderIds = await _db.Orders.Where(x => x.CustomerId == customer.Id).Select(x => x.Id).ToListAsync();
+        var payments = await _db.Payments.Where(x => orderIds.Contains(x.OrderId)).ToListAsync();
+        var commissions = await _db.Commissions.Where(x => orderIds.Contains(x.OrderId)).ToListAsync();
+        var orders = await _db.Orders.Where(x => x.CustomerId == customer.Id).ToListAsync();
+        var auths = await _db.SubscriptionAuths.Where(x => x.CustomerId == customer.Id).ToListAsync();
+        var invoices = await _db.InvoiceApplies.Where(x => x.CustomerId == customer.Id).ToListAsync();
+        var messages = await _db.Messages.Where(x => x.AccountId == customer.AccountId).ToListAsync();
+        var tokens = await _db.AuthTokens.Where(x => x.AccountId == customer.AccountId).ToListAsync();
+        var loginLogs = await _db.LoginLogs.Where(x => x.AccountId == customer.AccountId).ToListAsync();
+        var applies = await _db.ProviderApplies.Where(x => x.AccountId == customer.AccountId).ToListAsync();
+        var email = account?.Email ?? "";
+        var codes = string.IsNullOrEmpty(email)
+            ? new List<EmailCodeRow>()
+            : await _db.EmailCodes.Where(x => x.Email == email).ToListAsync();
+        _db.Payments.RemoveRange(payments);
+        _db.Commissions.RemoveRange(commissions);
+        _db.Orders.RemoveRange(orders);
+        _db.SubscriptionAuths.RemoveRange(auths);
+        _db.InvoiceApplies.RemoveRange(invoices);
+        _db.Messages.RemoveRange(messages);
+        _db.AuthTokens.RemoveRange(tokens);
+        _db.LoginLogs.RemoveRange(loginLogs);
+        _db.ProviderApplies.RemoveRange(applies);
+        _db.EmailCodes.RemoveRange(codes);
+        _db.Customers.Remove(customer);
+        if (account != null) _db.Accounts.Remove(account);
+        var now = DateTime.UtcNow;
+        _db.OperationLogs.Add(new OperationLog
+        {
+            Module = "customer",
+            Action = "delete",
+            BeforeValue = email,
+            AfterValue = "",
+            CreatedAt = now
+        });
+        await _db.SaveChangesAsync();
+        return Ok(new { ok = true });
+    }
+
     [HttpPost("providers/{id:long}/freeze")]
     public async Task<IActionResult> Freeze(long id)
     {

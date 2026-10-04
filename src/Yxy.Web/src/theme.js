@@ -1,3 +1,3 @@
 export function isCustomerPath(path) {
-  return !String(path || '').startsWith('/vendor')
+  return String(path || '').startsWith('/')
 }
