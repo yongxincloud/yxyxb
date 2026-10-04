@@ -1,4 +1,5 @@
 using System;
+using Yxy.Baidu;
 using Yxy.Contracts.Cloud;
 using Yxy.Contracts.Dto;
 using Yxy.Ctyun;
@@ -25,6 +26,17 @@ namespace Yxy.Cloud
                 }
 
                 return qiniu;
+            }
+
+            if (string.Equals(providerKey, CloudProviders.Baidu, StringComparison.OrdinalIgnoreCase))
+            {
+                var baidu = new BaiduStorage();
+                if (account != null)
+                {
+                    baidu.Configure(account);
+                }
+
+                return baidu;
             }
 
             if (string.Equals(providerKey, CloudProviders.Tencent, StringComparison.OrdinalIgnoreCase))

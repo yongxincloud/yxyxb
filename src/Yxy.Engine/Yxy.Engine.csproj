@@ -20,4 +20,9 @@
     <ProjectReference Include="..\Yxy.MySql\Yxy.MySql.csproj" />
     <ProjectReference Include="..\Yxy.Cloud\Yxy.Cloud.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="..\Yxy.Baidu\BaiduApp.example.json" Link="BaiduApp.example.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
 </Project>

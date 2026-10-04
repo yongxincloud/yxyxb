@@ -1,7 +1,9 @@
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
+using Yxy.Contracts.Cloud;
 using Yxy.Contracts.Dto;
 using Yxy.Core.Backup;
 
@@ -11,34 +13,29 @@ namespace Yxy.Client.Dialogs
     {
         private readonly string _bakPath;
         private readonly long _editId;
-        private readonly bool _qiniuReady;
+        private readonly IList<string> _ready;
         private bool _loading;
 
         public FileTaskDto Task { get; private set; }
 
         public FileTaskDialog(string bakPath)
-            : this(bakPath, null, false)
+            : this(bakPath, null, null)
         {
         }
 
         public FileTaskDialog(string bakPath, FileTaskDto existing)
-            : this(bakPath, existing, false)
+            : this(bakPath, existing, null)
         {
         }
 
-        public FileTaskDialog(string bakPath, FileTaskDto existing, bool qiniuReady)
+        public FileTaskDialog(string bakPath, FileTaskDto existing, IList<string> readyProviders)
         {
             _bakPath = bakPath;
-            _qiniuReady = qiniuReady;
+            _ready = readyProviders ?? new List<string>();
             _editId = existing == null ? 0 : existing.Id;
             InitializeComponent();
             Title = existing == null ? "添加文件备份任务" : "修改文件备份任务";
-            ChkCloud.IsEnabled = _qiniuReady;
-            CmbCloud.IsEnabled = _qiniuReady;
-            if (!_qiniuReady)
-            {
-                ChkCloud.Content = "云上传（请先在「云备份」保存并启用七牛）";
-            }
+            CloudPickerUi.Bind(ChkCloud, CmbCloud, _ready);
 
             if (existing != null)
             {
@@ -62,11 +59,12 @@ namespace Yxy.Client.Dialogs
             ChkEnabled.IsChecked = existing.Enabled;
             ChkNetwork.IsChecked = existing.DoNetwork;
             ChkFtp.IsChecked = existing.DoFtp;
-            ChkCloud.IsChecked = existing.DoCloud && _qiniuReady;
+            ChkCloud.IsChecked = existing.DoCloud && _ready.Count > 0;
             ChkDelete.IsChecked = existing.DoDeleteNow;
             ChkEmail.IsChecked = existing.DoEmail;
             SelectTag(CmbSource, existing.SourceKind, "local");
             SelectTag(CmbCycle, existing.CycleKind, "day");
+            SelectTag(CmbCloud, existing.CloudProvider, _ready.Count > 0 ? _ready[0] : "qiniu");
             if (existing.NextRunUtc.HasValue)
             {
                 TxtNext.Text = existing.NextRunUtc.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture);
@@ -141,8 +139,8 @@ namespace Yxy.Client.Dialogs
                 NextRunUtc = DateTime.SpecifyKind(nextLocal, DateTimeKind.Local).ToUniversalTime(),
                 DoNetwork = ChkNetwork.IsChecked == true,
                 DoFtp = ChkFtp.IsChecked == true,
-                DoCloud = _qiniuReady && ChkCloud.IsChecked == true,
-                CloudProvider = _qiniuReady && ChkCloud.IsChecked == true ? "qiniu" : null,
+                DoCloud = _ready.Count > 0 && ChkCloud.IsChecked == true,
+                CloudProvider = CloudChoice.Resolve(_ready, ChkCloud.IsChecked == true, SelectedTag(CmbCloud)),
                 DoDeleteNow = ChkDelete.IsChecked == true,
                 DoEmail = ChkEmail.IsChecked == true,
                 PostProgram = (TxtPost.Text ?? "").Trim()

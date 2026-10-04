@@ -51,7 +51,11 @@ namespace Yxy.Core.Store
                 Bucket = account.Bucket,
                 AccessKey = account.AccessKey,
                 SecretKey = account.SecretKey,
-                Zone = string.IsNullOrEmpty(account.Zone) ? "z0" : account.Zone
+                Zone = string.IsNullOrEmpty(account.Zone) ? "z0" : account.Zone,
+                AccessToken = account.AccessToken,
+                RefreshToken = account.RefreshToken,
+                TokenExpiryUtc = account.TokenExpiryUtc,
+                DisplayName = account.DisplayName
             }));
 
             var exists = db.ExecuteScalar(
@@ -81,12 +85,22 @@ namespace Yxy.Core.Store
             return Get(db, CloudProviders.Qiniu).IsReady;
         }
 
+        public static bool IsBaiduReady(SqliteDb db)
+        {
+            return Get(db, CloudProviders.Baidu).IsBaiduReady;
+        }
+
         public static IList<string> EnabledProviders(SqliteDb db)
         {
             var list = new List<string>();
             if (IsQiniuReady(db))
             {
                 list.Add(CloudProviders.Qiniu);
+            }
+
+            if (IsBaiduReady(db))
+            {
+                list.Add(CloudProviders.Baidu);
             }
 
             return list;

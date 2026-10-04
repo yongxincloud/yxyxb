@@ -161,7 +161,7 @@ namespace Yxy.Client.Pages
         private void AddOrEditFile(FileTaskDto existing)
         {
             var settings = SettingsStore.Get(_boot.Db);
-            var dialog = new FileTaskDialog(settings.BakPath, existing, CloudAccountStore.IsQiniuReady(_boot.Db));
+            var dialog = new FileTaskDialog(settings.BakPath, existing, CloudAccountStore.EnabledProviders(_boot.Db));
             dialog.Owner = Window.GetWindow(this);
             if (dialog.ShowDialog() != true || dialog.Task == null)
             {
@@ -319,7 +319,7 @@ namespace Yxy.Client.Pages
                 return;
             }
 
-            var dialog = new MssqlTaskDialog(instances, existing, CloudAccountStore.IsQiniuReady(_boot.Db));
+            var dialog = new MssqlTaskDialog(instances, existing, CloudAccountStore.EnabledProviders(_boot.Db));
             dialog.Owner = Window.GetWindow(this);
             if (dialog.ShowDialog() != true || dialog.Task == null)
             {

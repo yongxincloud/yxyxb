@@ -16,3 +16,4 @@ appsettings.Local.json
 *.db-shm
 packages/
 TestResults/
+BaiduApp.json

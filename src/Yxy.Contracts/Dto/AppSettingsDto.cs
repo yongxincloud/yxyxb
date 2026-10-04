@@ -36,6 +36,8 @@ namespace Yxy.Contracts.Dto
 
         public int QiniuRetainDays { get; set; }
 
+        public int BaiduRetainDays { get; set; }
+
         public bool PurgeLocal { get; set; }
 
         public bool PurgeNetwork { get; set; }
@@ -43,6 +45,8 @@ namespace Yxy.Contracts.Dto
         public bool PurgeFtp { get; set; }
 
         public bool PurgeQiniu { get; set; }
+
+        public bool PurgeBaidu { get; set; }
 
         public string PurgeTime { get; set; }
 

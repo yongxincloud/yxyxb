@@ -17,6 +17,13 @@ namespace Yxy.Contracts.Cloud
                 + Path.GetFileName(fileName);
         }
 
+        public static string BaiduRemotePath(string appFolder, string objectKey)
+        {
+            var folder = Safe(string.IsNullOrWhiteSpace(appFolder) ? "用心云备份" : appFolder);
+            var key = (objectKey ?? "").Replace('\\', '/').TrimStart('/');
+            return "/apps/" + folder + "/" + key;
+        }
+
         private static string Safe(string text)
         {
             var chars = Path.GetInvalidFileNameChars();
