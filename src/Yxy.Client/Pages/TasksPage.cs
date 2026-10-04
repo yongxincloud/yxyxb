@@ -258,7 +258,7 @@ namespace Yxy.Client.Pages
                 return;
             }
 
-            var dialog = new MysqlTaskDialog(instances, existing) { Owner = Window.GetWindow(this) };
+            var dialog = new MysqlTaskDialog(instances, existing, CloudAccountStore.EnabledProviders(_boot.Db)) { Owner = Window.GetWindow(this) };
             if (dialog.ShowDialog() != true) return;
             if (existing == null) MysqlTaskStore.Insert(_boot.Db, dialog.Task);
             else MysqlTaskStore.Update(_boot.Db, dialog.Task);
