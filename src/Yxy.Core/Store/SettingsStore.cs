@@ -44,10 +44,12 @@ namespace Yxy.Core.Store
                 NetworkRetainDays = GetInt(row, "network_retain_days", 7),
                 FtpRetainDays = GetInt(row, "ftp_retain_days", 7),
                 QiniuRetainDays = GetInt(row, "qiniu_retain_days", 7),
+                BaiduRetainDays = GetInt(row, "baidu_retain_days", 7),
                 PurgeLocal = GetInt(row, "purge_local", 0) != 0,
                 PurgeNetwork = GetInt(row, "purge_network", 0) != 0,
                 PurgeFtp = GetInt(row, "purge_ftp", 0) != 0,
                 PurgeQiniu = GetInt(row, "purge_qiniu", 0) != 0,
+                PurgeBaidu = GetInt(row, "purge_baidu", 0) != 0,
                 PurgeTime = GetStr(row, "purge_time") ?? "00:30",
                 LastPurgeUtc = ParseTime(GetStr(row, "last_purge_utc"))
             };
@@ -63,8 +65,8 @@ namespace Yxy.Core.Store
             db.Execute(
                 @"UPDATE settings SET bak_path=@bak, software_id=@sid, name_flags=@nf, zip_level=@zl, upload_min_kbps=@umin, upload_max_kbps=@umax, zip_password_protected=@zp,
                   start_with_windows=@sw, close_to_tray=@ct, theme=@theme, lock_password_protected=@lp, engine_advanced=@ea,
-                  local_retain_days=@rd, network_retain_days=@nrd, ftp_retain_days=@frd, qiniu_retain_days=@qrd,
-                  purge_local=@pl, purge_network=@pn, purge_ftp=@pf, purge_qiniu=@pq, purge_time=@pt, updated_utc=@utc WHERE id=1",
+                  local_retain_days=@rd, network_retain_days=@nrd, ftp_retain_days=@frd, qiniu_retain_days=@qrd, baidu_retain_days=@brd,
+                  purge_local=@pl, purge_network=@pn, purge_ftp=@pf, purge_qiniu=@pq, purge_baidu=@pb, purge_time=@pt, updated_utc=@utc WHERE id=1",
                 new SQLiteParameter("@bak", settings.BakPath ?? AppPaths.BakDirectory),
                 new SQLiteParameter("@sid", string.IsNullOrEmpty(settings.SoftwareId) ? AppPaths.ProductName : settings.SoftwareId),
                 new SQLiteParameter("@nf", settings.NameFlags == 0 ? NameParts.DefaultFlags : settings.NameFlags),
@@ -81,10 +83,12 @@ namespace Yxy.Core.Store
                 new SQLiteParameter("@nrd", settings.NetworkRetainDays <= 0 ? 7 : settings.NetworkRetainDays),
                 new SQLiteParameter("@frd", settings.FtpRetainDays <= 0 ? 7 : settings.FtpRetainDays),
                 new SQLiteParameter("@qrd", settings.QiniuRetainDays <= 0 ? 7 : settings.QiniuRetainDays),
+                new SQLiteParameter("@brd", settings.BaiduRetainDays <= 0 ? 7 : settings.BaiduRetainDays),
                 new SQLiteParameter("@pl", settings.PurgeLocal ? 1 : 0),
                 new SQLiteParameter("@pn", settings.PurgeNetwork ? 1 : 0),
                 new SQLiteParameter("@pf", settings.PurgeFtp ? 1 : 0),
                 new SQLiteParameter("@pq", settings.PurgeQiniu ? 1 : 0),
+                new SQLiteParameter("@pb", settings.PurgeBaidu ? 1 : 0),
                 new SQLiteParameter("@pt", string.IsNullOrEmpty(settings.PurgeTime) ? "00:30" : settings.PurgeTime),
                 new SQLiteParameter("@utc", SqliteDb.UtcNowText()));
         }

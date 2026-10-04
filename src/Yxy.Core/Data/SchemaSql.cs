@@ -11,10 +11,12 @@ CREATE TABLE IF NOT EXISTS settings (
     network_retain_days INTEGER NOT NULL DEFAULT 7,
     ftp_retain_days INTEGER NOT NULL DEFAULT 7,
     qiniu_retain_days INTEGER NOT NULL DEFAULT 7,
+    baidu_retain_days INTEGER NOT NULL DEFAULT 7,
     purge_local INTEGER NOT NULL DEFAULT 0,
     purge_network INTEGER NOT NULL DEFAULT 0,
     purge_ftp INTEGER NOT NULL DEFAULT 0,
     purge_qiniu INTEGER NOT NULL DEFAULT 0,
+    purge_baidu INTEGER NOT NULL DEFAULT 0,
     purge_time TEXT NOT NULL DEFAULT '00:30',
     updated_utc TEXT NOT NULL
 );
