@@ -36,3 +36,18 @@ body {
   border-radius: var(--radius-input); height: 40px; width: 100%; padding: 0 10px; box-sizing: border-box;
 }
 .err { color: var(--c-danger); margin: 0; }
+body.theme-customer {
+  --brand-primary: #B10505;
+  --c-hero-from: #1C1214;
+  --c-hero-to: #1C1214;
+  --c-footer: #1C1214;
+  --c-portal-bg: #F6F3F1;
+  --c-surface-alt: #F6F3F1;
+  --c-title: #2A211F;
+  --c-text: #5C534F;
+  --c-text-muted: #8A817C;
+  --c-border: #E6E0DC;
+  --c-danger: #7A1F1A;
+}
+body.theme-customer .btn-yxy { background: #DC0606; }
+body.theme-customer .btn-yxy:hover { background: #B00404; }

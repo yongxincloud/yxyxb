@@ -51,6 +51,13 @@ function day(value) {
         </article>
       </div>
       <p class="note">{{ info.usable ? '授权有效，客户端可以使用。一个账号不限台数。' : '当前没有有效授权。文件备份、数据库备份、云、UNC、FTP、邮件在客户端会停用。离线介质仍可使用。' }}</p>
+      <ul class="cover">
+        <li>文件备份</li>
+        <li>库备份（SQL Server）</li>
+        <li>离线介质</li>
+        <li>云、UNC、FTP、邮件</li>
+      </ul>
+      <p class="note">没有有效授权时，文件备份、库备份、云、UNC、FTP、邮件会停用。离线介质仍可使用。操作在客户端里做。</p>
       <p class="note" v-if="info.nextCheckDays">联网校验间隔 {{ info.nextCheckDays }} 天。</p>
       <router-link class="btn-yxy link" to="/orders">续费或购买试用</router-link>
     </template>
@@ -63,6 +70,7 @@ article { background: var(--c-surface-alt); border-radius: 6px; padding: 16px; }
 article span { display: block; color: var(--c-text-muted); font-size: 12px; margin-bottom: 6px; }
 article strong { font-size: 18px; color: var(--c-title); }
 .note { margin: 0; line-height: 1.7; }
+.cover { margin: 0; padding-left: 18px; }
 .link { justify-self: start; display: inline-block; line-height: 43px; text-decoration: none; }
 @media (max-width: 768px) {
   .stats { grid-template-columns: 1fr; }

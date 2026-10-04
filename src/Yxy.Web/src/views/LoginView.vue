@@ -57,7 +57,7 @@ function submit() {
 <template>
   <section class="login">
     <aside>
-      <p class="brand">用心云备份</p>
+      <div class="plate"><img class="logo" src="/logo.jpg" alt="用心云" /></div>
       <h1>登录后管理订阅和订单</h1>
       <p>请使用注册邮箱。一个账号不限台数。</p>
     </aside>
@@ -107,7 +107,8 @@ aside {
   color: #fff;
   padding: 48px 40px;
 }
-.brand { margin: 0 0 28px; font-size: 16px; letter-spacing: 1px; }
+.plate { display: inline-block; background: #fff; border-radius: 12px; padding: 6px 8px; margin-bottom: 22px; }
+.logo { height: 64px; width: auto; display: block; }
 aside h1 { margin: 0 0 12px; font-size: 26px; font-weight: 600; line-height: 1.4; }
 aside p { margin: 0; max-width: 360px; line-height: 1.7; color: rgba(255,255,255,.86); }
 .panel { padding: 48px 40px; display: grid; align-content: center; gap: 14px; }
@@ -122,7 +123,7 @@ aside p { margin: 0; max-width: 360px; line-height: 1.7; color: rgba(255,255,255
   color: var(--c-text);
   cursor: pointer;
 }
-.tabs button.on { background: var(--brand-primary); border-color: var(--brand-primary); color: #fff; }
+.tabs button.on { background: #DC0606; border-color: #DC0606; color: #fff; }
 label { display: grid; gap: 6px; color: var(--c-title); font-size: 13px; }
 .code-row { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
 .btn-ghost {

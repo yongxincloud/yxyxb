@@ -20,7 +20,7 @@ async function buy() {
 <template>
   <div class="home">
     <header class="nav">
-      <strong>用心云备份</strong>
+      <img class="logo" src="/logo.jpg" alt="用心云" />
       <span>
         <router-link to="/login">登录</router-link>
         <router-link to="/register">注册</router-link>
@@ -61,6 +61,7 @@ async function buy() {
 .home { margin: -65px -16px; }
 .nav, .cards, .download, footer { max-width: 1400px; margin: 0 auto; padding: 24px 16px; }
 .nav { display: flex; justify-content: space-between; align-items: center; }
+.logo { height: 64px; width: auto; display: block; }
 .nav a { margin-left: 16px; color: var(--brand-primary); }
 .hero {
   background: linear-gradient(160deg, var(--c-hero-from), var(--c-hero-to));

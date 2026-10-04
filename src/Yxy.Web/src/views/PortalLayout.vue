@@ -32,7 +32,7 @@ function active(path) {
 <template>
   <div class="shell">
     <aside>
-      <p class="brand">用心云备份</p>
+      <img class="logo" src="/logo.jpg" alt="用心云" />
       <p class="mail">{{ email || '未登录' }}</p>
       <nav>
         <router-link v-for="link in links" :key="link.to" :to="link.to" :class="{ on: active(link.to) }">
@@ -60,7 +60,7 @@ aside {
   position: sticky;
   top: 16px;
 }
-.brand { margin: 0 8px 4px; font-size: 16px; font-weight: 700; color: var(--c-title); }
+.logo { height: 72px; width: auto; display: block; margin: 0 auto 8px; }
 .mail { margin: 0 8px 16px; color: var(--c-text-muted); font-size: 12px; word-break: break-all; }
 nav { display: grid; gap: 4px; }
 nav a {
@@ -70,7 +70,7 @@ nav a {
   color: var(--c-text);
   text-decoration: none;
 }
-nav a.on, nav a:hover { background: #eef3ff; color: var(--brand-primary); }
+nav a.on, nav a:hover { background: #F8E8E8; color: var(--brand-primary); }
 .main :deep(.card-yxy) { margin: 0; }
 .main :deep(h1) { margin: 0 0 8px; font-size: 22px; color: var(--c-title); }
 @media (max-width: 768px) {
