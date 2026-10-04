@@ -52,5 +52,15 @@ namespace Yxy.Baidu.Tests
             Assert.That(code, Is.EqualTo("abc"));
             Assert.That(BaiduOAuth.TryParseCallback("http://127.0.0.1:17890/baidu/?code=abc&state=nope", "st-1", out code, out error), Is.False);
         }
+
+        [Test]
+        public void Factory_CreatesImplementedBaidu()
+        {
+            var storage = Yxy.Cloud.CloudStorageFactory.Create(Yxy.Contracts.Cloud.CloudProviders.Baidu);
+            Assert.That(storage.IsImplemented, Is.True);
+            Assert.That(storage.ProviderKey, Is.EqualTo("baidu"));
+            var ex = Assert.Throws<InvalidOperationException>(() => storage.TestConnection());
+            Assert.That(ex.Message, Does.Contain("授权"));
+        }
     }
 }

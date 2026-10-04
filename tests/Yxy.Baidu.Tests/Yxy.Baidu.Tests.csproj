@@ -11,5 +11,6 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\Yxy.Baidu\Yxy.Baidu.csproj" />
+    <ProjectReference Include="..\..\src\Yxy.Cloud\Yxy.Cloud.csproj" />
   </ItemGroup>
 </Project>
