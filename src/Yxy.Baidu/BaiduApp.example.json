@@ -1,0 +1,6 @@
+{
+  "AppKey": "",
+  "AppSecret": "",
+  "RedirectUri": "http://127.0.0.1:17890/baidu/",
+  "AppFolderName": "用心云备份"
+}
