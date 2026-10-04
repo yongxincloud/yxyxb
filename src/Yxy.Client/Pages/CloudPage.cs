@@ -1,14 +1,15 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
+using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
+using Yxy.Baidu;
 using Yxy.Cloud;
 using Yxy.Contracts.Cloud;
 using Yxy.Contracts.Dto;
 using Yxy.Core.Runtime;
 using Yxy.Core.Store;
-using Yxy.Baidu;
-using System.IO;
 
 namespace Yxy.Client.Pages
 {
@@ -31,6 +32,7 @@ namespace Yxy.Client.Pages
         private readonly TextBlock _baiduStatus;
         private readonly Button _authBtn;
         private string _provider = CloudProviders.Qiniu;
+        private int _authBusy;
 
         public CloudPage(HostBootstrap boot)
         {
@@ -278,26 +280,64 @@ namespace Yxy.Client.Pages
 
         private void Auth_OnClick(object sender, RoutedEventArgs e)
         {
-            try
+            if (Interlocked.CompareExchange(ref _authBusy, 1, 0) != 0)
             {
-                var cfg = BaiduAppConfig.Load(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "BaiduApp.json"));
-                var tokens = BaiduOAuth.CompleteInBrowser(cfg, 180000, null);
-                var acc = CloudAccountStore.Get(_boot.Db, CloudProviders.Baidu);
-                acc.Provider = CloudProviders.Baidu;
-                acc.Enabled = true;
-                acc.AccessToken = tokens.AccessToken;
-                acc.RefreshToken = tokens.RefreshToken;
-                acc.TokenExpiryUtc = tokens.TokenExpiryUtc;
-                acc.DisplayName = tokens.DisplayName;
-                CloudAccountStore.Save(_boot.Db, acc);
-                _enabled.IsChecked = true;
-                ShowBaiduStatus(acc);
-                MessageBox.Show(Window.GetWindow(this), "授权成功。", "云备份");
+                MessageBox.Show(Window.GetWindow(this), "正在等待浏览器授权，请勿重复点击。最多约 3 分钟，或看授权页是否报错。", "云备份");
+                return;
             }
-            catch (Exception ex)
+
+            _authBtn.IsEnabled = false;
+            _authBtn.Content = "等待授权…";
+            var jsonPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "BaiduApp.json");
+            ThreadPool.QueueUserWorkItem(delegate
             {
-                MessageBox.Show(Window.GetWindow(this), ex.Message, "云备份", MessageBoxButton.OK, MessageBoxImage.Warning);
-            }
+                Exception err = null;
+                CloudAccountDto tokens = null;
+                try
+                {
+                    var cfg = BaiduAppConfig.Load(jsonPath);
+                    tokens = BaiduOAuth.CompleteInBrowser(cfg, 180000, null);
+                }
+                catch (Exception ex)
+                {
+                    err = ex;
+                }
+
+                Dispatcher.BeginInvoke(new Action(delegate
+                {
+                    try
+                    {
+                        if (err != null)
+                        {
+                            MessageBox.Show(Window.GetWindow(this), err.Message, "云备份", MessageBoxButton.OK, MessageBoxImage.Warning);
+                            return;
+                        }
+
+                        var acc = CloudAccountStore.Get(_boot.Db, CloudProviders.Baidu);
+                        acc.Provider = CloudProviders.Baidu;
+                        acc.Enabled = true;
+                        acc.AccessToken = tokens.AccessToken;
+                        acc.RefreshToken = tokens.RefreshToken;
+                        acc.TokenExpiryUtc = tokens.TokenExpiryUtc;
+                        acc.DisplayName = tokens.DisplayName;
+                        CloudAccountStore.Save(_boot.Db, acc);
+                        _enabled.IsChecked = true;
+                        ShowBaiduStatus(acc);
+                        MessageBox.Show(Window.GetWindow(this), "授权成功。", "云备份");
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show(Window.GetWindow(this), ex.Message, "云备份", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    }
+                    finally
+                    {
+                        Interlocked.Exchange(ref _authBusy, 0);
+                        _authBtn.IsEnabled = true;
+                        var acc = CloudAccountStore.Get(_boot.Db, CloudProviders.Baidu);
+                        ShowBaiduStatus(acc);
+                    }
+                }));
+            });
         }
 
         private CloudAccountDto ReadQiniuForm(CloudAccountDto old)
