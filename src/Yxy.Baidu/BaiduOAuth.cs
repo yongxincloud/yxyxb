@@ -23,6 +23,7 @@ namespace Yxy.Baidu
                 + "&client_id=" + Uri.EscapeDataString(cfg.AppKey ?? "")
                 + "&redirect_uri=" + Uri.EscapeDataString(cfg.RedirectUri ?? "")
                 + "&scope=basic,netdisk"
+                + "&qrcode=1"
                 + "&state=" + Uri.EscapeDataString(state ?? "");
         }
 

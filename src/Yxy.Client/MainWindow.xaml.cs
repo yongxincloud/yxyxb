@@ -153,7 +153,7 @@ namespace Yxy.Client
 
         private void BtnSite_OnClick(object sender, RoutedEventArgs e)
         {
-            Process.Start(new ProcessStartInfo("https://backup.yongxincloud.cn") { UseShellExecute = true });
+            Process.Start(new ProcessStartInfo(SiteLogin.WebsiteRoot) { UseShellExecute = true });
         }
 
         private void ShowPage(string key)

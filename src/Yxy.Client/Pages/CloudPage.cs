@@ -52,8 +52,8 @@ namespace Yxy.Client.Pages
             split.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
             _list = new ListBox { Margin = new Thickness(0, 0, 12, 0) };
-            _list.Items.Add(new ListBoxItem { Content = "七牛云（本期可用）", Tag = CloudProviders.Qiniu });
-            _list.Items.Add(new ListBoxItem { Content = "百度网盘（本期可用）", Tag = CloudProviders.Baidu });
+            _list.Items.Add(new ListBoxItem { Content = "七牛云", Tag = CloudProviders.Qiniu });
+            _list.Items.Add(new ListBoxItem { Content = "百度网盘", Tag = CloudProviders.Baidu });
             _list.Items.Add(new ListBoxItem { Content = "腾讯云（后续）", Tag = CloudProviders.Tencent });
             _list.Items.Add(new ListBoxItem { Content = "天翼云（后续）", Tag = CloudProviders.Ctyun });
             _list.SelectionChanged += List_OnChanged;

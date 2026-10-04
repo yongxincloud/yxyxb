@@ -59,7 +59,7 @@ namespace Yxy.Client
             {
                 if (!LoggedIn)
                 {
-                    return "未登录。请使用网站邮箱登录。";
+                    return "未登录。请先登录或申请帐号";
                 }
 
                 var who = DisplayName;
@@ -91,6 +91,16 @@ namespace Yxy.Client
 
     public static class SiteLogin
     {
+        public static string WebsiteRoot
+        {
+            get { return "https://backup.yongxincloud.cn"; }
+        }
+
+        public static string RegisterUrl
+        {
+            get { return WebsiteRoot + "/register"; }
+        }
+
         public static string TokenFile
         {
             get { return Path.Combine(AppPaths.DataDirectory, "site.token"); }

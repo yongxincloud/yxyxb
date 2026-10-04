@@ -1,7 +1,9 @@
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Documents;
 using System.Windows.Media;
 using Yxy.Contracts.Dto;
 using Yxy.Core;
@@ -73,7 +75,19 @@ namespace Yxy.Client.Pages
 
         private void Refresh()
         {
-            _txtTrial.Text = SiteLogin.Load().Summary;
+            var session = SiteLogin.Load();
+            _txtTrial.Inlines.Clear();
+            if (!session.LoggedIn)
+            {
+                _txtTrial.Inlines.Add(new Run("未登录。请先登录或"));
+                var link = new Hyperlink(new Run("申请帐号"));
+                link.Click += OpenRegister;
+                _txtTrial.Inlines.Add(link);
+            }
+            else
+            {
+                _txtTrial.Text = session.Summary;
+            }
 
             var counts = TaskScheduleStore.GetHomeCounts(_boot.Db);
             _txtFile.Text = counts.FileTaskCount + " / 已执行 " + counts.FileExecutedCount;
@@ -173,6 +187,11 @@ namespace Yxy.Client.Pages
             }
 
             ApplyEngine(status);
+        }
+
+        private static void OpenRegister(object sender, RoutedEventArgs e)
+        {
+            Process.Start(new ProcessStartInfo(SiteLogin.RegisterUrl) { UseShellExecute = true });
         }
 
         private static Button MakeButton(string text)
