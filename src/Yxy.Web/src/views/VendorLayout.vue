@@ -1,20 +1,27 @@
 <script setup>
 import { onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { get, post } from '../api.js'
 
 const router = useRouter()
+const route = useRoute()
 const username = ref('')
 
 const links = [
-  { href: '#customers', label: '客户' },
-  { href: '#orders', label: '订单' },
-  { href: '#auths', label: '授权' },
-  { href: '#providers', label: '服务商' },
-  { href: '#money', label: '佣金结算' },
-  { href: '#mail', label: '发信服务器' },
-  { href: '#ops', label: '操作' }
+  { to: '/vendor', label: '概览' },
+  { to: '/vendor/customers', label: '客户' },
+  { to: '/vendor/orders', label: '订单' },
+  { to: '/vendor/auths', label: '授权记录' },
+  { to: '/vendor/providers', label: '服务商' },
+  { to: '/vendor/money', label: '佣金结算' },
+  { to: '/vendor/products', label: '产品定价' },
+  { to: '/vendor/mail', label: '发信服务器' },
+  { to: '/vendor/logs', label: '操作日志' }
 ]
+
+function active(path) {
+  return route.path === path
+}
 
 onMounted(async () => {
   const me = await get('/api/vendor/me')
@@ -37,7 +44,9 @@ async function logout() {
       <p class="brand">厂商后台</p>
       <p class="mail">{{ username || '未登录' }}</p>
       <nav>
-        <a v-for="link in links" :key="link.href" :href="link.href">{{ link.label }}</a>
+        <router-link v-for="link in links" :key="link.to" :to="link.to" :class="{ on: active(link.to) }">
+          {{ link.label }}
+        </router-link>
       </nav>
       <button class="btn-yxy out" type="button" @click="logout">退出</button>
     </aside>
@@ -71,9 +80,22 @@ nav a {
   color: var(--c-text);
   text-decoration: none;
 }
-nav a:hover { background: #eef3ff; color: var(--brand-primary); }
+nav a.on, nav a:hover { background: #eef3ff; color: var(--brand-primary); }
 .out { width: 100%; margin-top: 16px; cursor: pointer; }
 .main :deep(h1) { margin: 0 0 8px; font-size: 22px; color: var(--c-title); }
+.main :deep(h2) { margin: 8px 0 0; font-size: 16px; color: var(--c-title); }
+.main :deep(.lead) { margin: 0; color: var(--c-text-muted); }
+.main :deep(.ok) { margin: 0; color: var(--brand-green); }
+.main :deep(table) { width: 100%; border-collapse: collapse; font-size: 13px; }
+.main :deep(th), .main :deep(td) { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--c-border); vertical-align: middle; }
+.main :deep(th) { color: var(--c-text-muted); font-weight: 500; }
+.main :deep(.row-form) { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.main :deep(.row-form label) { display: flex; align-items: center; gap: 8px; color: var(--c-title); font-size: 13px; }
+.main :deep(.row-form .field-yxy) { width: 110px; }
+.main :deep(.row-form .reason) { width: 180px; }
+.main :deep(.mini) { height: 32px; font-size: 13px; padding: 0 14px; }
+.main :deep(button) { cursor: pointer; }
+.main :deep(.product) { display: grid; gap: 8px; }
 @media (max-width: 768px) {
   .shell { grid-template-columns: 1fr; }
   aside { position: static; }

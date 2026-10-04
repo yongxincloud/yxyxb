@@ -6,6 +6,7 @@ node_modules/
 .worktrees/
 dist/
 dist-ui/
+publish/
 *.user
 *.suo
 *.db

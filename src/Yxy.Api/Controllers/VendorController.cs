@@ -94,14 +94,25 @@ public sealed class VendorController : ControllerBase
             .Select(x => new { x.Module, x.Action, x.BeforeValue, x.AfterValue, x.CreatedAt }).ToListAsync();
         var applies = await _db.ProviderApplies.Where(x => x.Status == 0).OrderBy(x => x.Id)
             .Select(x => new { x.Id, x.CompanyName, x.TaxNo, x.ContactName, x.ContactEmail }).ToListAsync();
+        var latestAuth = (await _db.SubscriptionAuths
+            .Select(x => new { x.CustomerId, x.AuthEndTime, x.Status })
+            .ToListAsync())
+            .GroupBy(x => x.CustomerId)
+            .ToDictionary(g => g.Key, g => g.OrderByDescending(x => x.AuthEndTime).First());
         return Ok(new
         {
             ok = true,
             accounts,
-            customers = customers.Select(x => new
+            customers = customers.Select(x =>
             {
-                x.Id, x.CustomerNo, x.Name, x.Status, x.DirectProviderId, x.CreatedAt,
-                email = emailOf.TryGetValue(x.AccountId, out var email) ? email : ""
+                latestAuth.TryGetValue(x.Id, out var auth);
+                return new
+                {
+                    x.Id, x.CustomerNo, x.Name, x.Status, x.DirectProviderId, x.CreatedAt,
+                    email = emailOf.TryGetValue(x.AccountId, out var email) ? email : "",
+                    authEndTime = auth == null ? (DateTime?)null : auth.AuthEndTime,
+                    authStatus = auth == null ? (int?)null : auth.Status
+                };
             }),
             orders = orders.Select(x => new
             {
