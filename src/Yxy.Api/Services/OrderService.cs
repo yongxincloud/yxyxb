@@ -16,11 +16,13 @@ public sealed class OrderService
 
     private readonly WebDb _db;
     private readonly TimeProvider _time;
+    private readonly IAlipayGateway _alipay;
 
-    public OrderService(WebDb db, TimeProvider time)
+    public OrderService(WebDb db, TimeProvider time, IAlipayGateway alipay)
     {
         _db = db;
         _time = time;
+        _alipay = alipay;
     }
 
     public async Task EnsureCatalogAsync()
@@ -47,7 +49,7 @@ public sealed class OrderService
 
     public async Task<OrderResult> CreateAsync(long accountId, string? productNo, int orderType, string? channel)
     {
-        if (channel is not ("wechat" or "alipay")) return new OrderResult(false, "请选择微信或支付宝");
+        if (channel is not "alipay") return new OrderResult(false, "请使用支付宝");
         if (orderType is not (1 or 2)) return new OrderResult(false, "订单类型不正确");
         await CloseExpiredAsync();
         var customer = await _db.Customers.SingleOrDefaultAsync(x => x.AccountId == accountId);
@@ -178,6 +180,19 @@ public sealed class OrderService
         if (order.PayStatus != 1 || order.PayTime == null) return new OrderResult(false, "订单未支付");
         var now = _time.GetUtcNow().UtcDateTime;
         if (now > order.PayTime.Value.AddDays(7)) return new OrderResult(false, "已超过 7 天退款窗口");
+        if (order.PayChannel == "alipay" && _alipay.IsConfigured)
+        {
+            OrderResult remote;
+            try
+            {
+                remote = await _alipay.RefundAsync(order.OrderNo, order.Amount);
+            }
+            catch (Exception)
+            {
+                return new OrderResult(false, "支付宝退款请求失败");
+            }
+            if (!remote.Ok) return remote;
+        }
         order.PayStatus = 2;
         order.RefundTime = now;
         order.UpdatedAt = now;
@@ -206,6 +221,20 @@ public sealed class OrderService
                 });
             }
         }
+        await _db.SaveChangesAsync();
+        return new OrderResult(true, null, order.OrderNo, order.Amount);
+    }
+
+    public async Task<OrderResult> HideAsync(long accountId, string orderNo)
+    {
+        var customer = await _db.Customers.SingleOrDefaultAsync(x => x.AccountId == accountId);
+        if (customer == null) return new OrderResult(false, "请先注册");
+        var order = await _db.Orders.SingleOrDefaultAsync(x => x.OrderNo == orderNo && x.CustomerId == customer.Id && x.Hidden == 0);
+        if (order == null) return new OrderResult(false, "订单不存在");
+        if (order.PayStatus == 1) return new OrderResult(false, "已支付的订单请先退款后再删除");
+        if (order.InvoiceApplyId != null) return new OrderResult(false, "已申请开票的记录不能删除");
+        order.Hidden = 1;
+        order.UpdatedAt = _time.GetUtcNow().UtcDateTime;
         await _db.SaveChangesAsync();
         return new OrderResult(true, null, order.OrderNo, order.Amount);
     }

@@ -6,6 +6,8 @@ using Yxy.Api.Data;
 using Yxy.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
+if (!builder.Environment.IsEnvironment("Testing"))
+    builder.Configuration.AddJsonFile("appsettings.Local.json", optional: true, reloadOnChange: true);
 builder.Services.AddMemoryCache();
 builder.Services.AddControllers();
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
@@ -38,6 +40,8 @@ builder.Services.AddScoped<EmailCodeService>();
 builder.Services.AddScoped<CaptchaService>();
 builder.Services.AddScoped<AccountService>();
 builder.Services.AddScoped<ClientAuthService>();
+builder.Services.AddHttpClient("alipay", client => client.Timeout = TimeSpan.FromSeconds(20));
+builder.Services.AddScoped<IAlipayGateway, AlipayGateway>();
 builder.Services.AddScoped<OrderService>();
 builder.Services.AddSingleton<FakeEmailSender>();
 builder.Services.AddScoped<MailSettingsService>();
@@ -231,6 +235,14 @@ using (var scope = app.Services.CreateScope())
         CREATE UNIQUE INDEX IF NOT EXISTS "IX_Providers_ProviderNo" ON "Providers" ("ProviderNo");
         CREATE UNIQUE INDEX IF NOT EXISTS "IX_Providers_AccountId" ON "Providers" ("AccountId");
         """);
+    AddColumn(db, "Orders", "InvoiceApplyId", "INTEGER NULL");
+    AddColumn(db, "Orders", "Hidden", "INTEGER NOT NULL DEFAULT 0");
+    AddColumn(db, "Customers", "Nickname", "TEXT NULL");
+    AddColumn(db, "Customers", "CompanyName", "TEXT NULL");
+    AddColumn(db, "Customers", "InvoiceTitle", "TEXT NULL");
+    AddColumn(db, "Customers", "InvoiceTaxNo", "TEXT NULL");
+    AddColumn(db, "Customers", "InvoiceEmail", "TEXT NULL");
+    AddColumn(db, "Customers", "InvoiceLicense", "TEXT NULL");
     if (!db.AdminUsers.Any())
     {
         var username = app.Configuration["Admin:Username"];
@@ -246,6 +258,21 @@ using (var scope = app.Services.CreateScope())
         db.SaveChanges();
     }
 }
+static void AddColumn(WebDb db, string table, string column, string definition)
+{
+    var connection = db.Database.GetDbConnection();
+    if (connection.State != System.Data.ConnectionState.Open) connection.Open();
+    using var check = connection.CreateCommand();
+    check.CommandText = "PRAGMA table_info(\"" + table + "\")";
+    using var reader = check.ExecuteReader();
+    while (reader.Read())
+    {
+        if (string.Equals(reader.GetString(1), column, StringComparison.OrdinalIgnoreCase)) return;
+    }
+    reader.Close();
+    db.Database.ExecuteSqlRaw("ALTER TABLE \"" + table + "\" ADD COLUMN \"" + column + "\" " + definition);
+}
+
 app.UseAuthentication();
 app.Use(async (ctx, next) =>
 {

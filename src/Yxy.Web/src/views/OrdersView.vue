@@ -7,7 +7,7 @@ const trial1 = ref('')
 const trial2 = ref('')
 const orders = ref([])
 const error = ref('')
-const channel = ref('wechat')
+const refunding = ref(false)
 
 async function load() {
   const catalog = await get('/api/orders/catalog')
@@ -23,25 +23,40 @@ async function load() {
 }
 
 async function refund(orderNo) {
+  if (refunding.value) return
+  refunding.value = true
+  error.value = '正在向支付宝退款…'
+  try {
+    const data = await post('/api/orders/' + orderNo + '/refund', {})
+    error.value = data.ok ? '已退款' : (data.error || '退款失败')
+    await load()
+  } catch {
+    error.value = '退款失败，请再点一次'
+  } finally {
+    refunding.value = false
+  }
+}
+
+async function remove(orderNo) {
   error.value = ''
-  const data = await post('/api/orders/' + orderNo + '/refund', {})
-  error.value = data.ok ? '已退款' : (data.error || '退款失败')
+  const data = await post('/api/orders/' + orderNo + '/delete', {})
+  error.value = data.ok ? '已删除' : (data.error || '删除失败')
   await load()
 }
 
 async function buy(orderType) {
   error.value = ''
-  const created = await post('/api/orders', { productNo: 'STD', orderType, channel: channel.value })
+  const created = await post('/api/orders', { productNo: 'STD', orderType, channel: 'alipay' })
   if (!created.ok) {
     error.value = created.error || '下单失败'
     return
   }
-  const paid = await post('/api/orders/' + created.orderNo + '/mock-pay', {})
-  if (!paid.ok) {
-    error.value = paid.error || '支付失败'
+  const pay = await post('/api/orders/' + created.orderNo + '/alipay', {})
+  if (!pay.ok || !pay.payUrl) {
+    error.value = pay.error || '支付失败'
     return
   }
-  await load()
+  window.location.href = pay.payUrl
 }
 
 onMounted(load)
@@ -53,8 +68,6 @@ onMounted(load)
     <p class="lead">标准版 {{ price }} 元 / 年。试用第 1 次 {{ trial1 }} 元，第 2 次 {{ trial2 }} 元。续费按当时价格，在原到期日上顺延。</p>
     <p class="lead">要开票由厂商开具，也可以不开票。一个账号不限台数。</p>
     <div class="pay">
-      <label><input type="radio" value="wechat" v-model="channel" /> 微信</label>
-      <label><input type="radio" value="alipay" v-model="channel" /> 支付宝</label>
       <button class="btn-yxy" type="button" @click="buy(1)">购买一年</button>
       <button class="btn-ghost" type="button" @click="buy(2)">购买试用</button>
     </div>
@@ -66,7 +79,8 @@ onMounted(load)
           <span>{{ order.amount }} 元</span>
         </div>
         <span class="tag">{{ order.payStatus === 1 ? '已支付' : order.payStatus === 2 ? '已退款' : order.payStatus === 3 ? '已关闭' : '未支付' }}</span>
-        <button v-if="order.payStatus === 1" class="btn-ghost" type="button" @click="refund(order.orderNo)">退款</button>
+        <button v-if="order.payStatus === 1" class="btn-ghost" type="button" :disabled="refunding" @click="refund(order.orderNo)">{{ refunding ? '退款中' : '退款' }}</button>
+        <button v-else class="btn-ghost" type="button" @click="remove(order.orderNo)">删除</button>
       </article>
       <p v-if="orders.length === 0">还没有订单。</p>
     </div>

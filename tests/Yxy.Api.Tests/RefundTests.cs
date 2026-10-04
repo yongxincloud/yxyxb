@@ -43,7 +43,7 @@ public sealed class RefundTests
         var buyer = factory.CreateClient();
         await AccountApi.Register(factory, buyer, "refund-buyer@example.com", "abc12345", providerNo);
         await AccountApi.Post(buyer, "/api/account/login", new { email = "refund-buyer@example.com", password = "abc12345" });
-        var created = await buyer.PostAsJsonAsync("/api/orders", new { productNo = "STD", orderType = 1, channel = "wechat" });
+        var created = await buyer.PostAsJsonAsync("/api/orders", new { productNo = "STD", orderType = 1, channel = "alipay" });
         var order = await created.Content.ReadFromJsonAsync<OrderResult>();
         await Notify(buyer, order!.OrderNo!, "RF1", "wechat", 12m);
         var refund = await AccountApi.Post(buyer, "/api/orders/" + order.OrderNo + "/refund", new { });

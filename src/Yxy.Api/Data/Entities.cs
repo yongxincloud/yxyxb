@@ -117,6 +117,8 @@ public sealed class SubscriptionOrder
     public DateTime? RefundTime { get; set; }
     public int CommissionCalculated { get; set; }
     public DateTime? ExpiresAt { get; set; }
+    public long? InvoiceApplyId { get; set; }
+    public int Hidden { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 }
@@ -160,6 +162,12 @@ public sealed class Customer
     public string CustomerNo { get; set; } = "";
     public long AccountId { get; set; }
     public string? Name { get; set; }
+    public string? Nickname { get; set; }
+    public string? CompanyName { get; set; }
+    public string? InvoiceTitle { get; set; }
+    public string? InvoiceTaxNo { get; set; }
+    public string? InvoiceEmail { get; set; }
+    public string? InvoiceLicense { get; set; }
     public long? DirectProviderId { get; set; }
     public int Status { get; set; } = 1;
     public DateTime CreatedAt { get; set; }
