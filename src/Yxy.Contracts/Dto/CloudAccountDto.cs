@@ -1,3 +1,5 @@
+using System;
+
 namespace Yxy.Contracts.Dto
 {
     public sealed class CloudAccountDto
@@ -14,6 +16,14 @@ namespace Yxy.Contracts.Dto
 
         public string Zone { get; set; }
 
+        public string AccessToken { get; set; }
+
+        public string RefreshToken { get; set; }
+
+        public DateTime? TokenExpiryUtc { get; set; }
+
+        public string DisplayName { get; set; }
+
         public string MaskedAccessKey
         {
             get { return CloudMask.Mask(AccessKey); }
@@ -28,6 +38,11 @@ namespace Yxy.Contracts.Dto
                     && !string.IsNullOrWhiteSpace(AccessKey)
                     && !string.IsNullOrWhiteSpace(SecretKey);
             }
+        }
+
+        public bool IsBaiduReady
+        {
+            get { return Enabled && !string.IsNullOrWhiteSpace(RefreshToken); }
         }
     }
 
