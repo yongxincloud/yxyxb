@@ -4,6 +4,8 @@ using NUnit.Framework;
 using Yxy.Contracts.Cloud;
 using Yxy.Contracts.Dto;
 using Yxy.Core.Backup;
+using Yxy.Core.Data;
+using Yxy.Core.Store;
 using Yxy.Core.Transfer;
 
 namespace Yxy.Core.Tests
@@ -47,6 +49,36 @@ namespace Yxy.Core.Tests
             Assert.That(MailUtil.ShouldSend(new SmtpSettingsDto { Host = "h", SendAfterTask = true, SendWhen = "all" }, true, false), Is.False);
             Assert.That(MailUtil.NormalizeWhen("x"), Is.EqualTo("fail"));
             Assert.That(MailUtil.NormalizeWhen(null), Is.EqualTo("fail"));
+        }
+
+        [Test]
+        public void SmtpXfer_KeepsSendPolicy()
+        {
+            var file = Path.Combine(Path.GetTempPath(), "yxy-mail-" + Guid.NewGuid().ToString("N") + ".db");
+            try
+            {
+                using (var db = new SqliteDb(file))
+                {
+                    SettingsStore.SaveXfer(db, "smtp", new SmtpSettingsDto
+                    {
+                        Host = "h",
+                        From = "a@b.c",
+                        To = "d@e.f",
+                        SendAfterTask = true,
+                        SendWhen = "all"
+                    });
+                    var loaded = SettingsStore.GetXfer<SmtpSettingsDto>(db, "smtp");
+                    Assert.That(loaded.SendAfterTask, Is.True);
+                    Assert.That(MailUtil.NormalizeWhen(loaded.SendWhen), Is.EqualTo("all"));
+                }
+            }
+            finally
+            {
+                if (File.Exists(file))
+                {
+                    File.Delete(file);
+                }
+            }
         }
 
         [Test]

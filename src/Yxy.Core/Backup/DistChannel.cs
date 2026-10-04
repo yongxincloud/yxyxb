@@ -75,11 +75,12 @@ namespace Yxy.Core.Backup
         public static bool Finish(SqliteDb db, bool doEmail, bool doDelete, string taskName, IList<string> zips, bool distOk, StringBuilder log)
         {
             var mailOk = true;
-            if (doEmail)
+            var smtp = SettingsStore.GetXfer<SmtpSettingsDto>(db, "smtp");
+            if (MailUtil.ShouldSend(smtp, doEmail, distOk))
             {
                 try
                 {
-                    MailUtil.SendResult(SettingsStore.GetXfer<SmtpSettingsDto>(db, "smtp"), taskName, distOk, log.ToString());
+                    MailUtil.SendResult(smtp, taskName, distOk, log.ToString());
                     log.Append(" 已发邮件。");
                 }
                 catch (Exception ex)

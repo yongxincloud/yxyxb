@@ -107,7 +107,7 @@ namespace Yxy.Core.Backup
             catch (Exception ex)
             {
                 log.Append(" 失败：").Append(ex.Message);
-                if (task.DoEmail)
+                if (MailUtil.ShouldSend(SettingsStore.GetXfer<SmtpSettingsDto>(db, "smtp"), task.DoEmail, false))
                 {
                     try
                     {
