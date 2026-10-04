@@ -44,6 +44,9 @@ namespace Yxy.Client.Pages
         private readonly TextBox _smtpSubject;
         private readonly TextBox _smtpBody;
         private readonly TextBox _smtpFooter;
+        private readonly CheckBox _sendAfterTask;
+        private readonly ComboBox _sendWhen;
+        private readonly TextBlock _sendWhenLabel;
         private readonly CheckBox _nameFileSid;
         private readonly CheckBox _nameFileTask;
         private readonly CheckBox _nameFileTime;
@@ -115,6 +118,18 @@ namespace Yxy.Client.Pages
                 VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
                 Height = 64
             };
+            _sendAfterTask = new CheckBox { Content = "任务执行后发送邮件", Margin = new Thickness(0, 12, 0, 8) };
+            _sendWhenLabel = Label("发送条件");
+            _sendWhen = new ComboBox { Width = 200, HorizontalAlignment = HorizontalAlignment.Left };
+            _sendWhen.Items.Add(new ComboBoxItem { Content = "失败", Tag = "fail" });
+            _sendWhen.Items.Add(new ComboBoxItem { Content = "成功", Tag = "success" });
+            _sendWhen.Items.Add(new ComboBoxItem { Content = "所有", Tag = "all" });
+            _sendWhen.SelectedIndex = 0;
+            _sendAfterTask.Checked += delegate { SyncMailPolicyUi(); };
+            _sendAfterTask.Unchecked += delegate { SyncMailPolicyUi(); };
+            _smtpHost.LostFocus += delegate { SyncMailPolicyUi(); };
+            _smtpFrom.LostFocus += delegate { SyncMailPolicyUi(); };
+            _smtpTo.LostFocus += delegate { SyncMailPolicyUi(); };
             _purgeLocal = new CheckBox { Content = "删本机 bak 过期 zip" };
             _purgeNetwork = new CheckBox { Content = "删网络共享过期 zip" };
             _purgeFtp = new CheckBox { Content = "删 FTP 过期 zip" };
@@ -285,6 +300,9 @@ namespace Yxy.Client.Pages
             panel.Children.Add(_smtpFrom);
             panel.Children.Add(Label("收件人"));
             panel.Children.Add(_smtpTo);
+            panel.Children.Add(_sendAfterTask);
+            panel.Children.Add(_sendWhenLabel);
+            panel.Children.Add(_sendWhen);
             panel.Children.Add(Label("邮件标题"));
             panel.Children.Add(_smtpSubject);
             panel.Children.Add(Label("邮件内容"));
@@ -407,6 +425,9 @@ namespace Yxy.Client.Pages
             _smtpSubject.Text = string.IsNullOrWhiteSpace(smtp.Subject) ? MailUtil.DefaultSubject : smtp.Subject;
             _smtpBody.Text = string.IsNullOrWhiteSpace(smtp.Body) ? MailUtil.DefaultBody : smtp.Body;
             _smtpFooter.Text = smtp.Footer ?? "";
+            _sendAfterTask.IsChecked = smtp.SendAfterTask;
+            SelectMailWhen(MailUtil.NormalizeWhen(smtp.SendWhen));
+            SyncMailPolicyUi();
             _purgeLocal.IsChecked = s.PurgeLocal;
             _purgeNetwork.IsChecked = s.PurgeNetwork;
             _purgeFtp.IsChecked = s.PurgeFtp;
@@ -514,6 +535,49 @@ namespace Yxy.Client.Pages
             SettingsStore.SaveXfer(_boot.Db, "smtp", ReadSmtp());
         }
 
+        private void SyncMailPolicyUi()
+        {
+            var ready = MailUtil.SmtpReady(new SmtpSettingsDto
+            {
+                Host = (_smtpHost.Text ?? "").Trim(),
+                From = (_smtpFrom.Text ?? "").Trim(),
+                To = (_smtpTo.Text ?? "").Trim()
+            });
+            var vis = ready ? Visibility.Visible : Visibility.Collapsed;
+            _sendAfterTask.Visibility = vis;
+            var showWhen = ready && _sendAfterTask.IsChecked == true;
+            _sendWhenLabel.Visibility = showWhen ? Visibility.Visible : Visibility.Collapsed;
+            _sendWhen.Visibility = showWhen ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        private void SelectMailWhen(string when)
+        {
+            var want = MailUtil.NormalizeWhen(when);
+            for (var i = 0; i < _sendWhen.Items.Count; i++)
+            {
+                var item = _sendWhen.Items[i] as ComboBoxItem;
+                if (item != null && item.Tag != null
+                    && string.Equals(item.Tag.ToString(), want, StringComparison.OrdinalIgnoreCase))
+                {
+                    _sendWhen.SelectedIndex = i;
+                    return;
+                }
+            }
+
+            _sendWhen.SelectedIndex = 0;
+        }
+
+        private static string TagOf(ComboBox box, string fallback)
+        {
+            var item = box.SelectedItem as ComboBoxItem;
+            if (item == null || item.Tag == null)
+            {
+                return fallback;
+            }
+
+            return item.Tag.ToString();
+        }
+
         private UncSettingsDto ReadUnc()
         {
             return new UncSettingsDto
@@ -553,7 +617,9 @@ namespace Yxy.Client.Pages
                 To = _smtpTo.Text.Trim(),
                 Subject = _smtpSubject.Text ?? "",
                 Body = _smtpBody.Text ?? "",
-                Footer = _smtpFooter.Text ?? ""
+                Footer = _smtpFooter.Text ?? "",
+                SendAfterTask = _sendAfterTask.IsChecked == true,
+                SendWhen = MailUtil.NormalizeWhen(TagOf(_sendWhen, "fail"))
             };
         }
 
