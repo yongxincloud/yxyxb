@@ -130,8 +130,8 @@ namespace Yxy.Core.Backup
                     }
                 }
 
-                var days = settings.LogRetainDays < 1 ? 1 : settings.LogRetainDays;
-                var cut = DateTime.UtcNow.AddDays(-days);
+                var logDays = settings.LogRetainDays < 1 ? 1 : settings.LogRetainDays;
+                var cut = DateTime.UtcNow.AddDays(-logDays);
                 var logRows = LogStore.DeleteOlderThan(db, cut);
                 log.Append(" 日志删除 ").Append(logRows).Append(" 条。");
             }
