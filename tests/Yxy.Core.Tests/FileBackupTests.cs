@@ -100,6 +100,32 @@ namespace Yxy.Core.Tests
         }
 
         [Test]
+        public void TryClaim_BlocksSecondRunUntilRelease()
+        {
+            AppPaths.EnsureDirectories();
+            using (var db = SqliteDb.OpenDefault())
+            {
+                var task = new FileTaskDto
+                {
+                    Name = "认领",
+                    Enabled = true,
+                    SourceKind = "local",
+                    SourcePath = _root,
+                    CycleKind = "day",
+                    CycleInterval = 1,
+                    NextRunUtc = DateTime.UtcNow.AddMinutes(-1)
+                };
+                task.Id = FileTaskStore.Insert(db, task);
+                var now = DateTime.UtcNow;
+                Assert.That(FileTaskStore.TryClaim(db, task.Id, now), Is.True);
+                Assert.That(FileTaskStore.TryClaim(db, task.Id, now), Is.False);
+                Assert.That(FileTaskStore.GetDue(db, now).Count, Is.EqualTo(0));
+                FileTaskStore.MarkResult(db, FileTaskStore.GetById(db, task.Id), true, now);
+                Assert.That(FileTaskStore.GetDue(db, now).Count, Is.EqualTo(0));
+            }
+        }
+
+        [Test]
         public void Delete_RemovesFileAndMssqlTask()
         {
             AppPaths.EnsureDirectories();

@@ -21,6 +21,8 @@ namespace Yxy.Baidu
 
         public Action<CloudAccountDto> PersistAccount { get; set; }
 
+        public Action<string> OnLog { get; set; }
+
         public BaiduStorage()
             : this(null, null, new BaiduHttp())
         {
@@ -104,6 +106,8 @@ namespace Yxy.Baidu
             var blockList = ser.Serialize(hashes);
             var size = new FileInfo(full).Length;
             var dataDir = AppPaths.DataDirectory;
+            Directory.CreateDirectory(AppPaths.BaiduUploadDirectory);
+            Note(dataDir, full, "开始上传 " + Path.GetFileName(full) + "，大小 " + size + " 字节，分片 " + hashes.Count + "，远程 " + path);
             var cp = BaiduUploadCheckpoint.TryLoad(dataDir, full, size, hashes);
             string uploadId;
             if (cp == null)
@@ -120,7 +124,9 @@ namespace Yxy.Baidu
                 if (preObj.return_type == 2)
                 {
                     BaiduUploadCheckpoint.Delete(dataDir, full);
+                    Note(dataDir, full, "秒传，跳过分片。");
                     CreateRemote(path, size, preObj.uploadid ?? "", blockList);
+                    Note(dataDir, full, "合并完成。");
                     return;
                 }
 
@@ -136,10 +142,12 @@ namespace Yxy.Baidu
                     DonePartSeq = new int[0]
                 };
                 BaiduUploadCheckpoint.Save(dataDir, cp);
+                Note(dataDir, full, "precreate 成功，uploadid=" + uploadId);
             }
             else
             {
                 uploadId = cp.UploadId;
+                Note(dataDir, full, "续传 uploadid=" + uploadId + "，已完成 " + (cp.DonePartSeq == null ? 0 : cp.DonePartSeq.Length) + "/" + hashes.Count);
             }
 
             UploadParts(full, path, uploadId, size, cp, dataDir);
@@ -149,6 +157,7 @@ namespace Yxy.Baidu
             }
 
             CreateRemote(path, size, uploadId, blockList);
+            Note(dataDir, full, "分片已齐，合并完成。");
             BaiduUploadCheckpoint.Delete(dataDir, full);
         }
 
@@ -258,6 +267,7 @@ namespace Yxy.Baidu
             {
                 if (done.Contains(i))
                 {
+                    Note(dataDir, localPath, "跳过已完成分片 " + (i + 1) + "/" + count);
                     return;
                 }
 
@@ -305,6 +315,8 @@ namespace Yxy.Baidu
                             BaiduUploadCheckpoint.Save(dataDir, cp);
                         }
 
+                        Note(dataDir, localPath, "分片 " + (i + 1) + "/" + count + " 成功，" + size + " 字节" + (attempt > 0 ? "（重试 " + attempt + "）" : ""));
+
                         var gap = BaiduUploadRetry.GapMs(_maxKbps, size, unchecked(Environment.TickCount - started));
                         if (gap > 0)
                         {
@@ -317,6 +329,7 @@ namespace Yxy.Baidu
                     catch (Exception ex)
                     {
                         last = ex;
+                        Note(dataDir, localPath, "分片 " + (i + 1) + "/" + count + " 失败第 " + (attempt + 1) + " 次：" + ex.Message);
                         System.Threading.Thread.Sleep(BaiduUploadRetry.SleepMs(attempt));
                     }
                 }
@@ -335,7 +348,31 @@ namespace Yxy.Baidu
 
             if (error != null)
             {
+                Note(dataDir, localPath, "分片未齐，停止合并。");
                 throw new InvalidOperationException("百度分片上传失败：" + error.Message);
+            }
+        }
+
+        private void Note(string dataDir, string localPath, string message)
+        {
+            try
+            {
+                BaiduUploadLog.Write(dataDir, localPath, message);
+            }
+            catch (IOException)
+            {
+            }
+
+            var sink = OnLog;
+            if (sink != null)
+            {
+                try
+                {
+                    sink(message);
+                }
+                catch
+                {
+                }
             }
         }
 

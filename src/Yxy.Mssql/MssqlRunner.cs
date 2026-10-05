@@ -19,6 +19,11 @@ namespace Yxy.Mssql
             var n = 0;
             for (var i = 0; i < due.Count; i++)
             {
+                if (!MssqlTaskStore.TryClaim(db, due[i].Id, DateTime.UtcNow))
+                {
+                    continue;
+                }
+
                 ExecuteOne(db, due[i], "auto");
                 n++;
             }
@@ -32,6 +37,11 @@ namespace Yxy.Mssql
             if (task == null)
             {
                 return "任务不存在。";
+            }
+
+            if (!MssqlTaskStore.TryClaim(db, task.Id, DateTime.UtcNow))
+            {
+                return "该任务正在执行，请稍候。";
             }
 
             ExecuteOne(db, task, "manual");
@@ -139,33 +149,11 @@ namespace Yxy.Mssql
 
         private static IList<string> ResolveDatabases(MssqlInstanceDto instance, MssqlTaskDto task)
         {
-            var all = MssqlConnect.ListUserDatabases(instance);
-            if (task.DbScope != "selected")
-            {
-                return all;
-            }
-
-            var picked = new List<string>();
-            var parts = (task.SelectedDbs ?? "").Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries);
-            for (var i = 0; i < parts.Length; i++)
-            {
-                var name = parts[i].Trim();
-                if (MssqlConnect.IsSystemDb(name))
-                {
-                    continue;
-                }
-
-                for (var j = 0; j < all.Count; j++)
-                {
-                    if (string.Equals(all[j], name, StringComparison.OrdinalIgnoreCase))
-                    {
-                        picked.Add(all[j]);
-                        break;
-                    }
-                }
-            }
-
-            return picked;
+            return DatabaseScope.Pick(
+                MssqlConnect.ListUserDatabases(instance),
+                task.DbScope,
+                task.SelectedDbs,
+                MssqlConnect.IsSystemDb);
         }
 
         private static string PrepareWorkDir(string bakRoot)

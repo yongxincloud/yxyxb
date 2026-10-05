@@ -9,8 +9,12 @@ namespace Yxy.Core.Store
 {
     public static class LogStore
     {
+        private static readonly object WriteGate = new object();
+
         public static void Add(SqliteDb db, string type, string mode, string result, string taskName, string message)
         {
+            lock (WriteGate)
+            {
             db.Execute(
                 "INSERT INTO logs (type, mode, result, message, task_name, created_utc) VALUES (@t,@m,@r,@msg,@n,@u)",
                 new SQLiteParameter("@t", type ?? "file"),
@@ -19,6 +23,7 @@ namespace Yxy.Core.Store
                 new SQLiteParameter("@msg", (object)message ?? DBNull.Value),
                 new SQLiteParameter("@n", (object)taskName ?? DBNull.Value),
                 new SQLiteParameter("@u", SqliteDb.UtcNowText()));
+            }
         }
 
         public static LogEntryDto LatestForTask(SqliteDb db, string type, string taskName)
@@ -71,6 +76,18 @@ namespace Yxy.Core.Store
             }
 
             return list;
+        }
+
+        public static int DeleteByType(SqliteDb db, string type)
+        {
+            if (string.IsNullOrWhiteSpace(type))
+            {
+                return 0;
+            }
+
+            return db.Execute(
+                "DELETE FROM logs WHERE type=@t",
+                new SQLiteParameter("@t", type));
         }
 
         public static int DeleteOlderThan(SqliteDb db, DateTime cutoffUtc)

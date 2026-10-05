@@ -84,6 +84,8 @@ Invoke-WebRequest -UseBasicParsing http://127.0.0.1:5080/api/public/price
 
 有域名和证书时：再加一条 https 绑定，端口 **443**，主机名填域名，选好证书。浏览器使用 `https://域名`。
 
+正式官网 https://backup.yongxincloud.cn 当前跑在 Linux Nginx，**443 套件已在服务器上手改**。注意项与套件清单以《Linux部署手册》第 5 节为准。若改用本机 IIS 终结 443，或前面还有云 SLB，必须提供 `ECDHE-RSA-AES256-SHA384` 等 CBC 套件，不能只开 GCM，否则 Windows Server 2012 / 2012 R2 客户端登录握手失败。
+
 在 `C:\yxy\web` 新建 `web.config`：
 
 ```xml
@@ -131,7 +133,7 @@ http://download.yongxinyun.com/yongxinyunbackup/yongxinyunbackup.zip
 
 登录默认连 https://backup.yongxincloud.cn 。本机调试可在 `data\site.url` 写一行地址（末尾不要斜杠）覆盖。数据目录在客户端程序旁的 `data` 文件夹。改完后重新打开客户端再登录。
 
-客户机是 Windows Server 2012 / 2012 R2 时，官网 443 必须提供 `ECDHE-RSA-AES256-SHA384` 等 CBC 套件，否则登录会在 TLS 握手失败。套件清单见《Linux部署手册》。拷贝客户端时带上 `Yxy.Client.exe.config`。
+客户机是 Windows Server 2012 / 2012 R2 时：官网 443 已按 Linux 手册打开 CBC 套件；拷贝客户端时必须带上 `Yxy.Client.exe.config`。套件被改丢后，登录会在 TLS 握手失败（本机新系统正常不能当依据）。
 
 网站页脚对外信息：常州用心软件有限公司，电话 400-051-9608，邮箱 market.yongxinyun.com，苏ICP备19043516号-6，苏公网安备32041102001697号。
 
@@ -139,7 +141,7 @@ http://download.yongxinyun.com/yongxinyunbackup/yongxinyunbackup.zip
 
 可以登录、注册、看订阅和订单，也可以在厂商后台配置发信。密码和登录令牌在网络上是明文，只适合内网试用。
 
-支付宝电脑网站支付和退款要求已备案的域名和 HTTPS。正式环境把 `appsettings.Local.json` 放在接口目录，不要提交到版本库。通知地址是 `https://域名/api/payments/alipay/notify`。没有这份配置时，支付宝下单会提示先配置异步通知地址。购买页不提供微信支付。
+支付宝、百度应用的字段和开放平台对齐项见《用心云备份-配置手册》。没有 `appsettings.Local.json` 时购买页无法真实支付。购买页不提供微信支付。
 
 ## 9. 检查
 

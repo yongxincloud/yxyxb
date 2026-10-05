@@ -21,6 +21,7 @@ namespace Yxy.Client.Pages
         private readonly DataGrid _fileGrid;
         private readonly DataGrid _mssqlGrid;
         private DataGrid _mysqlGrid;
+        private UploadLiveLogWindow _liveLog;
 
         public TasksPage(HostBootstrap boot)
         {
@@ -49,7 +50,7 @@ namespace Yxy.Client.Pages
             panel.Children.Add(bar);
             var hint = new TextBlock
             {
-                Text = "点选一条文件任务后可立即执行。点完会先提示正在执行；关闭窗口也不影响。结果再弹窗，也可看「日志 → 文件备份」。",
+                Text = "点选一条文件任务后可立即执行。完成后弹窗显示结果，也可看「日志 → 文件备份」。",
                 TextWrapping = TextWrapping.Wrap,
                 Margin = new Thickness(0, 0, 0, 8)
             };
@@ -353,6 +354,7 @@ namespace Yxy.Client.Pages
 
         private void RunNow(string taskName, long taskId, Func<SqliteDb, long, string> execute, Action reload)
         {
+            var owner = Window.GetWindow(this);
             if (!_runJob.TryStart(delegate
             {
                 using (var db = SqliteDb.OpenDefault())
@@ -364,26 +366,27 @@ namespace Yxy.Client.Pages
                 Dispatcher.BeginInvoke(new Action(delegate
                 {
                     reload();
-                    var owner = Window.GetWindow(this);
+                    if (_liveLog != null)
+                    {
+                        _liveLog.Complete();
+                    }
+
                     if (error != null)
                     {
-                        MessageBox.Show(owner, "立即执行失败：" + error.Message, "立即执行");
+                        ScrollableMessage.Show(owner, "立即执行", "立即执行失败：" + error.Message);
                     }
                     else
                     {
-                        MessageBox.Show(owner, result, "立即执行");
+                        ScrollableMessage.Show(owner, "立即执行", result);
                     }
                 }));
             }))
             {
-                MessageBox.Show(Window.GetWindow(this), "已有任务正在执行，请稍候。", "立即执行");
+                MessageBox.Show(owner, "已有任务正在执行，请稍候。", "立即执行");
                 return;
             }
 
-            MessageBox.Show(
-                Window.GetWindow(this),
-                "任务「" + (taskName ?? "") + "」正在执行。关闭窗口也不影响执行，完成后会再提示。",
-                "立即执行");
+            _liveLog = UploadLiveLogWindow.Open(owner, taskName);
         }
 
         private static Button Btn(string text, RoutedEventHandler click)

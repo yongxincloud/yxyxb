@@ -93,6 +93,35 @@ namespace Yxy.Baidu.Tests
         }
 
         [Test]
+        public void Upload_WritesNamedSliceLogAndOnLog()
+        {
+            var root = Path.Combine(Path.GetTempPath(), "yxy-blog2-" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(root);
+            AppPaths.SetRootForTests(root);
+            try
+            {
+                var notes = new System.Collections.Generic.List<string>();
+                var fake = new FakeBaiduTransport();
+                var storage = Create(fake, DateTime.UtcNow.AddHours(1));
+                storage.OnLog = delegate(string line) { notes.Add(line); };
+                var file = WriteTemp(new byte[] { 1, 2, 3, 4, 5 });
+                storage.Upload(file, "k.zip");
+                var recent = BaiduUploadLog.ReadRecent(AppPaths.DataDirectory, 8000);
+                Assert.That(notes.Count, Is.GreaterThan(0));
+                Assert.That(string.Join("\n", notes.ToArray()), Does.Contain("开始上传"));
+                Assert.That(string.Join("\n", notes.ToArray()), Does.Contain("分片"));
+                Assert.That(recent, Does.Contain(Path.GetFileName(file)));
+                Assert.That(recent, Does.Contain("开始上传"));
+                File.Delete(file);
+            }
+            finally
+            {
+                AppPaths.SetRootForTests(null);
+                Directory.Delete(root, true);
+            }
+        }
+
+        [Test]
         public void Upload_WithoutRefresh_Throws()
         {
             var storage = new BaiduStorage(new CloudAccountDto { Enabled = true }, Cfg(), new FakeBaiduTransport());

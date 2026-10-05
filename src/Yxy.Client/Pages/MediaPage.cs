@@ -406,20 +406,17 @@ namespace Yxy.Client.Pages
                     ReloadAll();
                     if (error != null)
                     {
-                        Alert("立即执行失败：" + error.Message);
+                        ScrollableMessage.Show(Window.GetWindow(this), "立即执行", "立即执行失败：" + error.Message);
                     }
                     else
                     {
-                        Alert(result);
+                        ScrollableMessage.Show(Window.GetWindow(this), "立即执行", result);
                     }
                 }));
             }))
             {
                 Alert("已有任务正在执行，请稍候。");
-                return;
             }
-
-            Alert("任务「" + (task.Name ?? "") + "」正在执行。关闭窗口也不影响执行，完成后会再提示。");
         }
 
         private void AddTask()

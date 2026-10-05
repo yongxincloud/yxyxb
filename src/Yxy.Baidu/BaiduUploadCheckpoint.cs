@@ -28,6 +28,7 @@ namespace Yxy.Baidu
         public static string FilePath(string dataDir, string localPath)
         {
             var root = Path.Combine(dataDir ?? "", "baidu-upload");
+            Directory.CreateDirectory(root);
             return Path.Combine(root, HashPath(localPath) + ".json");
         }
 

@@ -43,7 +43,7 @@ namespace Yxy.Client.Dialogs
             }
             else
             {
-                TxtNext.Text = DateTime.Now.AddMinutes(2).ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture);
+                DateTimePick.SetDateTime(DtNext, TmNext, DateTime.Now.AddMinutes(2));
             }
         }
 
@@ -67,7 +67,7 @@ namespace Yxy.Client.Dialogs
             SelectTag(CmbCloud, existing.CloudProvider, _ready.Count > 0 ? _ready[0] : "qiniu");
             if (existing.NextRunUtc.HasValue)
             {
-                TxtNext.Text = existing.NextRunUtc.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture);
+                DateTimePick.SetDateTime(DtNext, TmNext, existing.NextRunUtc.Value.ToLocalTime());
             }
 
             BtnBrowse.IsEnabled = SelectedTag(CmbSource) == "local";
@@ -109,10 +109,9 @@ namespace Yxy.Client.Dialogs
         private void BtnOk_OnClick(object sender, RoutedEventArgs e)
         {
             DateTime nextLocal;
-            if (!DateTime.TryParseExact(TxtNext.Text.Trim(), "yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture, DateTimeStyles.None, out nextLocal)
-                && !DateTime.TryParse(TxtNext.Text.Trim(), out nextLocal))
+            if (!DateTimePick.TryGetDateTime(DtNext, TmNext, out nextLocal))
             {
-                MessageBox.Show(this, "下次执行时间格式：yyyy-MM-dd HH:mm", "校验", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show(this, "请选择下次执行的日期和时间。", "校验", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 

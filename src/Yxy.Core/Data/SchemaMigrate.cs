@@ -28,6 +28,9 @@ namespace Yxy.Core.Data
             Add(db, "settings", "purge_baidu", "INTEGER NOT NULL DEFAULT 0");
             Add(db, "settings", "upload_parallel", "INTEGER NOT NULL DEFAULT 1");
             Add(db, "settings", "log_retain_days", "INTEGER NOT NULL DEFAULT 30");
+            Add(db, "file_tasks", "run_lock_utc", "TEXT");
+            Add(db, "mssql_tasks", "run_lock_utc", "TEXT");
+            Add(db, "mysql_tasks", "run_lock_utc", "TEXT");
         }
 
         private static void Add(SqliteDb db, string table, string column, string decl)

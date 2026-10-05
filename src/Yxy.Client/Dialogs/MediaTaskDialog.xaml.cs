@@ -42,7 +42,9 @@ namespace Yxy.Client.Dialogs
                     CmbMedia.SelectedIndex = 0;
                 }
 
-                TxtNext.Text = DateTime.Now.AddMinutes(2).ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture);
+                DateTimePick.SetDateTime(DtNext, TmNext, DateTime.Now.AddMinutes(2));
+                DateTimePick.SetHmm(TmWinStart, "22:00");
+                DateTimePick.SetHmm(TmWinEnd, "23:00");
             }
         }
 
@@ -55,8 +57,8 @@ namespace Yxy.Client.Dialogs
             }
 
             TxtFolder.Text = string.IsNullOrEmpty(existing.TargetFolder) ? "用心云备份" : existing.TargetFolder;
-            TxtWinStart.Text = existing.WindowStart;
-            TxtWinEnd.Text = existing.WindowEnd;
+            DateTimePick.SetHmm(TmWinStart, existing.WindowStart);
+            DateTimePick.SetHmm(TmWinEnd, existing.WindowEnd);
             TxtWait.Text = existing.WaitMinutes.ToString(CultureInfo.InvariantCulture);
             TxtM.Text = existing.RetainVersions.ToString(CultureInfo.InvariantCulture);
             TxtD.Text = existing.RetainDays.ToString(CultureInfo.InvariantCulture);
@@ -69,7 +71,7 @@ namespace Yxy.Client.Dialogs
             SelectTag(CmbLevel, existing.IsolateLevel.ToString(CultureInfo.InvariantCulture), "2");
             if (existing.NextRunUtc.HasValue)
             {
-                TxtNext.Text = existing.NextRunUtc.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture);
+                DateTimePick.SetDateTime(DtNext, TmNext, existing.NextRunUtc.Value.ToLocalTime());
             }
 
             if (media == null)
@@ -96,10 +98,9 @@ namespace Yxy.Client.Dialogs
         {
             var selected = CmbMedia.SelectedItem as MediaRecordDto;
             DateTime nextLocal;
-            if (!DateTime.TryParseExact(TxtNext.Text.Trim(), "yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture, DateTimeStyles.None, out nextLocal)
-                && !DateTime.TryParse(TxtNext.Text.Trim(), out nextLocal))
+            if (!DateTimePick.TryGetDateTime(DtNext, TmNext, out nextLocal))
             {
-                MessageBox.Show(this, "下次执行时间格式：yyyy-MM-dd HH:mm", "校验");
+                MessageBox.Show(this, "请选择下次执行的日期和时间。", "校验");
                 return;
             }
 
@@ -119,8 +120,8 @@ namespace Yxy.Client.Dialogs
                 Enabled = ChkEnabled.IsChecked == true,
                 SourcePath = (TxtSource.Text ?? "").Trim(),
                 TargetFolder = (TxtFolder.Text ?? "").Trim(),
-                WindowStart = (TxtWinStart.Text ?? "").Trim(),
-                WindowEnd = (TxtWinEnd.Text ?? "").Trim(),
+                WindowStart = DateTimePick.GetHmm(TmWinStart, "22:00"),
+                WindowEnd = DateTimePick.GetHmm(TmWinEnd, "23:00"),
                 WaitMinutes = wait,
                 RetainVersions = m,
                 RetainDays = d,

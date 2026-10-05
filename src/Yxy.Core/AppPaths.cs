@@ -48,6 +48,11 @@ namespace Yxy.Core
             get { return Path.Combine(InstallDirectory, "data"); }
         }
 
+        public static string BaiduUploadDirectory
+        {
+            get { return Path.Combine(DataDirectory, "baidu-upload"); }
+        }
+
         public const string DefaultBakDirectory = @"D:\yongxinyunbackup\bak";
 
         public static string BakDirectory
@@ -82,6 +87,7 @@ namespace Yxy.Core
         {
             Directory.CreateDirectory(DataDirectory);
             Directory.CreateDirectory(BakDirectory);
+            Directory.CreateDirectory(BaiduUploadDirectory);
         }
     }
 }

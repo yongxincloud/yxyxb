@@ -2,6 +2,8 @@ using System;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using MaterialDesignThemes.Wpf;
+using Yxy.Client.Dialogs;
 using System.Windows.Media;
 using Yxy.Contracts.Dto;
 using Yxy.Core;
@@ -66,7 +68,7 @@ namespace Yxy.Client.Pages
         private readonly TextBox _retainFtp;
         private readonly TextBox _retainQiniu;
         private readonly TextBox _retainBaidu;
-        private readonly TextBox _purgeTime;
+        private readonly TimePicker _purgeTime;
 
         public SettingsPage(HostBootstrap boot)
         {
@@ -142,7 +144,7 @@ namespace Yxy.Client.Pages
             _retainFtp = new TextBox { Text = "7" };
             _retainQiniu = new TextBox { Text = "7" };
             _retainBaidu = new TextBox { Text = "7" };
-            _purgeTime = new TextBox { Text = "00:30" };
+            _purgeTime = DateTimePick.TimeBox();
             _nameFileSid = NameCheck("客户标识");
             _nameFileTask = NameCheck("任务名");
             _nameFileTime = NameCheck("时间");
@@ -349,7 +351,7 @@ namespace Yxy.Client.Pages
                 TextWrapping = TextWrapping.Wrap,
                 Margin = new Thickness(0, 0, 0, 8)
             });
-            panel.Children.Add(Label("执行时间 HH:mm"));
+            panel.Children.Add(Label("执行时间"));
             panel.Children.Add(_purgeTime);
             panel.Children.Add(_purgeLocal);
             panel.Children.Add(Label("本机保留天数"));
@@ -450,7 +452,7 @@ namespace Yxy.Client.Pages
             _retainFtp.Text = (s.FtpRetainDays <= 0 ? 7 : s.FtpRetainDays).ToString();
             _retainQiniu.Text = (s.QiniuRetainDays <= 0 ? 7 : s.QiniuRetainDays).ToString();
             _retainBaidu.Text = (s.BaiduRetainDays <= 0 ? 7 : s.BaiduRetainDays).ToString();
-            _purgeTime.Text = string.IsNullOrEmpty(s.PurgeTime) ? "00:30" : s.PurgeTime;
+            DateTimePick.SetHmm(_purgeTime, string.IsNullOrEmpty(s.PurgeTime) ? "00:30" : s.PurgeTime);
             RefreshPreview();
         }
 
@@ -535,7 +537,7 @@ namespace Yxy.Client.Pages
             s.FtpRetainDays = int.TryParse(_retainFtp.Text, out c) && c > 0 ? c : 7;
             s.QiniuRetainDays = int.TryParse(_retainQiniu.Text, out d) && d > 0 ? d : 7;
             s.BaiduRetainDays = int.TryParse(_retainBaidu.Text, out e) && e > 0 ? e : 7;
-            s.PurgeTime = string.IsNullOrWhiteSpace(_purgeTime.Text) ? "00:30" : _purgeTime.Text.Trim();
+            s.PurgeTime = DateTimePick.GetHmm(_purgeTime, "00:30");
             SettingsStore.Save(_boot.Db, s);
             MessageBox.Show(Window.GetWindow(this), "已保存。", "自动删除");
         }

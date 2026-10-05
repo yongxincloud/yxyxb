@@ -48,6 +48,14 @@ namespace Yxy.Core.Tests
         }
 
         [Test]
+        public void EnsureDirectories_CreatesBaiduUpload()
+        {
+            AppPaths.EnsureDirectories();
+            Assert.That(Directory.Exists(AppPaths.BaiduUploadDirectory), Is.True);
+            Assert.That(AppPaths.BaiduUploadDirectory, Is.EqualTo(Path.Combine(_root, "data", "baidu-upload")));
+        }
+
+        [Test]
         public void Sqlite_CreatesSchemaAndKeepsDeviceId()
         {
             AppPaths.EnsureDirectories();

@@ -18,6 +18,11 @@ namespace Yxy.Core.Backup
             var count = 0;
             for (var i = 0; i < due.Count; i++)
             {
+                if (!FileTaskStore.TryClaim(db, due[i].Id, DateTime.UtcNow))
+                {
+                    continue;
+                }
+
                 ExecuteOne(db, due[i]);
                 count++;
             }
@@ -31,6 +36,11 @@ namespace Yxy.Core.Backup
             if (task == null)
             {
                 return "任务不存在。";
+            }
+
+            if (!FileTaskStore.TryClaim(db, task.Id, DateTime.UtcNow))
+            {
+                return "该任务正在执行，请稍候。";
             }
 
             ExecuteOne(db, task, "manual");

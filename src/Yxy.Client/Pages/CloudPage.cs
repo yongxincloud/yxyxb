@@ -31,7 +31,8 @@ namespace Yxy.Client.Pages
         private readonly TextBox _parallel;
         private readonly TextBlock _masked;
         private readonly TextBlock _baiduStatus;
-        private readonly Button _authBtn;
+        private readonly Button _authQrBtn;
+        private readonly Button _authPwdBtn;
         private string _provider = CloudProviders.Qiniu;
         private int _authBusy;
 
@@ -80,8 +81,10 @@ namespace Yxy.Client.Pages
             _zone.Items.Add(new ComboBoxItem { Content = "东南亚 as0", Tag = "as0" });
             _masked = new TextBlock { Margin = new Thickness(0, 4, 0, 8) };
             _baiduStatus = new TextBlock { Margin = new Thickness(0, 0, 0, 8), TextWrapping = TextWrapping.Wrap };
-            _authBtn = new Button { Content = "授权百度", Width = 96, Height = 28, HorizontalAlignment = HorizontalAlignment.Left };
-            _authBtn.Click += Auth_OnClick;
+            _authQrBtn = new Button { Content = "扫码授权", Width = 96, Height = 28, Margin = new Thickness(0, 0, 8, 0) };
+            _authPwdBtn = new Button { Content = "帐号密码", Width = 96, Height = 28 };
+            _authQrBtn.Click += delegate { StartAuth(true); };
+            _authPwdBtn.Click += delegate { StartAuth(false); };
             _qiniuPanel = new StackPanel();
             _qiniuPanel.Children.Add(Label("空间名"));
             _qiniuPanel.Children.Add(_bucket);
@@ -94,7 +97,10 @@ namespace Yxy.Client.Pages
             _qiniuPanel.Children.Add(_zone);
             _baiduPanel = new StackPanel();
             _baiduPanel.Children.Add(_baiduStatus);
-            _baiduPanel.Children.Add(_authBtn);
+            var authBar = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 8) };
+            authBar.Children.Add(_authQrBtn);
+            authBar.Children.Add(_authPwdBtn);
+            _baiduPanel.Children.Add(authBar);
             _form.Children.Add(_enabled);
             _form.Children.Add(_qiniuPanel);
             _form.Children.Add(_baiduPanel);
@@ -167,7 +173,7 @@ namespace Yxy.Client.Pages
                 return;
             }
 
-            _hint.Text = "点授权后，文件进入你自己的网盘「我的应用数据 / 用心云备份」。控制台回调须与本机一致；改完约 1 小时生效。等待时窗口不应卡住。";
+            _hint.Text = "扫码或帐号密码二选一。点对应按钮后打开授权窗，成功会自动关闭。文件进入「我的应用数据 / 用心云备份」。控制台回调须与本机一致；改完约 1 小时生效。";
             ShowBaiduStatus(CloudAccountStore.Get(_boot.Db, CloudProviders.Baidu));
         }
 
@@ -176,14 +182,12 @@ namespace Yxy.Client.Pages
             _enabled.IsChecked = acc.Enabled;
             if (string.IsNullOrEmpty(acc.RefreshToken))
             {
-                _baiduStatus.Text = "未授权";
-                _authBtn.Content = "授权百度";
+                _baiduStatus.Text = "未授权。可扫码或帐号密码。";
             }
             else
             {
                 var name = string.IsNullOrEmpty(acc.DisplayName) ? "已授权" : CloudMask.Mask(acc.DisplayName);
-                _baiduStatus.Text = "已授权账号 " + name;
-                _authBtn.Content = "重新授权";
+                _baiduStatus.Text = "已授权账号 " + name + "。可再扫码或帐号密码重新授权。";
             }
         }
 
@@ -286,7 +290,7 @@ namespace Yxy.Client.Pages
             }
         }
 
-        private void Auth_OnClick(object sender, RoutedEventArgs e)
+        private void StartAuth(bool useQrcode)
         {
             if (Interlocked.CompareExchange(ref _authBusy, 1, 0) != 0)
             {
@@ -294,8 +298,7 @@ namespace Yxy.Client.Pages
                 return;
             }
 
-            _authBtn.IsEnabled = false;
-            _authBtn.Content = "等待授权…";
+            SetAuthEnabled(false);
             var jsonPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "BaiduApp.json");
             ThreadPool.QueueUserWorkItem(delegate
             {
@@ -304,7 +307,7 @@ namespace Yxy.Client.Pages
                 try
                 {
                     var cfg = BaiduAppConfig.Load(jsonPath);
-                    tokens = BaiduOAuth.CompleteInBrowser(cfg, 180000, null);
+                    tokens = BaiduOAuth.CompleteInBrowser(cfg, 180000, null, useQrcode);
                 }
                 catch (Exception ex)
                 {
@@ -340,12 +343,20 @@ namespace Yxy.Client.Pages
                     finally
                     {
                         Interlocked.Exchange(ref _authBusy, 0);
-                        _authBtn.IsEnabled = true;
+                        SetAuthEnabled(true);
                         var acc = CloudAccountStore.Get(_boot.Db, CloudProviders.Baidu);
                         ShowBaiduStatus(acc);
                     }
                 }));
             });
+        }
+
+        private void SetAuthEnabled(bool enabled)
+        {
+            _authQrBtn.IsEnabled = enabled;
+            _authPwdBtn.IsEnabled = enabled;
+            _authQrBtn.Content = enabled ? "扫码授权" : "等待授权…";
+            _authPwdBtn.Content = enabled ? "帐号密码" : "等待授权…";
         }
 
         private CloudAccountDto ReadQiniuForm(CloudAccountDto old)

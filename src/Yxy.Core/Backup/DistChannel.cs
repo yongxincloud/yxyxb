@@ -65,6 +65,12 @@ namespace Yxy.Core.Backup
                 var use = string.IsNullOrWhiteSpace(provider) ? CloudProviders.Qiniu : provider;
                 CloudRuntime.Require().Upload(db, use, zipPath, key);
                 log.Append(" 云上传成功 ").Append(key).Append("。");
+                if (string.Equals(use, CloudProviders.Baidu, StringComparison.OrdinalIgnoreCase))
+                {
+                    log.Append(" 分片过程见「日志 → 百度分片」。目录：")
+                        .Append(AppPaths.BaiduUploadDirectory)
+                        .Append("。");
+                }
                 return true;
             }
             catch (Exception ex)

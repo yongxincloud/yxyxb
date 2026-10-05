@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using Yxy.Baidu;
 using Yxy.Contracts.Cloud;
 using Yxy.Contracts.Dto;
@@ -29,7 +30,28 @@ namespace Yxy.Cloud
             var uploadKbps = CloudSpeed.UploadKbps(settings.UploadMinKbps, settings.UploadMaxKbps);
             storage.SetSpeed(uploadKbps, uploadKbps);
             storage.SetParallel(settings.UploadParallel);
-            storage.Upload(localPath, remoteKey);
+            var baidu = storage as BaiduStorage;
+            if (baidu != null)
+            {
+                baidu.OnLog = delegate(string line)
+                {
+                    LogStore.Add(db, "baidu", "auto",
+                        (line ?? "").IndexOf("失败", StringComparison.Ordinal) >= 0 ? "error" : "ok",
+                        Path.GetFileName(localPath), line);
+                };
+            }
+
+            try
+            {
+                storage.Upload(localPath, remoteKey);
+            }
+            finally
+            {
+                if (baidu != null)
+                {
+                    baidu.OnLog = null;
+                }
+            }
         }
 
         public int DeleteExpired(SqliteDb db, string provider, string prefix, DateTime olderThanUtc, Action<string> onDeleted)

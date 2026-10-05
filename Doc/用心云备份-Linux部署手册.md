@@ -138,7 +138,13 @@ sudo systemctl reload nginx
 
 有域名和证书时，把 `server_name _` 改成域名，再用 certbot 或已有证书增加 443。证书配好后，客户端和浏览器都改用 `https://域名`。更新网页时覆盖 `/opt/yxy/web`，不要删掉 Nginx 配置。
 
-客户端要覆盖 Win7 / 2008 R2（已打 TLS 1.2 补丁）到 2022。**只开 GCM 时，2012 / 2012 R2 登不了官网。** 在 `listen 443 ssl` 的 server 里加上（完整示例见 `deploy/linux/yxy.nginx.conf`）：
+### 正式官网注意项（backup.yongxincloud.cn）
+
+生产 443 **已在服务器上手改并 reload**。以后重装 Nginx、换证书、改 SLB 时必须按下面保留，不要缩回「只开 GCM」。
+
+客户端要覆盖 Win7 / 2008 R2（已打 TLS 1.2 补丁）到 2022。2012 / 2012 R2 的 Schannel **没有 ECDHE-GCM**，只开 GCM 时登录会在握手失败（本机 Win10 正常、服务器 2012 R2 不行）。完整示例：`deploy/linux/yxy.nginx.conf`。
+
+在 `listen 443 ssl` 的 server 里保留：
 
 ```nginx
 ssl_protocols TLSv1.2 TLSv1.3;
@@ -146,9 +152,17 @@ ssl_prefer_server_ciphers on;
 ssl_ciphers ECDHE-RSA-AES256-GCM-SHA384:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-SHA384:ECDHE-RSA-AES128-SHA256:ECDHE-RSA-AES256-SHA:ECDHE-RSA-AES128-SHA:AES256-SHA256:AES128-SHA256:AES256-SHA:AES128-SHA;
 ```
 
-改完：`sudo nginx -t` 然后 `sudo systemctl reload nginx`。Win10/2016 及更新仍会优先 GCM；2012 R2 用 `ECDHE-RSA-AES256-SHA384`；更老的 2012 / 已补丁 Win7·2008 R2 用后面的 SHA256/SHA。不要开 TLS 1.0/1.1。
+改完：`sudo nginx -t` 然后 `sudo systemctl reload nginx`。
 
-若 443 在云负载均衡上终结，到控制台 SSL 策略加入同等套件，不要只留 `ECDHE-RSA-AES*-GCM-*`。
+| 客户系统 | 实际会用的套件 |
+| --- | --- |
+| Win10 / 2016 / 2019 / 2022 | 前面的 GCM |
+| 2012 R2 | `ECDHE-RSA-AES256-SHA384`（CBC） |
+| 2012 / 已补丁 Win7·2008 R2 | 后面的 SHA256 / SHA |
+
+不要开 TLS 1.0 / 1.1。证书链保持完整（含中间证）。客户端强制 TLS 1.2，拷到 2012 R2 时必须带 `Yxy.Client.exe.config`。
+
+若 443 在云负载均衡上终结：到控制台 SSL 策略加入同等套件，不要只留 `ECDHE-RSA-AES*-GCM-*`。只改 Nginx、SLB 仍只开 GCM 时，2012 R2 照样登不上。
 
 ## 6. 上线后马上做
 
@@ -176,7 +190,7 @@ http://download.yongxinyun.com/yongxinyunbackup/yongxinyunbackup.zip
 
 可以登录、注册、看订阅和订单，也可以在厂商后台配置发信。密码和登录令牌在网络上是明文，只适合内网试用。
 
-支付宝电脑网站支付和退款要求已备案的域名和 HTTPS。正式环境把 `appsettings.Local.json` 放在接口目录，不要提交到版本库。通知地址是 `https://域名/api/payments/alipay/notify`。没有这份配置时，支付宝下单会提示先配置异步通知地址。购买页不提供微信支付。
+支付宝、百度应用的字段和开放平台对齐项见《用心云备份-配置手册》。没有 `appsettings.Local.json` 时购买页无法真实支付。购买页不提供微信支付。
 
 ## 9. 检查
 

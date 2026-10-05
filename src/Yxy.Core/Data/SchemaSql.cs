@@ -54,8 +54,9 @@ CREATE TABLE IF NOT EXISTS file_tasks (
     cloud_provider TEXT,
     do_delete_now INTEGER NOT NULL DEFAULT 0,
     do_email INTEGER NOT NULL DEFAULT 0,
-    post_program TEXT,
-    created_utc TEXT NOT NULL
+            post_program TEXT,
+            run_lock_utc TEXT,
+            created_utc TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS mssql_instances (
@@ -91,6 +92,7 @@ CREATE TABLE IF NOT EXISTS mssql_tasks (
     cloud_provider TEXT,
     do_delete_now INTEGER NOT NULL DEFAULT 0,
     do_email INTEGER NOT NULL DEFAULT 0,
+    run_lock_utc TEXT,
     created_utc TEXT NOT NULL
 );
 
@@ -126,6 +128,7 @@ CREATE TABLE IF NOT EXISTS mysql_tasks (
     cloud_provider TEXT,
     do_delete_now INTEGER NOT NULL DEFAULT 0,
     do_email INTEGER NOT NULL DEFAULT 0,
+    run_lock_utc TEXT,
     created_utc TEXT NOT NULL
 );
 

@@ -173,6 +173,33 @@ namespace Yxy.Core.Tests
         }
 
         [Test]
+        public void LogStore_DeleteByType_DoesNotTouchOtherTypes()
+        {
+            var file = Path.Combine(Path.GetTempPath(), "yxy-log-clr-" + Guid.NewGuid().ToString("N") + ".db");
+            try
+            {
+                using (var db = new SqliteDb(file))
+                {
+                    LogStore.Add(db, "file", "auto", "ok", "t1", "a");
+                    LogStore.Add(db, "mssql", "auto", "ok", "t2", "b");
+                    var n = LogStore.DeleteByType(db, "file");
+                    Assert.That(n, Is.EqualTo(1));
+                    Assert.That(LogStore.List(db, "file", 10).Count, Is.EqualTo(0));
+                    Assert.That(LogStore.List(db, "mssql", 10).Count, Is.EqualTo(1));
+                    Assert.That(LogStore.DeleteByType(db, ""), Is.EqualTo(0));
+                    Assert.That(LogStore.List(db, "mssql", 10).Count, Is.EqualTo(1));
+                }
+            }
+            finally
+            {
+                if (File.Exists(file))
+                {
+                    File.Delete(file);
+                }
+            }
+        }
+
+        [Test]
         public void Settings_KeepsUploadParallelAndLogRetainDays()
         {
             var file = Path.Combine(Path.GetTempPath(), "yxy-set-" + Guid.NewGuid().ToString("N") + ".db");

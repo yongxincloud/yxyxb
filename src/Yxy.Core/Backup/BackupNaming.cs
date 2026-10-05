@@ -121,7 +121,7 @@ namespace Yxy.Core.Backup
                 bits.Add(LongPath.SafeName(taskName));
             }
 
-            if (use.UseFileDb && !string.IsNullOrEmpty(dbName))
+            if (!string.IsNullOrEmpty(dbName))
             {
                 bits.Add(LongPath.SafeName(dbName));
             }

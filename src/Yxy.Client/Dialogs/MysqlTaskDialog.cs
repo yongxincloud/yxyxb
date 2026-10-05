@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Controls;
+using MaterialDesignThemes.Wpf;
 using Yxy.Contracts.Cloud;
 using Yxy.Contracts.Dto;
 using Yxy.Core.Store;
@@ -19,6 +20,8 @@ namespace Yxy.Client.Dialogs
         private readonly TextBox _dbs = new TextBox { Margin = new Thickness(0, 0, 0, 8) };
         private readonly ComboBox _cycle = new ComboBox { Margin = new Thickness(0, 0, 0, 8) };
         private readonly TextBox _interval = new TextBox { Text = "1", Margin = new Thickness(0, 0, 0, 8) };
+        private readonly DatePicker _nextDate = DateTimePick.DateBox();
+        private readonly TimePicker _nextTime = DateTimePick.TimeBox();
         private readonly CheckBox _enabled = new CheckBox { Content = "启用", IsChecked = true, Margin = new Thickness(0, 0, 0, 8) };
         private readonly CheckBox _network = new CheckBox { Content = "传到网络路径", Margin = new Thickness(0, 0, 12, 8) };
         private readonly CheckBox _ftp = new CheckBox { Content = "传到 FTP", Margin = new Thickness(0, 0, 12, 8) };
@@ -37,7 +40,7 @@ namespace Yxy.Client.Dialogs
         {
             Title = existing == null ? "添加 MySQL 任务" : "修改 MySQL 任务";
             Width = 460;
-            Height = 580;
+            Height = 640;
             WindowStartupLocation = WindowStartupLocation.CenterOwner;
             ResizeMode = ResizeMode.NoResize;
             _instances = instances ?? new List<MysqlInstanceDto>();
@@ -64,15 +67,21 @@ namespace Yxy.Client.Dialogs
                 Select(_scope, existing.DbScope);
                 Select(_cycle, existing.CycleKind);
                 Select(_cmbCloud, existing.CloudProvider);
+                DateTimePick.SetDateTime(_nextDate, _nextTime,
+                    existing.NextRunUtc.HasValue ? existing.NextRunUtc.Value.ToLocalTime() : DateTime.Now.AddMinutes(2));
                 for (var i = 0; i < _instance.Items.Count; i++)
                 {
                     var inst = (MysqlInstanceDto)_instance.Items[i];
                     if (inst.Id == existing.InstanceId) _instance.SelectedIndex = i;
                 }
             }
-            else if (_instance.Items.Count > 0)
+            else
             {
-                _instance.SelectedIndex = 0;
+                DateTimePick.SetDateTime(_nextDate, _nextTime, DateTime.Now.AddMinutes(2));
+                if (_instance.Items.Count > 0)
+                {
+                    _instance.SelectedIndex = 0;
+                }
             }
 
             var panel = new StackPanel { Margin = new Thickness(16) };
@@ -88,6 +97,8 @@ namespace Yxy.Client.Dialogs
             panel.Children.Add(_cycle);
             panel.Children.Add(Label("间隔"));
             panel.Children.Add(_interval);
+            panel.Children.Add(Label("下次执行"));
+            panel.Children.Add(DateTimePick.Combine(_nextDate, _nextTime));
             panel.Children.Add(_enabled);
             var flags = new WrapPanel();
             flags.Children.Add(_network);
@@ -111,6 +122,13 @@ namespace Yxy.Client.Dialogs
                 return;
             }
 
+            DateTime nextLocal;
+            if (!DateTimePick.TryGetDateTime(_nextDate, _nextTime, out nextLocal))
+            {
+                MessageBox.Show(this, "请选择下次执行的日期和时间。", "校验");
+                return;
+            }
+
             var inst = _instance.SelectedItem as MysqlInstanceDto;
             var task = new MysqlTaskDto
             {
@@ -123,7 +141,7 @@ namespace Yxy.Client.Dialogs
                 RetryMinutes = 5,
                 CycleKind = TagOf(_cycle, "day"),
                 CycleInterval = interval,
-                NextRunUtc = DateTime.UtcNow,
+                NextRunUtc = DateTime.SpecifyKind(nextLocal, DateTimeKind.Local).ToUniversalTime(),
                 DoNetwork = _network.IsChecked == true,
                 DoFtp = _ftp.IsChecked == true,
                 DoCloud = _ready.Count > 0 && _cloud.IsChecked == true,

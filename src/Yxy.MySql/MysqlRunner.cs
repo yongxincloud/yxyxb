@@ -19,6 +19,11 @@ namespace Yxy.MySql
             var n = 0;
             for (var i = 0; i < due.Count; i++)
             {
+                if (!MysqlTaskStore.TryClaim(db, due[i].Id, DateTime.UtcNow))
+                {
+                    continue;
+                }
+
                 ExecuteOne(db, due[i], "auto");
                 n++;
             }
@@ -32,6 +37,11 @@ namespace Yxy.MySql
             if (task == null)
             {
                 return "任务不存在。";
+            }
+
+            if (!MysqlTaskStore.TryClaim(db, task.Id, DateTime.UtcNow))
+            {
+                return "该任务正在执行，请稍候。";
             }
 
             ExecuteOne(db, task, "manual");
@@ -122,29 +132,11 @@ namespace Yxy.MySql
 
         private static IList<string> ResolveDatabases(MysqlInstanceDto instance, MysqlTaskDto task)
         {
-            var all = MysqlConnect.ListUserDatabases(instance);
-            if (task.DbScope != "selected")
-            {
-                return all;
-            }
-
-            var picked = new List<string>();
-            var parts = (task.SelectedDbs ?? "").Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries);
-            for (var i = 0; i < parts.Length; i++)
-            {
-                var name = parts[i].Trim();
-                if (MysqlConnect.IsSystemDb(name)) continue;
-                for (var j = 0; j < all.Count; j++)
-                {
-                    if (string.Equals(all[j], name, StringComparison.OrdinalIgnoreCase))
-                    {
-                        picked.Add(all[j]);
-                        break;
-                    }
-                }
-            }
-
-            return picked;
+            return DatabaseScope.Pick(
+                MysqlConnect.ListUserDatabases(instance),
+                task.DbScope,
+                task.SelectedDbs,
+                MysqlConnect.IsSystemDb);
         }
 
         private static string PrepareWorkDir(string bakRoot)

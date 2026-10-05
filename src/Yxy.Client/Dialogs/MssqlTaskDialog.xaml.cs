@@ -15,6 +15,7 @@ namespace Yxy.Client.Dialogs
         private readonly long _editId;
         private readonly IList<MssqlInstanceDto> _instances;
         private readonly IList<string> _ready;
+        private bool _loading;
 
         public MssqlTaskDto Task { get; private set; }
 
@@ -48,40 +49,48 @@ namespace Yxy.Client.Dialogs
                     CmbInstance.SelectedIndex = 0;
                 }
 
-                TxtNext.Text = DateTime.Now.AddMinutes(2).ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture);
+                DateTimePick.SetDateTime(DtNext, TmNext, DateTime.Now.AddMinutes(2));
                 ReloadDbs();
             }
         }
 
         private void Fill(MssqlTaskDto existing)
         {
-            TxtName.Text = existing.Name;
-            TxtRetry.Text = existing.RetryMinutes.ToString(CultureInfo.InvariantCulture);
-            TxtInterval.Text = existing.CycleInterval.ToString(CultureInfo.InvariantCulture);
-            ChkEnabled.IsChecked = existing.Enabled;
-            ChkNetwork.IsChecked = existing.DoNetwork;
-            ChkFtp.IsChecked = existing.DoFtp;
-            ChkCloud.IsChecked = existing.DoCloud && _ready.Count > 0;
-            ChkDelete.IsChecked = existing.DoDeleteNow;
-            ChkEmail.IsChecked = existing.DoEmail;
-            SelectTag(CmbCycle, existing.CycleKind, "day");
-            SelectTag(CmbScope, existing.DbScope, "user");
-            SelectTag(CmbCloud, existing.CloudProvider, _ready.Count > 0 ? _ready[0] : "qiniu");
+            _loading = true;
+            try
+            {
+                TxtName.Text = existing.Name;
+                TxtRetry.Text = existing.RetryMinutes.ToString(CultureInfo.InvariantCulture);
+                TxtInterval.Text = existing.CycleInterval.ToString(CultureInfo.InvariantCulture);
+                ChkEnabled.IsChecked = existing.Enabled;
+                ChkNetwork.IsChecked = existing.DoNetwork;
+                ChkFtp.IsChecked = existing.DoFtp;
+                ChkCloud.IsChecked = existing.DoCloud && _ready.Count > 0;
+                ChkDelete.IsChecked = existing.DoDeleteNow;
+                ChkEmail.IsChecked = existing.DoEmail;
+                SelectTag(CmbCycle, existing.CycleKind, "day");
+                SelectTag(CmbScope, existing.DbScope, "user");
+                SelectTag(CmbCloud, existing.CloudProvider, _ready.Count > 0 ? _ready[0] : "qiniu");
             if (existing.NextRunUtc.HasValue)
             {
-                TxtNext.Text = existing.NextRunUtc.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture);
+                DateTimePick.SetDateTime(DtNext, TmNext, existing.NextRunUtc.Value.ToLocalTime());
             }
 
-            if (_instances != null)
-            {
-                for (var i = 0; i < _instances.Count; i++)
+                if (_instances != null)
                 {
-                    if (_instances[i].Id == existing.InstanceId)
+                    for (var i = 0; i < _instances.Count; i++)
                     {
-                        CmbInstance.SelectedIndex = i;
-                        break;
+                        if (_instances[i].Id == existing.InstanceId)
+                        {
+                            CmbInstance.SelectedIndex = i;
+                            break;
+                        }
                     }
                 }
+            }
+            finally
+            {
+                _loading = false;
             }
 
             ReloadDbs();
@@ -90,7 +99,7 @@ namespace Yxy.Client.Dialogs
 
         private void CmbInstance_OnChanged(object sender, SelectionChangedEventArgs e)
         {
-            if (LstDbs == null)
+            if (_loading || LstDbs == null)
             {
                 return;
             }
@@ -165,10 +174,9 @@ namespace Yxy.Client.Dialogs
         {
             var inst = CmbInstance.SelectedItem as MssqlInstanceDto;
             DateTime nextLocal;
-            if (!DateTime.TryParseExact(TxtNext.Text.Trim(), "yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture, DateTimeStyles.None, out nextLocal)
-                && !DateTime.TryParse(TxtNext.Text.Trim(), out nextLocal))
+            if (!DateTimePick.TryGetDateTime(DtNext, TmNext, out nextLocal))
             {
-                MessageBox.Show(this, "下次执行时间格式：yyyy-MM-dd HH:mm", "校验");
+                MessageBox.Show(this, "请选择下次执行的日期和时间。", "校验");
                 return;
             }
 

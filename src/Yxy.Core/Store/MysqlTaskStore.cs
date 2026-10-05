@@ -25,8 +25,9 @@ namespace Yxy.Core.Store
         public static IList<MysqlTaskDto> GetDue(SqliteDb db, DateTime utcNow)
         {
             var table = db.Query(
-                "SELECT * FROM mysql_tasks WHERE enabled=1 AND next_run_utc IS NOT NULL AND next_run_utc<=@n ORDER BY sort_order, id",
-                new SQLiteParameter("@n", utcNow.ToString("o")));
+                "SELECT * FROM mysql_tasks WHERE enabled=1 AND next_run_utc IS NOT NULL AND next_run_utc<=@n" + TaskRunLock.DueLockSql + " ORDER BY sort_order, id",
+                new SQLiteParameter("@n", utcNow.ToString("o")),
+                TaskRunLock.StaleParam(utcNow));
             var list = new List<MysqlTaskDto>();
             foreach (DataRow row in table.Rows)
             {
@@ -88,6 +89,11 @@ namespace Yxy.Core.Store
             db.Execute("DELETE FROM mysql_tasks WHERE id=@id", new SQLiteParameter("@id", id));
         }
 
+        public static bool TryClaim(SqliteDb db, long id, DateTime utcNow)
+        {
+            return TaskRunLock.TryClaim(db, "mysql_tasks", id, utcNow);
+        }
+
         public static void MarkResult(SqliteDb db, MysqlTaskDto task, bool ok, DateTime utcNow)
         {
             DateTime? next = null;
@@ -107,7 +113,7 @@ namespace Yxy.Core.Store
             }
 
             db.Execute(
-                "UPDATE mysql_tasks SET last_run_utc=@lr, next_run_utc=@nr, run_count=run_count+1, enabled=@en WHERE id=@id",
+                "UPDATE mysql_tasks SET last_run_utc=@lr, next_run_utc=@nr, run_count=run_count+1, enabled=@en, run_lock_utc=NULL WHERE id=@id",
                 new SQLiteParameter("@lr", utcNow.ToString("o")),
                 new SQLiteParameter("@nr", next.HasValue ? (object)next.Value.ToString("o") : DBNull.Value),
                 new SQLiteParameter("@en", enabled ? 1 : 0),

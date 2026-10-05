@@ -1,6 +1,7 @@
 <Window x:Class="Yxy.Client.Dialogs.MssqlTaskDialog"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:md="clr-namespace:MaterialDesignThemes.Wpf;assembly=MaterialDesignThemes.Wpf"
         Title="MSSQL 库任务"
         Style="{StaticResource YxyDialog}"
         Width="660"
@@ -35,7 +36,9 @@
                     <TextBlock Text="重计时(分)" Grid.Row="3" VerticalAlignment="Center"/>
                     <TextBox x:Name="TxtRetry" Grid.Row="3" Grid.Column="1" Text="5" Margin="0,4"/>
                     <TextBlock Text="数据库" Grid.Row="4" VerticalAlignment="Top" Margin="0,8,0,0"/>
-                    <ListBox x:Name="LstDbs" Grid.Row="4" Grid.Column="1" Margin="0,4" MinHeight="160"/>
+                    <ScrollViewer Grid.Row="4" Grid.Column="1" Margin="0,4" MinHeight="160" VerticalScrollBarVisibility="Auto">
+                        <ItemsControl x:Name="LstDbs"/>
+                    </ScrollViewer>
                     <CheckBox x:Name="ChkEnabled" Grid.Row="5" Grid.Column="1" Content="启用" IsChecked="True" VerticalAlignment="Center"/>
                 </Grid>
             </TabItem>
@@ -60,7 +63,10 @@
                     <TextBlock Text="间隔" Grid.Row="1" VerticalAlignment="Center"/>
                     <TextBox x:Name="TxtInterval" Grid.Row="1" Grid.Column="1" Text="1" Margin="0,4"/>
                     <TextBlock Text="下次执行" Grid.Row="2" VerticalAlignment="Center"/>
-                    <TextBox x:Name="TxtNext" Grid.Row="2" Grid.Column="1" Margin="0,4"/>
+                    <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                        <DatePicker x:Name="DtNext" Width="180" Margin="0,4,8,4" FirstDayOfWeek="Monday" Language="zh-CN"/>
+                        <md:TimePicker x:Name="TmNext" Width="140" Is24Hours="True" WithSeconds="False" Margin="0,4"/>
+                    </StackPanel>
                 </Grid>
             </TabItem>
             <TabItem Header="任务设置">
