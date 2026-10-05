@@ -16,6 +16,8 @@ namespace Yxy.Contracts.Dto
 
         public int UploadMaxKbps { get; set; }
 
+        public int UploadParallel { get; set; }
+
         public string ZipPassword { get; set; }
 
         public bool StartWithWindows { get; set; }
@@ -51,6 +53,8 @@ namespace Yxy.Contracts.Dto
         public string PurgeTime { get; set; }
 
         public DateTime? LastPurgeUtc { get; set; }
+
+        public int LogRetainDays { get; set; }
     }
 
     public sealed class UncSettingsDto

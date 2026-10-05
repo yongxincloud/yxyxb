@@ -21,7 +21,9 @@ namespace Yxy.Core.Store
                     ZipLevel = 5,
                     Theme = "light",
                     LocalRetainDays = 7,
-                    PurgeTime = "00:30"
+                    PurgeTime = "00:30",
+                    UploadParallel = 1,
+                    LogRetainDays = 30
                 };
             }
 
@@ -34,6 +36,7 @@ namespace Yxy.Core.Store
                 ZipLevel = GetInt(row, "zip_level", 5),
                 UploadMinKbps = GetInt(row, "upload_min_kbps", 0),
                 UploadMaxKbps = GetInt(row, "upload_max_kbps", 0),
+                UploadParallel = ClampParallel(GetInt(row, "upload_parallel", 1)),
                 ZipPassword = SecretBox.Unprotect(GetStr(row, "zip_password_protected")),
                 StartWithWindows = GetInt(row, "start_with_windows", 0) != 0,
                 CloseToTray = GetInt(row, "close_to_tray", 0) != 0,
@@ -51,7 +54,8 @@ namespace Yxy.Core.Store
                 PurgeQiniu = GetInt(row, "purge_qiniu", 0) != 0,
                 PurgeBaidu = GetInt(row, "purge_baidu", 0) != 0,
                 PurgeTime = GetStr(row, "purge_time") ?? "00:30",
-                LastPurgeUtc = ParseTime(GetStr(row, "last_purge_utc"))
+                LastPurgeUtc = ParseTime(GetStr(row, "last_purge_utc")),
+                LogRetainDays = ClampLogDays(GetInt(row, "log_retain_days", 30))
             };
         }
 
@@ -63,16 +67,17 @@ namespace Yxy.Core.Store
             }
 
             db.Execute(
-                @"UPDATE settings SET bak_path=@bak, software_id=@sid, name_flags=@nf, zip_level=@zl, upload_min_kbps=@umin, upload_max_kbps=@umax, zip_password_protected=@zp,
+                @"UPDATE settings SET bak_path=@bak, software_id=@sid, name_flags=@nf, zip_level=@zl, upload_min_kbps=@umin, upload_max_kbps=@umax, upload_parallel=@upar, zip_password_protected=@zp,
                   start_with_windows=@sw, close_to_tray=@ct, theme=@theme, lock_password_protected=@lp, engine_advanced=@ea,
                   local_retain_days=@rd, network_retain_days=@nrd, ftp_retain_days=@frd, qiniu_retain_days=@qrd, baidu_retain_days=@brd,
-                  purge_local=@pl, purge_network=@pn, purge_ftp=@pf, purge_qiniu=@pq, purge_baidu=@pb, purge_time=@pt, updated_utc=@utc WHERE id=1",
+                  purge_local=@pl, purge_network=@pn, purge_ftp=@pf, purge_qiniu=@pq, purge_baidu=@pb, purge_time=@pt, log_retain_days=@lrd, updated_utc=@utc WHERE id=1",
                 new SQLiteParameter("@bak", settings.BakPath ?? AppPaths.BakDirectory),
                 new SQLiteParameter("@sid", string.IsNullOrEmpty(settings.SoftwareId) ? AppPaths.ProductName : settings.SoftwareId),
                 new SQLiteParameter("@nf", settings.NameFlags == 0 ? NameParts.DefaultFlags : settings.NameFlags),
                 new SQLiteParameter("@zl", settings.ZipLevel),
                 new SQLiteParameter("@umin", settings.UploadMinKbps < 0 ? 0 : settings.UploadMinKbps),
                 new SQLiteParameter("@umax", settings.UploadMaxKbps < 0 ? 0 : settings.UploadMaxKbps),
+                new SQLiteParameter("@upar", ClampParallel(settings.UploadParallel)),
                 new SQLiteParameter("@zp", (object)SecretBox.Protect(settings.ZipPassword) ?? DBNull.Value),
                 new SQLiteParameter("@sw", settings.StartWithWindows ? 1 : 0),
                 new SQLiteParameter("@ct", settings.CloseToTray ? 1 : 0),
@@ -90,6 +95,7 @@ namespace Yxy.Core.Store
                 new SQLiteParameter("@pq", settings.PurgeQiniu ? 1 : 0),
                 new SQLiteParameter("@pb", settings.PurgeBaidu ? 1 : 0),
                 new SQLiteParameter("@pt", string.IsNullOrEmpty(settings.PurgeTime) ? "00:30" : settings.PurgeTime),
+                new SQLiteParameter("@lrd", ClampLogDays(settings.LogRetainDays)),
                 new SQLiteParameter("@utc", SqliteDb.UtcNowText()));
         }
 
@@ -127,6 +133,26 @@ namespace Yxy.Core.Store
                     new SQLiteParameter("@f", (object)json ?? DBNull.Value),
                     new SQLiteParameter("@k", kind));
             }
+        }
+
+        private static int ClampParallel(int v)
+        {
+            if (v < 1)
+            {
+                return 1;
+            }
+
+            if (v > 2)
+            {
+                return 2;
+            }
+
+            return v;
+        }
+
+        private static int ClampLogDays(int v)
+        {
+            return v < 1 ? 1 : v;
         }
 
         private static int GetInt(System.Data.DataRow row, string col, int fallback)

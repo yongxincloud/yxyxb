@@ -138,5 +138,39 @@ namespace Yxy.Core.Tests
             acc.SecretKey = "sk";
             Assert.That(acc.IsReady, Is.True);
         }
+
+        [Test]
+        public void Settings_KeepsUploadParallelAndLogRetainDays()
+        {
+            var file = Path.Combine(Path.GetTempPath(), "yxy-set-" + Guid.NewGuid().ToString("N") + ".db");
+            try
+            {
+                using (var db = new SqliteDb(file))
+                {
+                    var s = SettingsStore.Get(db);
+                    Assert.That(s.UploadParallel, Is.EqualTo(1));
+                    Assert.That(s.LogRetainDays, Is.EqualTo(30));
+                    s.UploadParallel = 2;
+                    s.LogRetainDays = 7;
+                    SettingsStore.Save(db, s);
+                    var loaded = SettingsStore.Get(db);
+                    Assert.That(loaded.UploadParallel, Is.EqualTo(2));
+                    Assert.That(loaded.LogRetainDays, Is.EqualTo(7));
+                    loaded.UploadParallel = 9;
+                    loaded.LogRetainDays = 0;
+                    SettingsStore.Save(db, loaded);
+                    var clamped = SettingsStore.Get(db);
+                    Assert.That(clamped.UploadParallel, Is.EqualTo(2));
+                    Assert.That(clamped.LogRetainDays, Is.EqualTo(1));
+                }
+            }
+            finally
+            {
+                if (File.Exists(file))
+                {
+                    File.Delete(file);
+                }
+            }
+        }
     }
 }
