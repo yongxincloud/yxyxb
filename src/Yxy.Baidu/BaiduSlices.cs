@@ -8,7 +8,7 @@ namespace Yxy.Baidu
 {
     public static class BaiduSlices
     {
-        public const int BlockSize = 4 * 1024 * 1024;
+        public const int BlockSize = 1 * 1024 * 1024;
 
         public static IList<string> Md5HexList(string localPath)
         {

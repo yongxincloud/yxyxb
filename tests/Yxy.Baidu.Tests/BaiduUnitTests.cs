@@ -10,19 +10,58 @@ namespace Yxy.Baidu.Tests
     public sealed class BaiduUnitTests
     {
         [Test]
-        public void Slices_FourMbBoundaries()
+        public void Slices_OneMbBoundaries()
         {
             var path = Path.Combine(Path.GetTempPath(), "yxy-slice-" + Guid.NewGuid().ToString("N") + ".bin");
-            File.WriteAllBytes(path, new byte[4 * 1024 * 1024 + 1]);
+            File.WriteAllBytes(path, new byte[BaiduSlices.BlockSize + 1]);
             try
             {
                 var list = BaiduSlices.Md5HexList(path);
+                Assert.That(BaiduSlices.BlockSize, Is.EqualTo(1024 * 1024));
                 Assert.That(list.Count, Is.EqualTo(2));
                 Assert.That(list[0].Length, Is.EqualTo(32));
             }
             finally
             {
                 File.Delete(path);
+            }
+        }
+
+        [Test]
+        public void Checkpoint_MatchesAndGates()
+        {
+            Assert.That(BaiduSlices.BlockSize, Is.EqualTo(1024 * 1024));
+            Assert.That(BaiduUploadTimeout.Seconds(0, BaiduSlices.BlockSize), Is.EqualTo(600));
+            Assert.That(BaiduUploadTimeout.Seconds(64, BaiduSlices.BlockSize), Is.GreaterThanOrEqualTo(120));
+
+            var dir = Path.Combine(Path.GetTempPath(), "yxy-cp-" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(dir);
+            try
+            {
+                var md5 = new[] { "a", "b", "c" };
+                var cp = new BaiduUploadCheckpoint
+                {
+                    LocalPath = @"D:\a.zip",
+                    Size = 3L * BaiduSlices.BlockSize,
+                    BlockSize = BaiduSlices.BlockSize,
+                    BlockMd5 = md5,
+                    RemotePath = "/apps/用心云备份/x.zip",
+                    UploadId = "u1",
+                    DonePartSeq = new[] { 0, 1 }
+                };
+                BaiduUploadCheckpoint.Save(dir, cp);
+                var loaded = BaiduUploadCheckpoint.TryLoad(dir, @"D:\a.zip", cp.Size, md5);
+                Assert.That(loaded, Is.Not.Null);
+                Assert.That(loaded.UploadId, Is.EqualTo("u1"));
+                Assert.That(loaded.IsComplete(3), Is.False);
+                loaded.MarkDone(2);
+                BaiduUploadCheckpoint.Save(dir, loaded);
+                Assert.That(BaiduUploadCheckpoint.TryLoad(dir, @"D:\a.zip", cp.Size, md5).IsComplete(3), Is.True);
+                Assert.That(BaiduUploadCheckpoint.TryLoad(dir, @"D:\a.zip", cp.Size + 1, md5), Is.Null);
+            }
+            finally
+            {
+                Directory.Delete(dir, true);
             }
         }
 
