@@ -10,6 +10,7 @@ namespace Yxy.Baidu.Tests
         public readonly List<string> Calls = new List<string>();
         public int RapidReturnType = 1;
         public string ListJson;
+        public int? FailPartSeq;
 
         public string Call(string method, string url, string accessToken, byte[] body, string contentType)
         {
@@ -27,6 +28,11 @@ namespace Yxy.Baidu.Tests
 
             if (url != null && url.IndexOf("superfile2", StringComparison.Ordinal) >= 0)
             {
+                if (FailPartSeq.HasValue && url.IndexOf("partseq=" + FailPartSeq.Value, StringComparison.Ordinal) >= 0)
+                {
+                    throw new InvalidOperationException("fake part fail");
+                }
+
                 return "{\"errno\":0}";
             }
 

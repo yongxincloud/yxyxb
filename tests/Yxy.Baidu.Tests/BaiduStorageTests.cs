@@ -3,6 +3,7 @@ using System.IO;
 using NUnit.Framework;
 using Yxy.Contracts.Cloud;
 using Yxy.Contracts.Dto;
+using Yxy.Core;
 
 namespace Yxy.Baidu.Tests
 {
@@ -105,6 +106,87 @@ namespace Yxy.Baidu.Tests
             var s = new BaiduStorage(ReadyAccount(DateTime.UtcNow.AddHours(1)), Cfg(), new FakeBaiduTransport());
             s.SetParallel(0);
             s.SetParallel(9);
+        }
+
+        [Test]
+        public void Upload_ResumesMissingPartsOnly()
+        {
+            var root = Path.Combine(Path.GetTempPath(), "yxy-br-" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(root);
+            AppPaths.SetRootForTests(root);
+            try
+            {
+                var fake = new FakeBaiduTransport();
+                var storage = Create(fake, DateTime.UtcNow.AddHours(1));
+                storage.SetParallel(1);
+                var bytes = new byte[BaiduSlices.BlockSize + 5];
+                for (var i = 0; i < bytes.Length; i++)
+                {
+                    bytes[i] = 1;
+                }
+
+                var file = WriteTemp(bytes);
+                var md5s = BaiduSlices.Md5HexList(file);
+                var md5Arr = new string[md5s.Count];
+                for (var i = 0; i < md5s.Count; i++)
+                {
+                    md5Arr[i] = md5s[i];
+                }
+
+                var full = Path.GetFullPath(file);
+                var remote = CloudObjectKeys.BaiduRemotePath("用心云备份", "k.zip");
+                BaiduUploadCheckpoint.Save(AppPaths.DataDirectory, new BaiduUploadCheckpoint
+                {
+                    LocalPath = full,
+                    Size = bytes.Length,
+                    BlockSize = BaiduSlices.BlockSize,
+                    BlockMd5 = md5Arr,
+                    RemotePath = remote,
+                    UploadId = "resume-u",
+                    DonePartSeq = new[] { 0 }
+                });
+                storage.Upload(file, "k.zip");
+                var joined = Joined(fake);
+                Assert.That(joined, Does.Not.Contain("method=precreate"));
+                Assert.That(joined, Does.Contain("partseq=1"));
+                Assert.That(joined, Does.Not.Contain("partseq=0"));
+                Assert.That(joined, Does.Contain("method=create"));
+                Assert.That(BaiduUploadCheckpoint.TryLoad(AppPaths.DataDirectory, full, bytes.Length, md5s), Is.Null);
+                File.Delete(file);
+            }
+            finally
+            {
+                AppPaths.SetRootForTests(null);
+                Directory.Delete(root, true);
+            }
+        }
+
+        [Test]
+        public void Upload_BlocksCreateWhenPartMissing()
+        {
+            var root = Path.Combine(Path.GetTempPath(), "yxy-bg-" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(root);
+            AppPaths.SetRootForTests(root);
+            try
+            {
+                var fake = new FakeBaiduTransport { FailPartSeq = 1 };
+                var storage = Create(fake, DateTime.UtcNow.AddHours(1));
+                storage.SetParallel(1);
+                var bytes = new byte[BaiduSlices.BlockSize + 5];
+                var file = WriteTemp(bytes);
+                var full = Path.GetFullPath(file);
+                var md5s = BaiduSlices.Md5HexList(file);
+                Assert.Throws<InvalidOperationException>(() => storage.Upload(file, "k.zip"));
+                var joined = Joined(fake);
+                Assert.That(joined, Does.Not.Contain("method=create"));
+                Assert.That(BaiduUploadCheckpoint.TryLoad(AppPaths.DataDirectory, full, bytes.Length, md5s), Is.Not.Null);
+                File.Delete(file);
+            }
+            finally
+            {
+                AppPaths.SetRootForTests(null);
+                Directory.Delete(root, true);
+            }
         }
 
         private static BaiduStorage Create(FakeBaiduTransport fake, DateTime expiry)

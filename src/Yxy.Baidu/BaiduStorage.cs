@@ -6,6 +6,7 @@ using System.Text;
 using System.Web.Script.Serialization;
 using Yxy.Contracts.Cloud;
 using Yxy.Contracts.Dto;
+using Yxy.Core;
 
 namespace Yxy.Baidu
 {
@@ -91,31 +92,75 @@ namespace Yxy.Baidu
 
             EnsureToken();
             var cfg = Config();
+            var full = Path.GetFullPath(localPath);
             var path = CloudObjectKeys.BaiduRemotePath(cfg.AppFolderName, remoteKey);
-            var hashes = BaiduSlices.Md5HexList(localPath);
-            var ser = new JavaScriptSerializer();
-            var blockList = ser.Serialize(hashes);
-            var size = new FileInfo(localPath).Length;
-            var pre = Form(
-                "path", path,
-                "size", size.ToString(CultureInfo.InvariantCulture),
-                "isdir", "0",
-                "autoinit", "1",
-                "rtype", "1",
-                "block_list", blockList);
-            var preJson = Api("POST", "https://pan.baidu.com/rest/2.0/xpan/file?method=precreate", pre, "application/x-www-form-urlencoded");
-            var preObj = ser.Deserialize<BaiduApiJson>(preJson) ?? new BaiduApiJson();
-            if (preObj.return_type != 2)
+            var hashes = BaiduSlices.Md5HexList(full);
+            var md5Arr = new string[hashes.Count];
+            for (var i = 0; i < hashes.Count; i++)
             {
-                UploadParts(localPath, path, preObj.uploadid ?? "u1", size);
+                md5Arr[i] = hashes[i];
             }
 
+            var ser = new JavaScriptSerializer();
+            var blockList = ser.Serialize(hashes);
+            var size = new FileInfo(full).Length;
+            var dataDir = AppPaths.DataDirectory;
+            var cp = BaiduUploadCheckpoint.TryLoad(dataDir, full, size, hashes);
+            string uploadId;
+            if (cp == null)
+            {
+                var pre = Form(
+                    "path", path,
+                    "size", size.ToString(CultureInfo.InvariantCulture),
+                    "isdir", "0",
+                    "autoinit", "1",
+                    "rtype", "1",
+                    "block_list", blockList);
+                var preJson = Api("POST", "https://pan.baidu.com/rest/2.0/xpan/file?method=precreate", pre, "application/x-www-form-urlencoded");
+                var preObj = ser.Deserialize<BaiduApiJson>(preJson) ?? new BaiduApiJson();
+                if (preObj.return_type == 2)
+                {
+                    BaiduUploadCheckpoint.Delete(dataDir, full);
+                    CreateRemote(path, size, preObj.uploadid ?? "", blockList);
+                    return;
+                }
+
+                uploadId = string.IsNullOrEmpty(preObj.uploadid) ? "u1" : preObj.uploadid;
+                cp = new BaiduUploadCheckpoint
+                {
+                    LocalPath = full,
+                    Size = size,
+                    BlockSize = BaiduSlices.BlockSize,
+                    BlockMd5 = md5Arr,
+                    RemotePath = path,
+                    UploadId = uploadId,
+                    DonePartSeq = new int[0]
+                };
+                BaiduUploadCheckpoint.Save(dataDir, cp);
+            }
+            else
+            {
+                uploadId = cp.UploadId;
+            }
+
+            UploadParts(full, path, uploadId, size, cp, dataDir);
+            if (!cp.IsComplete(hashes.Count))
+            {
+                throw new InvalidOperationException("百度分片未齐，禁止合并。");
+            }
+
+            CreateRemote(path, size, uploadId, blockList);
+            BaiduUploadCheckpoint.Delete(dataDir, full);
+        }
+
+        private void CreateRemote(string path, long size, string uploadId, string blockList)
+        {
             var create = Form(
                 "path", path,
                 "size", size.ToString(CultureInfo.InvariantCulture),
                 "isdir", "0",
                 "rtype", "1",
-                "uploadid", preObj.uploadid ?? "",
+                "uploadid", uploadId ?? "",
                 "block_list", blockList);
             Api("POST", "https://pan.baidu.com/rest/2.0/xpan/file?method=create", create, "application/x-www-form-urlencoded");
         }
@@ -191,7 +236,7 @@ namespace Yxy.Baidu
             return deleted;
         }
 
-        private void UploadParts(string localPath, string path, string uploadId, long fileLen)
+        private void UploadParts(string localPath, string path, string uploadId, long fileLen, BaiduUploadCheckpoint cp, string dataDir)
         {
             var count = (int)((fileLen + BaiduSlices.BlockSize - 1) / BaiduSlices.BlockSize);
             if (count <= 0)
@@ -199,11 +244,25 @@ namespace Yxy.Baidu
                 count = 1;
             }
 
+            var done = new HashSet<int>();
+            if (cp != null && cp.DonePartSeq != null)
+            {
+                for (var d = 0; d < cp.DonePartSeq.Length; d++)
+                {
+                    done.Add(cp.DonePartSeq[d]);
+                }
+            }
+
             _partPacer = new BytePacer(_maxKbps);
             var gate = new object();
             Exception error = null;
             System.Threading.Tasks.Parallel.For(0, count, new System.Threading.Tasks.ParallelOptions { MaxDegreeOfParallelism = _parallel }, delegate(int i)
             {
+                if (done.Contains(i))
+                {
+                    return;
+                }
+
                 lock (gate)
                 {
                     if (error != null)
@@ -241,6 +300,12 @@ namespace Yxy.Baidu
                             + "&uploadid=" + Uri.EscapeDataString(uploadId ?? "")
                             + "&partseq=" + i.ToString(CultureInfo.InvariantCulture);
                         Api("POST", url, buf, "application/octet-stream");
+                        lock (gate)
+                        {
+                            cp.MarkDone(i);
+                            BaiduUploadCheckpoint.Save(dataDir, cp);
+                        }
+
                         last = null;
                         break;
                     }
