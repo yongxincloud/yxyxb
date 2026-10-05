@@ -6,6 +6,7 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\Yxy.Contracts\Yxy.Contracts.csproj" />
+    <ProjectReference Include="..\Yxy.Core\Yxy.Core.csproj" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="System.Web.Extensions" />

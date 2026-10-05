@@ -2,6 +2,7 @@ using System;
 using Yxy.Baidu;
 using Yxy.Contracts.Cloud;
 using Yxy.Contracts.Dto;
+using Yxy.Core;
 using Yxy.Core.Cloud;
 using Yxy.Core.Data;
 using Yxy.Core.Store;
@@ -25,7 +26,8 @@ namespace Yxy.Cloud
         {
             var settings = SettingsStore.Get(db);
             var storage = CreateReady(db, provider);
-            storage.SetSpeed(settings.UploadMinKbps, settings.UploadMaxKbps);
+            var uploadKbps = CloudSpeed.UploadKbps(settings.UploadMinKbps, settings.UploadMaxKbps);
+            storage.SetSpeed(uploadKbps, uploadKbps);
             storage.SetParallel(settings.UploadParallel);
             storage.Upload(localPath, remoteKey);
         }

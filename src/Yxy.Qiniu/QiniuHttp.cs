@@ -5,6 +5,7 @@ using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 using System.Web.Script.Serialization;
+using Yxy.Core;
 
 namespace Yxy.Qiniu
 {
@@ -12,13 +13,7 @@ namespace Yxy.Qiniu
     {
         public static void EnsureTls12()
         {
-            try
-            {
-                ServicePointManager.SecurityProtocol |= (SecurityProtocolType)3072;
-            }
-            catch (NotSupportedException)
-            {
-            }
+            TlsPolicy.Apply();
         }
 
         public static string UploadHost(string zone)

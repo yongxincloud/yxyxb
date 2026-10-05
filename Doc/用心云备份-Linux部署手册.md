@@ -138,6 +138,18 @@ sudo systemctl reload nginx
 
 有域名和证书时，把 `server_name _` 改成域名，再用 certbot 或已有证书增加 443。证书配好后，客户端和浏览器都改用 `https://域名`。更新网页时覆盖 `/opt/yxy/web`，不要删掉 Nginx 配置。
 
+客户端要覆盖 Win7 / 2008 R2（已打 TLS 1.2 补丁）到 2022。**只开 GCM 时，2012 / 2012 R2 登不了官网。** 在 `listen 443 ssl` 的 server 里加上（完整示例见 `deploy/linux/yxy.nginx.conf`）：
+
+```nginx
+ssl_protocols TLSv1.2 TLSv1.3;
+ssl_prefer_server_ciphers on;
+ssl_ciphers ECDHE-RSA-AES256-GCM-SHA384:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-SHA384:ECDHE-RSA-AES128-SHA256:ECDHE-RSA-AES256-SHA:ECDHE-RSA-AES128-SHA:AES256-SHA256:AES128-SHA256:AES256-SHA:AES128-SHA;
+```
+
+改完：`sudo nginx -t` 然后 `sudo systemctl reload nginx`。Win10/2016 及更新仍会优先 GCM；2012 R2 用 `ECDHE-RSA-AES256-SHA384`；更老的 2012 / 已补丁 Win7·2008 R2 用后面的 SHA256/SHA。不要开 TLS 1.0/1.1。
+
+若 443 在云负载均衡上终结，到控制台 SSL 策略加入同等套件，不要只留 `ECDHE-RSA-AES*-GCM-*`。
+
 ## 6. 上线后马上做
 
 1. 打开 `http://服务器IP/vendor`（有证书时用 `https://域名/vendor`）。用 `admin` 和刚才设置的密码登录。
@@ -156,13 +168,7 @@ http://download.yongxinyun.com/yongxinyunbackup/yongxinyunbackup.zip
 
 客户端左下角「官网」打开 https://backup.yongxincloud.cn 。
 
-登录用的地址写在 `data\site.url`，只写一行，末尾不要加斜杠：
-
-```text
-https://backup.yongxincloud.cn
-```
-
-不写这个文件时，客户端会去连 `http://127.0.0.1:5080`。数据目录在客户端程序旁的 `data` 文件夹。改完后重新打开客户端再登录。
+登录默认连 https://backup.yongxincloud.cn 。本机调试可在 `data\site.url` 写一行地址（末尾不要斜杠）覆盖。数据目录在客户端程序旁的 `data` 文件夹。改完后重新打开客户端再登录。
 
 网站页脚对外信息：常州用心软件有限公司，电话 400-051-9608，邮箱 market.yongxinyun.com，苏ICP备19043516号-6，苏公网安备32041102001697号。
 

@@ -143,7 +143,9 @@ namespace Yxy.Core.Backup
                 var ftp = SettingsStore.GetXfer<FtpSettingsDto>(db, "ftp");
                 ftp.RemoteDir = task.SourcePath;
                 tempRoot = Path.Combine(Path.GetTempPath(), "yxy-ftp-" + Guid.NewGuid().ToString("N"));
-                FtpUtil.DownloadTree(ftp, task.SourcePath, tempRoot);
+                var speed = SettingsStore.Get(db);
+                var down = CloudSpeed.DownloadKbps(speed.UploadMinKbps, speed.UploadMaxKbps);
+                FtpUtil.DownloadTree(ftp, task.SourcePath, tempRoot, down);
                 log.Append("已下载 FTP 源。");
                 return tempRoot;
             }

@@ -15,13 +15,15 @@ namespace Yxy.Core.Backup
     {
         public static bool UncAndFtp(SqliteDb db, bool doNetwork, bool doFtp, string zipPath, StringBuilder log)
         {
+            var speed = SettingsStore.Get(db);
+            var up = CloudSpeed.UploadKbps(speed.UploadMinKbps, speed.UploadMaxKbps);
             var ok = true;
             if (doNetwork)
             {
                 try
                 {
                     var unc = SettingsStore.GetXfer<UncSettingsDto>(db, "unc");
-                    UncShare.CopyFile(unc, zipPath, Path.GetFileName(zipPath));
+                    UncShare.CopyFile(unc, zipPath, Path.GetFileName(zipPath), up);
                     log.Append(" 网络传输成功。");
                 }
                 catch (Exception ex)
@@ -36,7 +38,7 @@ namespace Yxy.Core.Backup
                 try
                 {
                     var ftp = SettingsStore.GetXfer<FtpSettingsDto>(db, "ftp");
-                    FtpUtil.UploadFile(ftp, zipPath, Path.GetFileName(zipPath));
+                    FtpUtil.UploadFile(ftp, zipPath, Path.GetFileName(zipPath), up);
                     log.Append(" FTP 成功。");
                 }
                 catch (Exception ex)

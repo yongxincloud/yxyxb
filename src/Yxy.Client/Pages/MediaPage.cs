@@ -5,6 +5,8 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using Yxy.Client.Dialogs;
 using Yxy.Contracts.Dto;
+using Yxy.Core;
+using Yxy.Core.Data;
 using Yxy.Core.Runtime;
 using Yxy.Core.Store;
 using Yxy.Media;
@@ -15,6 +17,7 @@ namespace Yxy.Client.Pages
     public sealed class MediaPage : UserControl
     {
         private readonly HostBootstrap _boot;
+        private readonly ExclusiveBgJob _runJob = new ExclusiveBgJob();
         private DataGrid _liveGrid;
         private DataGrid _regGrid;
         private TextBlock _regHint;
@@ -390,17 +393,33 @@ namespace Yxy.Client.Pages
                 return;
             }
 
-            try
+            if (!_runJob.TryStart(delegate
             {
-                var result = MediaRunner.ExecuteNow(_boot.Db, task.Id);
-                ReloadAll();
-                Alert(result);
-            }
-            catch (Exception ex)
+                using (var db = SqliteDb.OpenDefault())
+                {
+                    return MediaRunner.ExecuteNow(db, task.Id);
+                }
+            }, delegate(string result, Exception error)
             {
-                ReloadAll();
-                Alert("立即执行失败：" + ex.Message);
+                Dispatcher.BeginInvoke(new Action(delegate
+                {
+                    ReloadAll();
+                    if (error != null)
+                    {
+                        Alert("立即执行失败：" + error.Message);
+                    }
+                    else
+                    {
+                        Alert(result);
+                    }
+                }));
+            }))
+            {
+                Alert("已有任务正在执行，请稍候。");
+                return;
             }
+
+            Alert("任务「" + (task.Name ?? "") + "」正在执行。关闭窗口也不影响执行，完成后会再提示。");
         }
 
         private void AddTask()

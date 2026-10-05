@@ -4,7 +4,9 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using Yxy.Client.Dialogs;
 using Yxy.Contracts.Dto;
+using Yxy.Core;
 using Yxy.Core.Backup;
+using Yxy.Core.Data;
 using Yxy.Core.Runtime;
 using Yxy.Core.Store;
 using Yxy.Mssql;
@@ -15,6 +17,7 @@ namespace Yxy.Client.Pages
     public sealed class TasksPage : UserControl
     {
         private readonly HostBootstrap _boot;
+        private readonly ExclusiveBgJob _runJob = new ExclusiveBgJob();
         private readonly DataGrid _fileGrid;
         private readonly DataGrid _mssqlGrid;
         private DataGrid _mysqlGrid;
@@ -46,7 +49,7 @@ namespace Yxy.Client.Pages
             panel.Children.Add(bar);
             var hint = new TextBlock
             {
-                Text = "点选一条文件任务后可立即执行。结果看弹窗，也看「日志 → 文件备份」。",
+                Text = "点选一条文件任务后可立即执行。点完会先提示正在执行；关闭窗口也不影响。结果再弹窗，也可看「日志 → 文件备份」。",
                 TextWrapping = TextWrapping.Wrap,
                 Margin = new Thickness(0, 0, 0, 8)
             };
@@ -189,17 +192,7 @@ namespace Yxy.Client.Pages
                 return;
             }
 
-            try
-            {
-                var result = FileBackupRunner.ExecuteNow(_boot.Db, task.Id);
-                ReloadFile();
-                MessageBox.Show(Window.GetWindow(this), result, "立即执行");
-            }
-            catch (Exception ex)
-            {
-                ReloadFile();
-                MessageBox.Show(Window.GetWindow(this), "立即执行失败：" + ex.Message, "立即执行");
-            }
+            RunNow(task.Name, task.Id, FileBackupRunner.ExecuteNow, ReloadFile);
         }
 
         private UIElement BuildMysql()
@@ -292,17 +285,7 @@ namespace Yxy.Client.Pages
                 return;
             }
 
-            try
-            {
-                var result = MysqlRunner.ExecuteNow(_boot.Db, task.Id);
-                ReloadMysql();
-                MessageBox.Show(Window.GetWindow(this), result, "立即执行");
-            }
-            catch (Exception ex)
-            {
-                ReloadMysql();
-                MessageBox.Show(Window.GetWindow(this), ex.Message, "立即执行");
-            }
+            RunNow(task.Name, task.Id, MysqlRunner.ExecuteNow, ReloadMysql);
         }
 
         private MssqlTaskDto SelectedMssql()
@@ -365,17 +348,42 @@ namespace Yxy.Client.Pages
                 return;
             }
 
-            try
+            RunNow(task.Name, task.Id, MssqlRunner.ExecuteNow, ReloadMssql);
+        }
+
+        private void RunNow(string taskName, long taskId, Func<SqliteDb, long, string> execute, Action reload)
+        {
+            if (!_runJob.TryStart(delegate
             {
-                var result = MssqlRunner.ExecuteNow(_boot.Db, task.Id);
-                ReloadMssql();
-                MessageBox.Show(Window.GetWindow(this), result, "立即执行");
-            }
-            catch (Exception ex)
+                using (var db = SqliteDb.OpenDefault())
+                {
+                    return execute(db, taskId);
+                }
+            }, delegate(string result, Exception error)
             {
-                ReloadMssql();
-                MessageBox.Show(Window.GetWindow(this), "立即执行失败：" + ex.Message, "立即执行");
+                Dispatcher.BeginInvoke(new Action(delegate
+                {
+                    reload();
+                    var owner = Window.GetWindow(this);
+                    if (error != null)
+                    {
+                        MessageBox.Show(owner, "立即执行失败：" + error.Message, "立即执行");
+                    }
+                    else
+                    {
+                        MessageBox.Show(owner, result, "立即执行");
+                    }
+                }));
+            }))
+            {
+                MessageBox.Show(Window.GetWindow(this), "已有任务正在执行，请稍候。", "立即执行");
+                return;
             }
+
+            MessageBox.Show(
+                Window.GetWindow(this),
+                "任务「" + (taskName ?? "") + "」正在执行。关闭窗口也不影响执行，完成后会再提示。",
+                "立即执行");
         }
 
         private static Button Btn(string text, RoutedEventHandler click)

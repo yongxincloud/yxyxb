@@ -1,8 +1,11 @@
 using System;
 using System.IO;
+using System.Net;
+using System.Net.Security;
 using NUnit.Framework;
 using Yxy.Contracts.Cloud;
 using Yxy.Contracts.Dto;
+using Yxy.Core;
 using Yxy.Core.Backup;
 using Yxy.Core.Data;
 using Yxy.Core.Store;
@@ -201,6 +204,47 @@ namespace Yxy.Core.Tests
                     File.Delete(file);
                 }
             }
+        }
+
+        [Test]
+        public void ExceptionText_UsesInnermostMessage()
+        {
+            var inner = new InvalidOperationException("无法建立 SSL/TLS 安全通道");
+            var wrapped = new AggregateException("发生一个或多个错误", inner);
+            Assert.That(ExceptionText.RootMessage(wrapped), Is.EqualTo("无法建立 SSL/TLS 安全通道"));
+        }
+
+        [Test]
+        public void SiteUrlFile_ReadsPlainAndShortcut()
+        {
+            Assert.That(SiteUrlFile.Read("https://backup.yongxincloud.cn", "http://127.0.0.1:5080"),
+                Is.EqualTo("https://backup.yongxincloud.cn"));
+            Assert.That(SiteUrlFile.Read("[InternetShortcut]\r\nURL=https://backup.yongxincloud.cn\r\n", "http://127.0.0.1:5080"),
+                Is.EqualTo("https://backup.yongxincloud.cn"));
+            Assert.That(SiteUrlFile.Read("", "http://127.0.0.1:5080"), Is.EqualTo("http://127.0.0.1:5080"));
+            Assert.That(SiteUrlFile.DefaultSite, Is.EqualTo("https://backup.yongxincloud.cn"));
+            Assert.That(SiteUrlFile.Read("", SiteUrlFile.DefaultSite), Is.EqualTo("https://backup.yongxincloud.cn"));
+        }
+
+        [Test]
+        public void TlsPolicy_ModernIsTls12Only()
+        {
+            Assert.That((int)TlsPolicy.Modern(), Is.EqualTo(3072));
+            Assert.That((int)TlsPolicy.Modern() & 48, Is.EqualTo(0));
+            Assert.That((int)TlsPolicy.Modern() & 192, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void TlsPolicy_Apply_DoesNotAskForTls13()
+        {
+            TlsPolicy.Apply();
+            var p = (int)ServicePointManager.SecurityProtocol;
+            Assert.That(p & 3072, Is.EqualTo(3072));
+            Assert.That(p & 48, Is.EqualTo(0));
+            Assert.That(p & 192, Is.EqualTo(0));
+            Assert.That(p & 12288, Is.EqualTo(0));
+            Assert.That(TlsPolicy.IsrgThumbprint(), Is.Not.Null.And.Length.EqualTo(40));
+            Assert.That(TlsPolicy.Validate(null, null, null, SslPolicyErrors.RemoteCertificateChainErrors), Is.False);
         }
     }
 }

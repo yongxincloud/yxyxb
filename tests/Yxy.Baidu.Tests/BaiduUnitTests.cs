@@ -10,14 +10,14 @@ namespace Yxy.Baidu.Tests
     public sealed class BaiduUnitTests
     {
         [Test]
-        public void Slices_OneMbBoundaries()
+        public void Slices_FourMbBoundaries()
         {
             var path = Path.Combine(Path.GetTempPath(), "yxy-slice-" + Guid.NewGuid().ToString("N") + ".bin");
             File.WriteAllBytes(path, new byte[BaiduSlices.BlockSize + 1]);
             try
             {
                 var list = BaiduSlices.Md5HexList(path);
-                Assert.That(BaiduSlices.BlockSize, Is.EqualTo(1024 * 1024));
+                Assert.That(BaiduSlices.BlockSize, Is.EqualTo(4 * 1024 * 1024));
                 Assert.That(list.Count, Is.EqualTo(2));
                 Assert.That(list[0].Length, Is.EqualTo(32));
             }
@@ -28,9 +28,21 @@ namespace Yxy.Baidu.Tests
         }
 
         [Test]
+        public void Retry_DetectsRemoteClose()
+        {
+            var ex = new InvalidOperationException("百度请求失败：无法将数据写入传输连接: 远程主机强迫关闭了一个现有的连接。");
+            Assert.That(BaiduUploadRetry.IsTransient(ex), Is.True);
+            Assert.That(BaiduUploadRetry.Attempts, Is.EqualTo(5));
+            Assert.That(BaiduUploadRetry.IsTransient(new InvalidOperationException("百度 HTTP 400：size")), Is.False);
+            Assert.That(BaiduUploadRetry.GapMs(100, 102400, 0), Is.EqualTo(1000));
+            Assert.That(BaiduUploadRetry.GapMs(100, 102400, 1000), Is.EqualTo(0));
+            Assert.That(BaiduUploadRetry.GapMs(0, 4096, 0), Is.EqualTo(0));
+        }
+
+        [Test]
         public void Checkpoint_MatchesAndGates()
         {
-            Assert.That(BaiduSlices.BlockSize, Is.EqualTo(1024 * 1024));
+            Assert.That(BaiduSlices.BlockSize, Is.EqualTo(4 * 1024 * 1024));
             Assert.That(BaiduUploadTimeout.Seconds(0, BaiduSlices.BlockSize), Is.EqualTo(600));
             Assert.That(BaiduUploadTimeout.Seconds(64, BaiduSlices.BlockSize), Is.GreaterThanOrEqualTo(120));
 

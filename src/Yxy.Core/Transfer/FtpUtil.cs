@@ -25,6 +25,11 @@ namespace Yxy.Core.Transfer
 
         public static void UploadFile(FtpSettingsDto settings, string localFile, string remoteFileName)
         {
+            UploadFile(settings, localFile, remoteFileName, 0);
+        }
+
+        public static void UploadFile(FtpSettingsDto settings, string localFile, string remoteFileName, int kbps)
+        {
             if (settings == null || string.IsNullOrEmpty(settings.Host))
             {
                 throw new InvalidOperationException("未配置 FTP。");
@@ -37,7 +42,7 @@ namespace Yxy.Core.Transfer
             using (var input = File.OpenRead(localFile))
             using (var output = request.GetRequestStream())
             {
-                input.CopyTo(output);
+                StreamPace.Copy(input, output, kbps);
             }
 
             using (var response = (FtpWebResponse)request.GetResponse())
@@ -111,12 +116,17 @@ namespace Yxy.Core.Transfer
 
         public static string DownloadTree(FtpSettingsDto settings, string remoteDir, string localRoot)
         {
+            return DownloadTree(settings, remoteDir, localRoot, 0);
+        }
+
+        public static string DownloadTree(FtpSettingsDto settings, string remoteDir, string localRoot, int kbps)
+        {
             Directory.CreateDirectory(localRoot);
-            DownloadDir(settings, remoteDir, localRoot);
+            DownloadDir(settings, remoteDir, localRoot, kbps);
             return localRoot;
         }
 
-        private static void DownloadDir(FtpSettingsDto settings, string remoteDir, string localDir)
+        private static void DownloadDir(FtpSettingsDto settings, string remoteDir, string localDir, int kbps)
         {
             Directory.CreateDirectory(localDir);
             var names = ListNames(settings, remoteDir);
@@ -131,7 +141,7 @@ namespace Yxy.Core.Transfer
                 var remote = CombineRemote(remoteDir, name);
                 if (IsDirectory(settings, remote))
                 {
-                    DownloadDir(settings, remote, Path.Combine(localDir, name));
+                    DownloadDir(settings, remote, Path.Combine(localDir, name), kbps);
                 }
                 else
                 {
@@ -142,7 +152,7 @@ namespace Yxy.Core.Transfer
                     {
                         if (input != null)
                         {
-                            input.CopyTo(output);
+                            StreamPace.Copy(input, output, kbps);
                         }
                     }
                 }

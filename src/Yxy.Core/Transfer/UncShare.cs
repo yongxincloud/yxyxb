@@ -46,6 +46,11 @@ namespace Yxy.Core.Transfer
 
         public static void CopyFile(UncSettingsDto settings, string localFile, string remoteFileName)
         {
+            CopyFile(settings, localFile, remoteFileName, 0);
+        }
+
+        public static void CopyFile(UncSettingsDto settings, string localFile, string remoteFileName, int kbps)
+        {
             if (settings == null || string.IsNullOrEmpty(settings.Path))
             {
                 throw new InvalidOperationException("未配置网络传输路径。");
@@ -54,7 +59,11 @@ namespace Yxy.Core.Transfer
             Connect(settings);
             Directory.CreateDirectory(settings.Path);
             var dest = Path.Combine(settings.Path, remoteFileName);
-            File.Copy(localFile, dest, true);
+            using (var input = File.OpenRead(localFile))
+            using (var output = File.Create(dest))
+            {
+                StreamPace.Copy(input, output, kbps);
+            }
         }
 
         public static IDisposable ConnectScope(UncSettingsDto settings)

@@ -129,13 +129,9 @@ http://download.yongxinyun.com/yongxinyunbackup/yongxinyunbackup.zip
 
 客户端左下角「官网」打开 https://backup.yongxincloud.cn 。
 
-登录用的地址写在 `data\site.url`，只写一行，末尾不要加斜杠：
+登录默认连 https://backup.yongxincloud.cn 。本机调试可在 `data\site.url` 写一行地址（末尾不要斜杠）覆盖。数据目录在客户端程序旁的 `data` 文件夹。改完后重新打开客户端再登录。
 
-```text
-https://backup.yongxincloud.cn
-```
-
-不写这个文件时，客户端会去连 `http://127.0.0.1:5080`。数据目录在客户端程序旁的 `data` 文件夹。改完后重新打开客户端再登录。
+客户机是 Windows Server 2012 / 2012 R2 时，官网 443 必须提供 `ECDHE-RSA-AES256-SHA384` 等 CBC 套件，否则登录会在 TLS 握手失败。套件清单见《Linux部署手册》。拷贝客户端时带上 `Yxy.Client.exe.config`。
 
 网站页脚对外信息：常州用心软件有限公司，电话 400-051-9608，邮箱 market.yongxinyun.com，苏ICP备19043516号-6，苏公网安备32041102001697号。
 

@@ -98,15 +98,15 @@ namespace Yxy.Client.Pages
             _form.Children.Add(_enabled);
             _form.Children.Add(_qiniuPanel);
             _form.Children.Add(_baiduPanel);
-            _form.Children.Add(Label("上传下限（KB/s，0 表示不设）"));
+            _form.Children.Add(Label("上行限速（KB/s，上传用，0 表示不限）"));
             _form.Children.Add(_minKbps);
-            _form.Children.Add(Label("上传上限（KB/s，0 表示不限速）"));
+            _form.Children.Add(Label("下行限速（KB/s，下载用，0 表示不限）"));
             _form.Children.Add(_maxKbps);
             _form.Children.Add(Label("上传并行数（1–2）"));
             _form.Children.Add(_parallel);
             _form.Children.Add(new TextBlock
             {
-                Text = "分片 1MB，可断点续传。并行默认 1。总速度不超过上限。上限为 0 时不限速，下限不生效。下限不能大于上限。",
+                Text = "分片 4MB（百度接口要求），可断点续传。并行默认 1。手工执行和引擎自动执行都按这里的上行/下行限速。上行限制云/FTP/共享上传；下行限制 FTP 源下载。填 0 表示该方向不限速。",
                 TextWrapping = TextWrapping.Wrap,
                 Margin = new Thickness(0, 8, 0, 0)
             });
@@ -195,13 +195,7 @@ namespace Yxy.Client.Pages
             if (!int.TryParse((_minKbps.Text ?? "").Trim(), out minKbps) || minKbps < 0
                 || !int.TryParse((_maxKbps.Text ?? "").Trim(), out maxKbps) || maxKbps < 0)
             {
-                MessageBox.Show(Window.GetWindow(this), "上传上下限请填大于等于 0 的整数，单位 KB/s。", "云备份");
-                return false;
-            }
-
-            if (maxKbps > 0 && minKbps > maxKbps)
-            {
-                MessageBox.Show(Window.GetWindow(this), "上传下限不能大于上限。上限填 0 表示不限速。", "云备份");
+                MessageBox.Show(Window.GetWindow(this), "上行、下行请填大于等于 0 的整数，单位 KB/s。", "云备份");
                 return false;
             }
 

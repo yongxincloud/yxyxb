@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Text;
 using System.Threading;
@@ -24,10 +25,22 @@ namespace Yxy.Engine
         public void Start()
         {
             CloudModule.Register();
+            try
+            {
+                Process.GetCurrentProcess().PriorityClass = ProcessPriorityClass.BelowNormal;
+            }
+            catch (InvalidOperationException)
+            {
+            }
+            catch (System.ComponentModel.Win32Exception)
+            {
+            }
+
             _boot = HostBootstrap.Start();
             _thread = new Thread(Loop);
             _thread.IsBackground = true;
             _thread.Name = "YxyEngineLoop";
+            _thread.Priority = ThreadPriority.BelowNormal;
             _thread.Start();
         }
 
@@ -75,6 +88,14 @@ namespace Yxy.Engine
         }
 
         private void Tick()
+        {
+            using (WorkNice.Enter())
+            {
+                TickCore();
+            }
+        }
+
+        private void TickCore()
         {
             var licensed = SiteGate.AllowsChannels();
             var ran = 0;

@@ -1,7 +1,7 @@
 using System;
 using System.Globalization;
 using System.IO;
-using System.Net.Http;
+using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -93,7 +93,7 @@ namespace Yxy.Client
     {
         public static string WebsiteRoot
         {
-            get { return "https://backup.yongxincloud.cn"; }
+            get { return SiteUrlFile.DefaultSite; }
         }
 
         public static string RegisterUrl
@@ -314,20 +314,67 @@ namespace Yxy.Client
 
         private static string Post(string path, string json)
         {
+            TlsPolicy.Apply();
+
             var urlFile = Path.Combine(AppPaths.DataDirectory, "site.url");
-            var baseUrl = File.Exists(urlFile) ? File.ReadAllText(urlFile).Trim() : "http://127.0.0.1:5080";
-            using (var client = new HttpClient())
+            var raw = File.Exists(urlFile) ? File.ReadAllText(urlFile) : "";
+            var baseUrl = SiteUrlFile.Read(raw, SiteUrlFile.DefaultSite);
+            var url = baseUrl.TrimEnd('/') + path;
+            var bytes = Encoding.UTF8.GetBytes(json ?? "");
+            try
             {
-                var response = client.PostAsync(baseUrl.TrimEnd('/') + path, new StringContent(json, Encoding.UTF8, "application/json")).Result;
-                var body = response.Content.ReadAsStringAsync().Result;
-                if (!response.IsSuccessStatusCode)
+                var request = (HttpWebRequest)WebRequest.Create(url);
+                request.Method = "POST";
+                request.ContentType = "application/json; charset=utf-8";
+                request.Timeout = 30000;
+                request.ReadWriteTimeout = 30000;
+                request.KeepAlive = false;
+                request.ContentLength = bytes.Length;
+                using (var stream = request.GetRequestStream())
                 {
-                    var err = Regex.Match(body, "\"error\"\\s*:\\s*\"([^\"]*)\"");
-                    throw new InvalidOperationException(err.Success ? err.Groups[1].Value : "登录失败");
+                    stream.Write(bytes, 0, bytes.Length);
                 }
 
+                using (var response = (HttpWebResponse)request.GetResponse())
+                using (var reader = new StreamReader(response.GetResponseStream() ?? Stream.Null, Encoding.UTF8))
+                {
+                    return ReadLoginBody(response.StatusCode, reader.ReadToEnd());
+                }
+            }
+            catch (WebException ex)
+            {
+                var http = ex.Response as HttpWebResponse;
+                if (http != null)
+                {
+                    using (var reader = new StreamReader(http.GetResponseStream() ?? Stream.Null, Encoding.UTF8))
+                    {
+                        return ReadLoginBody(http.StatusCode, reader.ReadToEnd());
+                    }
+                }
+
+                throw new InvalidOperationException("无法连接网站 " + baseUrl + "：" + ExceptionText.RootMessage(ex));
+            }
+            catch (Exception ex)
+            {
+                if (ex is InvalidOperationException)
+                {
+                    throw;
+                }
+
+                throw new InvalidOperationException("无法连接网站 " + baseUrl + "：" + ExceptionText.RootMessage(ex));
+            }
+        }
+
+        private static string ReadLoginBody(HttpStatusCode status, string body)
+        {
+            var code = (int)status;
+            if (code >= 200 && code < 300)
+            {
                 return body;
             }
+
+            var err = Regex.Match(body ?? "", "\"error\"\\s*:\\s*\"([^\"]*)\"");
+            throw new InvalidOperationException(err.Success ? err.Groups[1].Value : "登录失败");
         }
 
         private static void Save(string email, string body)

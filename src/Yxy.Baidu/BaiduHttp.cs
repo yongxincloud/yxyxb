@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Net;
 using System.Text;
+using Yxy.Core;
 
 namespace Yxy.Baidu
 {
@@ -9,17 +10,9 @@ namespace Yxy.Baidu
     {
         public int TimeoutMs { get; set; }
 
-        public BytePacer Pacer { get; set; }
-
         public static void EnsureTls12()
         {
-            try
-            {
-                ServicePointManager.SecurityProtocol |= (SecurityProtocolType)3072;
-            }
-            catch (NotSupportedException)
-            {
-            }
+            TlsPolicy.Apply();
         }
 
         public string Call(string method, string url, string accessToken, byte[] body, string contentType)
@@ -35,13 +28,16 @@ namespace Yxy.Baidu
             request.Method = string.IsNullOrEmpty(method) ? "GET" : method;
             request.Timeout = timeout;
             request.ReadWriteTimeout = timeout;
+            request.KeepAlive = false;
+            request.AllowWriteStreamBuffering = true;
+            request.ServicePoint.Expect100Continue = false;
             if (body != null)
             {
                 request.ContentType = string.IsNullOrEmpty(contentType) ? "application/x-www-form-urlencoded" : contentType;
                 request.ContentLength = body.Length;
                 using (var stream = request.GetRequestStream())
                 {
-                    WritePaced(stream, body);
+                    stream.Write(body, 0, body.Length);
                 }
             }
 
@@ -68,22 +64,6 @@ namespace Yxy.Baidu
                 }
 
                 throw new InvalidOperationException("百度请求失败：" + ex.Message);
-            }
-        }
-
-        private void WritePaced(Stream stream, byte[] body)
-        {
-            var offset = 0;
-            while (offset < body.Length)
-            {
-                var n = Math.Min(64 * 1024, body.Length - offset);
-                if (Pacer != null)
-                {
-                    Pacer.Take(n);
-                }
-
-                stream.Write(body, offset, n);
-                offset += n;
             }
         }
     }

@@ -17,7 +17,6 @@ namespace Yxy.Baidu
         private readonly IBaiduTransport _transport;
         private int _maxKbps;
         private int _parallel = 1;
-        private BytePacer _partPacer;
         private bool _did401Retry;
 
         public Action<CloudAccountDto> PersistAccount { get; set; }
@@ -253,7 +252,6 @@ namespace Yxy.Baidu
                 }
             }
 
-            _partPacer = new BytePacer(_maxKbps);
             var gate = new object();
             Exception error = null;
             System.Threading.Tasks.Parallel.For(0, count, new System.Threading.Tasks.ParallelOptions { MaxDegreeOfParallelism = _parallel }, delegate(int i)
@@ -291,8 +289,9 @@ namespace Yxy.Baidu
                 }
 
                 Exception last = null;
-                for (var attempt = 0; attempt < 3; attempt++)
+                for (var attempt = 0; attempt < BaiduUploadRetry.Attempts; attempt++)
                 {
+                    var started = Environment.TickCount;
                     try
                     {
                         var url = "https://d.pcs.baidu.com/rest/2.0/pcs/superfile2?method=upload&type=tmpfile"
@@ -306,13 +305,19 @@ namespace Yxy.Baidu
                             BaiduUploadCheckpoint.Save(dataDir, cp);
                         }
 
+                        var gap = BaiduUploadRetry.GapMs(_maxKbps, size, unchecked(Environment.TickCount - started));
+                        if (gap > 0)
+                        {
+                            System.Threading.Thread.Sleep(gap);
+                        }
+
                         last = null;
                         break;
                     }
                     catch (Exception ex)
                     {
                         last = ex;
-                        System.Threading.Thread.Sleep(400 * (attempt + 1));
+                        System.Threading.Thread.Sleep(BaiduUploadRetry.SleepMs(attempt));
                     }
                 }
 
@@ -327,7 +332,6 @@ namespace Yxy.Baidu
                     }
                 }
             });
-            _partPacer = null;
 
             if (error != null)
             {
@@ -379,7 +383,6 @@ namespace Yxy.Baidu
             {
                 var blockBytes = body == null ? BaiduSlices.BlockSize : body.Length;
                 http.TimeoutMs = BaiduUploadTimeout.Seconds(_maxKbps, blockBytes) * 1000;
-                http.Pacer = _partPacer;
             }
 
             try

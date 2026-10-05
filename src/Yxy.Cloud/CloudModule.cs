@@ -1,5 +1,4 @@
-using System;
-using System.Net;
+using Yxy.Core;
 using Yxy.Core.Cloud;
 
 namespace Yxy.Cloud
@@ -8,14 +7,7 @@ namespace Yxy.Cloud
     {
         public static void Register()
         {
-            try
-            {
-                ServicePointManager.SecurityProtocol |= (SecurityProtocolType)3072;
-            }
-            catch (NotSupportedException)
-            {
-            }
-
+            TlsPolicy.Apply();
             CloudRuntime.Handler = new CloudRuntimeImpl();
         }
     }
