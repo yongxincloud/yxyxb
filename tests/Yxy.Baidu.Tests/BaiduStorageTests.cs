@@ -99,6 +99,14 @@ namespace Yxy.Baidu.Tests
             Assert.That(ex.Message, Does.Contain("授权"));
         }
 
+        [Test]
+        public void Storage_SetParallel_Clamps()
+        {
+            var s = new BaiduStorage(ReadyAccount(DateTime.UtcNow.AddHours(1)), Cfg(), new FakeBaiduTransport());
+            s.SetParallel(0);
+            s.SetParallel(9);
+        }
+
         private static BaiduStorage Create(FakeBaiduTransport fake, DateTime expiry)
         {
             return new BaiduStorage(ReadyAccount(expiry), Cfg(), fake);

@@ -32,6 +32,10 @@ namespace Yxy.Qiniu
             _maxKbps = maxKbps < 0 ? 0 : maxKbps;
         }
 
+        public void SetParallel(int parallel)
+        {
+        }
+
         public void TestConnection()
         {
             var acc = Require();

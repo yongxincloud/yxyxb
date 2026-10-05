@@ -7,6 +7,10 @@ namespace Yxy.Baidu
 {
     internal sealed class BaiduHttp : IBaiduTransport
     {
+        public int TimeoutMs { get; set; }
+
+        public BytePacer Pacer { get; set; }
+
         public static void EnsureTls12()
         {
             try
@@ -26,17 +30,18 @@ namespace Yxy.Baidu
                 url += (url.IndexOf('?') >= 0 ? "&" : "?") + "access_token=" + Uri.EscapeDataString(accessToken);
             }
 
+            var timeout = TimeoutMs > 0 ? TimeoutMs : 120000;
             var request = (HttpWebRequest)WebRequest.Create(url);
             request.Method = string.IsNullOrEmpty(method) ? "GET" : method;
-            request.Timeout = 120000;
-            request.ReadWriteTimeout = 120000;
+            request.Timeout = timeout;
+            request.ReadWriteTimeout = timeout;
             if (body != null)
             {
                 request.ContentType = string.IsNullOrEmpty(contentType) ? "application/x-www-form-urlencoded" : contentType;
                 request.ContentLength = body.Length;
                 using (var stream = request.GetRequestStream())
                 {
-                    stream.Write(body, 0, body.Length);
+                    WritePaced(stream, body);
                 }
             }
 
@@ -63,6 +68,22 @@ namespace Yxy.Baidu
                 }
 
                 throw new InvalidOperationException("百度请求失败：" + ex.Message);
+            }
+        }
+
+        private void WritePaced(Stream stream, byte[] body)
+        {
+            var offset = 0;
+            while (offset < body.Length)
+            {
+                var n = Math.Min(64 * 1024, body.Length - offset);
+                if (Pacer != null)
+                {
+                    Pacer.Take(n);
+                }
+
+                stream.Write(body, offset, n);
+                offset += n;
             }
         }
     }

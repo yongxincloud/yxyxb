@@ -24,6 +24,10 @@ namespace Yxy.Ctyun
         {
         }
 
+        public void SetParallel(int parallel)
+        {
+        }
+
         public void Upload(string localPath, string remoteKey)
         {
             throw new NotSupportedException("天翼云后续开通。");

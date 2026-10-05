@@ -12,6 +12,8 @@ namespace Yxy.Contracts.Cloud
 
         void SetSpeed(int minKbps, int maxKbps);
 
+        void SetParallel(int parallel);
+
         void Upload(string localPath, string remoteKey);
 
         int DeleteExpired(string prefix, DateTime olderThanUtc, Action<string> onDeleted);

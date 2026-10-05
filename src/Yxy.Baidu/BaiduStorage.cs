@@ -15,6 +15,8 @@ namespace Yxy.Baidu
         private BaiduAppConfig _config;
         private readonly IBaiduTransport _transport;
         private int _maxKbps;
+        private int _parallel = 1;
+        private BytePacer _partPacer;
         private bool _did401Retry;
 
         public Action<CloudAccountDto> PersistAccount { get; set; }
@@ -49,6 +51,22 @@ namespace Yxy.Baidu
         public void SetSpeed(int minKbps, int maxKbps)
         {
             _maxKbps = maxKbps < 0 ? 0 : maxKbps;
+        }
+
+        public void SetParallel(int parallel)
+        {
+            if (parallel < 1)
+            {
+                _parallel = 1;
+            }
+            else if (parallel > 2)
+            {
+                _parallel = 2;
+            }
+            else
+            {
+                _parallel = parallel;
+            }
         }
 
         public void TestConnection()
@@ -181,10 +199,10 @@ namespace Yxy.Baidu
                 count = 1;
             }
 
-            var pacer = new BytePacer(_maxKbps);
+            _partPacer = new BytePacer(_maxKbps);
             var gate = new object();
             Exception error = null;
-            System.Threading.Tasks.Parallel.For(0, count, new System.Threading.Tasks.ParallelOptions { MaxDegreeOfParallelism = 2 }, delegate(int i)
+            System.Threading.Tasks.Parallel.For(0, count, new System.Threading.Tasks.ParallelOptions { MaxDegreeOfParallelism = _parallel }, delegate(int i)
             {
                 lock (gate)
                 {
@@ -218,7 +236,6 @@ namespace Yxy.Baidu
                 {
                     try
                     {
-                        pacer.Take(buf.Length);
                         var url = "https://d.pcs.baidu.com/rest/2.0/pcs/superfile2?method=upload&type=tmpfile"
                             + "&path=" + Uri.EscapeDataString(path)
                             + "&uploadid=" + Uri.EscapeDataString(uploadId ?? "")
@@ -245,6 +262,7 @@ namespace Yxy.Baidu
                     }
                 }
             });
+            _partPacer = null;
 
             if (error != null)
             {
@@ -291,6 +309,14 @@ namespace Yxy.Baidu
 
         private string Api(string method, string url, byte[] body, string contentType)
         {
+            var http = _transport as BaiduHttp;
+            if (http != null)
+            {
+                var blockBytes = body == null ? BaiduSlices.BlockSize : body.Length;
+                http.TimeoutMs = BaiduUploadTimeout.Seconds(_maxKbps, blockBytes) * 1000;
+                http.Pacer = _partPacer;
+            }
+
             try
             {
                 var json = _transport.Call(method, url, _account == null ? null : _account.AccessToken, body, contentType);

@@ -24,6 +24,10 @@ namespace Yxy.TencentCloud
         {
         }
 
+        public void SetParallel(int parallel)
+        {
+        }
+
         public void Upload(string localPath, string remoteKey)
         {
             throw new NotSupportedException("腾讯云后续开通。");

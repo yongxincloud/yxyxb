@@ -26,6 +26,7 @@ namespace Yxy.Cloud
             var settings = SettingsStore.Get(db);
             var storage = CreateReady(db, provider);
             storage.SetSpeed(settings.UploadMinKbps, settings.UploadMaxKbps);
+            storage.SetParallel(settings.UploadParallel);
             storage.Upload(localPath, remoteKey);
         }
 
