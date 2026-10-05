@@ -140,6 +140,36 @@ namespace Yxy.Core.Tests
         }
 
         [Test]
+        public void LogStore_DeletesOlderThanRetainDays()
+        {
+            var file = Path.Combine(Path.GetTempPath(), "yxy-log-" + Guid.NewGuid().ToString("N") + ".db");
+            try
+            {
+                using (var db = new SqliteDb(file))
+                {
+                    db.Execute(
+                        "INSERT INTO logs (type, mode, result, message, task_name, created_utc) VALUES ('file','auto','ok','old','t',@u)",
+                        new System.Data.SQLite.SQLiteParameter("@u", DateTime.UtcNow.AddDays(-40).ToString("o")));
+                    db.Execute(
+                        "INSERT INTO logs (type, mode, result, message, task_name, created_utc) VALUES ('file','auto','ok','new','t',@u)",
+                        new System.Data.SQLite.SQLiteParameter("@u", DateTime.UtcNow.ToString("o")));
+                    var n = LogStore.DeleteOlderThan(db, DateTime.UtcNow.AddDays(-30));
+                    Assert.That(n, Is.EqualTo(1));
+                    var rows = db.Query("SELECT message FROM logs");
+                    Assert.That(rows.Rows.Count, Is.EqualTo(1));
+                    Assert.That(Convert.ToString(rows.Rows[0]["message"]), Is.EqualTo("new"));
+                }
+            }
+            finally
+            {
+                if (File.Exists(file))
+                {
+                    File.Delete(file);
+                }
+            }
+        }
+
+        [Test]
         public void Settings_KeepsUploadParallelAndLogRetainDays()
         {
             var file = Path.Combine(Path.GetTempPath(), "yxy-set-" + Guid.NewGuid().ToString("N") + ".db");

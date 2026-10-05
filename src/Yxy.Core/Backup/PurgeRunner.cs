@@ -46,11 +46,6 @@ namespace Yxy.Core.Backup
         {
             var settings = SettingsStore.Get(db);
             var nowLocal = DateTime.Now;
-            if (!HasAnyPurge(settings))
-            {
-                return false;
-            }
-
             if (!IsDue(nowLocal, settings.PurgeTime, settings.LastPurgeUtc))
             {
                 return false;
@@ -135,10 +130,10 @@ namespace Yxy.Core.Backup
                     }
                 }
 
-                if (log.Length == 0)
-                {
-                    log.Append("无删除项。");
-                }
+                var days = settings.LogRetainDays < 1 ? 1 : settings.LogRetainDays;
+                var cut = DateTime.UtcNow.AddDays(-days);
+                var logRows = LogStore.DeleteOlderThan(db, cut);
+                log.Append(" 日志删除 ").Append(logRows).Append(" 条。");
             }
             catch (Exception ex)
             {
@@ -147,7 +142,7 @@ namespace Yxy.Core.Backup
             }
 
             SettingsStore.MarkPurged(db, DateTime.UtcNow);
-            LogStore.Add(db, "purge", "auto", ok ? "ok" : "error", "自动删除", log.ToString());
+            LogStore.Add(db, "purge", "auto", ok ? "ok" : "error", "自动删除", log.ToString().Trim());
             return true;
         }
     }

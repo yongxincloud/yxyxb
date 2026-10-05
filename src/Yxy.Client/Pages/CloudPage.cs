@@ -28,6 +28,7 @@ namespace Yxy.Client.Pages
         private readonly ComboBox _zone;
         private readonly TextBox _minKbps;
         private readonly TextBox _maxKbps;
+        private readonly TextBox _parallel;
         private readonly TextBlock _masked;
         private readonly TextBlock _baiduStatus;
         private readonly Button _authBtn;
@@ -71,6 +72,7 @@ namespace Yxy.Client.Pages
             _zone = new ComboBox();
             _minKbps = new TextBox { Text = "0" };
             _maxKbps = new TextBox { Text = "0" };
+            _parallel = new TextBox { Text = "1", Width = 80, HorizontalAlignment = HorizontalAlignment.Left };
             _zone.Items.Add(new ComboBoxItem { Content = "华东 z0", Tag = "z0", IsSelected = true });
             _zone.Items.Add(new ComboBoxItem { Content = "华北 z1", Tag = "z1" });
             _zone.Items.Add(new ComboBoxItem { Content = "华南 z2", Tag = "z2" });
@@ -100,9 +102,11 @@ namespace Yxy.Client.Pages
             _form.Children.Add(_minKbps);
             _form.Children.Add(Label("上传上限（KB/s，0 表示不限速）"));
             _form.Children.Add(_maxKbps);
+            _form.Children.Add(Label("上传并行数（1–2）"));
+            _form.Children.Add(_parallel);
             _form.Children.Add(new TextBlock
             {
-                Text = "分片 4MB，同时 2 路。总速度不超过上限。上限为 0 时不限速，下限不生效。下限不能大于上限。",
+                Text = "分片 1MB，可断点续传。并行默认 1。总速度不超过上限。上限为 0 时不限速，下限不生效。下限不能大于上限。",
                 TextWrapping = TextWrapping.Wrap,
                 Margin = new Thickness(0, 8, 0, 0)
             });
@@ -149,6 +153,7 @@ namespace Yxy.Client.Pages
             var settings = SettingsStore.Get(_boot.Db);
             _minKbps.Text = settings.UploadMinKbps.ToString();
             _maxKbps.Text = settings.UploadMaxKbps.ToString();
+            _parallel.Text = (settings.UploadParallel < 1 ? 1 : settings.UploadParallel).ToString();
             if (IsQiniu())
             {
                 _hint.Text = "填写你自己的七牛空间 / AK / SK。产品不提供统一空间。测试与上传走 HTTPS（TLS 1.2）。";
@@ -182,10 +187,11 @@ namespace Yxy.Client.Pages
             }
         }
 
-        private bool TryReadSpeed(out int minKbps, out int maxKbps)
+        private bool TryReadUploadOptions(out int minKbps, out int maxKbps, out int parallel)
         {
             minKbps = 0;
             maxKbps = 0;
+            parallel = 1;
             if (!int.TryParse((_minKbps.Text ?? "").Trim(), out minKbps) || minKbps < 0
                 || !int.TryParse((_maxKbps.Text ?? "").Trim(), out maxKbps) || maxKbps < 0)
             {
@@ -199,14 +205,21 @@ namespace Yxy.Client.Pages
                 return false;
             }
 
+            if (!int.TryParse((_parallel.Text ?? "").Trim(), out parallel) || parallel < 1 || parallel > 2)
+            {
+                MessageBox.Show(Window.GetWindow(this), "上传并行数请填 1 或 2。", "云备份");
+                return false;
+            }
+
             return true;
         }
 
-        private void SaveSpeed(int minKbps, int maxKbps)
+        private void SaveUploadOptions(int minKbps, int maxKbps, int parallel)
         {
             var settings = SettingsStore.Get(_boot.Db);
             settings.UploadMinKbps = minKbps;
             settings.UploadMaxKbps = maxKbps;
+            settings.UploadParallel = parallel;
             SettingsStore.Save(_boot.Db, settings);
         }
 
@@ -220,7 +233,8 @@ namespace Yxy.Client.Pages
 
             int minKbps;
             int maxKbps;
-            if (!TryReadSpeed(out minKbps, out maxKbps))
+            int parallel;
+            if (!TryReadUploadOptions(out minKbps, out maxKbps, out parallel))
             {
                 return;
             }
@@ -230,7 +244,7 @@ namespace Yxy.Client.Pages
                 var old = CloudAccountStore.Get(_boot.Db, CloudProviders.Qiniu);
                 var acc = ReadQiniuForm(old);
                 CloudAccountStore.Save(_boot.Db, acc);
-                SaveSpeed(minKbps, maxKbps);
+                SaveUploadOptions(minKbps, maxKbps, parallel);
                 _masked.Text = "已保存 AK：" + acc.MaskedAccessKey;
                 MessageBox.Show(Window.GetWindow(this), "已保存。", "云备份");
                 return;
@@ -240,7 +254,7 @@ namespace Yxy.Client.Pages
             baidu.Provider = CloudProviders.Baidu;
             baidu.Enabled = _enabled.IsChecked == true;
             CloudAccountStore.Save(_boot.Db, baidu);
-            SaveSpeed(minKbps, maxKbps);
+            SaveUploadOptions(minKbps, maxKbps, parallel);
             ShowBaiduStatus(baidu);
             MessageBox.Show(Window.GetWindow(this), "已保存。", "云备份");
         }

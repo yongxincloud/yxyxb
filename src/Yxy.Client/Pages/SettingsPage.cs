@@ -23,6 +23,7 @@ namespace Yxy.Client.Pages
         private readonly CheckBox _startWin;
         private readonly CheckBox _tray;
         private readonly PasswordBox _lockPwd;
+        private readonly TextBox _logRetain;
         private readonly ComboBox _theme;
         private readonly TextBox _uncPath;
         private readonly TextBox _uncDomain;
@@ -79,6 +80,7 @@ namespace Yxy.Client.Pages
             _startWin = new CheckBox { Content = "开机启动" };
             _tray = new CheckBox { Content = "关闭窗口到托盘" };
             _lockPwd = new PasswordBox();
+            _logRetain = new TextBox { Text = "30", Width = 80, HorizontalAlignment = HorizontalAlignment.Left };
             _theme = new ComboBox();
             _theme.Items.Add(new ComboBoxItem { Content = "明亮", Tag = "light", IsSelected = true });
             _theme.Items.Add(new ComboBoxItem { Content = "深色", Tag = "dark" });
@@ -386,6 +388,15 @@ namespace Yxy.Client.Pages
                 Margin = new Thickness(0, 4, 0, 8),
                 Foreground = (System.Windows.Media.Brush)Application.Current.Resources["Muted"]
             });
+            panel.Children.Add(Label("日志保留天数（最少 1）"));
+            panel.Children.Add(_logRetain);
+            panel.Children.Add(new TextBlock
+            {
+                Text = "到自动删除时间后，删除超过该天数的本机日志行。不删备份包、不删百度续传文件。",
+                TextWrapping = TextWrapping.Wrap,
+                Margin = new Thickness(0, 4, 0, 8),
+                Foreground = (System.Windows.Media.Brush)Application.Current.Resources["Muted"]
+            });
             panel.Children.Add(SaveButton(SaveGeneral));
             return panel;
         }
@@ -401,6 +412,7 @@ namespace Yxy.Client.Pages
             _startWin.IsChecked = s.StartWithWindows;
             _tray.IsChecked = s.CloseToTray;
             _lockPwd.Password = s.LockPassword ?? "";
+            _logRetain.Text = (s.LogRetainDays < 1 ? 30 : s.LogRetainDays).ToString();
             SelectTheme(s.Theme);
             var unc = SettingsStore.GetXfer<UncSettingsDto>(_boot.Db, "unc");
             _uncPath.Text = unc.Path ?? "";
@@ -484,12 +496,20 @@ namespace Yxy.Client.Pages
 
         private void SaveGeneral()
         {
+            int logDays;
+            if (!int.TryParse((_logRetain.Text ?? "").Trim(), out logDays) || logDays < 1)
+            {
+                MessageBox.Show(Window.GetWindow(this), "日志保留天数请填大于等于 1 的整数。", "综合设置");
+                return;
+            }
+
             var s = SettingsStore.Get(_boot.Db);
             s.SoftwareId = string.IsNullOrWhiteSpace(_softwareId.Text) ? AppPaths.ProductName : _softwareId.Text.Trim();
             s.StartWithWindows = _startWin.IsChecked == true;
             s.CloseToTray = _tray.IsChecked == true;
             s.LockPassword = _lockPwd.Password;
             s.Theme = ThemeTag();
+            s.LogRetainDays = logDays;
             SettingsStore.Save(_boot.Db, s);
             ThemeService.Apply(s.Theme);
             var exe = Path.Combine(AppPaths.InstallDirectory, "Yxy.Client.exe");

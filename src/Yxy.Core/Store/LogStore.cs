@@ -72,5 +72,12 @@ namespace Yxy.Core.Store
 
             return list;
         }
+
+        public static int DeleteOlderThan(SqliteDb db, DateTime cutoffUtc)
+        {
+            return db.Execute(
+                "DELETE FROM logs WHERE created_utc < @c",
+                new SQLiteParameter("@c", cutoffUtc.ToString("o")));
+        }
     }
 }
