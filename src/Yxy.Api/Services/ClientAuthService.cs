@@ -16,7 +16,11 @@ public sealed record ClientSession(
     int? NextCheckDays,
     string? Name = null,
     string? Nickname = null,
-    string? CompanyName = null);
+    string? CompanyName = null,
+    string? ErrorCode = null,
+    string? ProductNo = null,
+    int? MaxDevices = null,
+    int? DeviceCount = null);
 
 public sealed class ClientAuthService
 {
@@ -25,12 +29,14 @@ public sealed class ClientAuthService
 
     private readonly WebDb _db;
     private readonly AccountService _accounts;
+    private readonly DeviceRegistryService _devices;
     private readonly TimeProvider _time;
 
-    public ClientAuthService(WebDb db, AccountService accounts, TimeProvider time)
+    public ClientAuthService(WebDb db, AccountService accounts, DeviceRegistryService devices, TimeProvider time)
     {
         _db = db;
         _accounts = accounts;
+        _devices = devices;
         _time = time;
     }
 
@@ -80,23 +86,51 @@ public sealed class ClientAuthService
 
     async Task<ClientSession> IssueAsync(long accountId, string? deviceId)
     {
+        if (string.IsNullOrWhiteSpace(deviceId))
+            return Fail("缺少设备标识", "DEVICE_ID_REQUIRED");
+
         var account = await _db.Accounts.SingleAsync(x => x.Id == accountId);
         var customer = await _db.Customers.SingleOrDefaultAsync(x => x.AccountId == accountId);
         var now = _time.GetUtcNow().UtcDateTime;
         var view = await LoadAuthAsync(accountId, now);
+
+        string? productNo = null;
+        int? maxDevices = null;
+        var enforceLimit = false;
+        if (view.Usable && view.AuthRow != null)
+        {
+            var product = await _db.Products.SingleOrDefaultAsync(x => x.Id == view.AuthRow.ProductId);
+            productNo = product?.ProductNo;
+            maxDevices = product?.MaxDevices;
+            var trial = false;
+            if (view.AuthRow.OrderId is long orderId)
+            {
+                var order = await _db.Orders.SingleOrDefaultAsync(x => x.Id == orderId);
+                trial = order?.OrderType == 2;
+            }
+            enforceLimit = !trial && maxDevices != null;
+        }
+
+        var occupy = await _devices.TryOccupyAsync(accountId, deviceId, maxDevices, enforceLimit);
+        if (!occupy.Ok)
+            return Fail(occupy.Error, occupy.ErrorCode, productNo, occupy.MaxDevices, occupy.DeviceCount);
+
         var days = NextCheckDays(view.End, now);
         var raw = MakeToken();
         _db.AuthTokens.Add(new AuthToken
         {
             AccountId = accountId,
             TokenHash = Hash(raw),
-            DeviceId = deviceId,
+            DeviceId = deviceId.Trim(),
             IssuedAt = now,
             ExpiresAt = now.AddDays(days + TokenBufferDays),
             Revoked = 0
         });
         await _db.SaveChangesAsync();
-        return new ClientSession(true, null, view.Usable, raw, account.Status, view.Status, view.End, days, customer?.Name, customer?.Nickname, customer?.CompanyName);
+        return new ClientSession(
+            true, null, view.Usable, raw, account.Status, view.Status, view.End, days,
+            customer?.Name, customer?.Nickname, customer?.CompanyName,
+            null, productNo, maxDevices, occupy.DeviceCount);
     }
 
     async Task<AuthView> LoadAuthAsync(long accountId, DateTime now)
@@ -110,14 +144,14 @@ public sealed class ClientAuthService
         if (row == null)
         {
             var cancelled = await _db.SubscriptionAuths.AnyAsync(x => x.CustomerId == customer.Id && x.Status == 0);
-            return cancelled ? new AuthView(false, "cancelled", null) : AuthView.None;
+            return cancelled ? new AuthView(false, "cancelled", null, null) : AuthView.None;
         }
-        if (row.Status == 3) return new AuthView(false, "paused", row.AuthEndTime);
-        if (row.Status == 0) return new AuthView(false, "cancelled", row.AuthEndTime);
-        if (row.Status == 2) return new AuthView(false, "expired", row.AuthEndTime);
-        if (now <= row.AuthEndTime) return new AuthView(true, "active", row.AuthEndTime);
-        if (now <= row.AuthEndTime.AddDays(GraceDays)) return new AuthView(true, "grace", row.AuthEndTime);
-        return new AuthView(false, "expired", row.AuthEndTime);
+        if (row.Status == 3) return new AuthView(false, "paused", row.AuthEndTime, row);
+        if (row.Status == 0) return new AuthView(false, "cancelled", row.AuthEndTime, row);
+        if (row.Status == 2) return new AuthView(false, "expired", row.AuthEndTime, row);
+        if (now <= row.AuthEndTime) return new AuthView(true, "active", row.AuthEndTime, row);
+        if (now <= row.AuthEndTime.AddDays(GraceDays)) return new AuthView(true, "grace", row.AuthEndTime, row);
+        return new AuthView(false, "expired", row.AuthEndTime, row);
     }
 
     async Task<AuthToken?> FindLiveAsync(string? rawToken)
@@ -153,10 +187,16 @@ public sealed class ClientAuthService
         return Convert.ToHexString(bytes).ToLowerInvariant();
     }
 
-    static ClientSession Fail(string? error) => new(false, error, false, null, null, null, null, null);
+    static ClientSession Fail(
+        string? error,
+        string? errorCode = null,
+        string? productNo = null,
+        int? maxDevices = null,
+        int? deviceCount = null) =>
+        new(false, error, false, null, null, null, null, null, null, null, null, errorCode, productNo, maxDevices, deviceCount);
 
-    sealed record AuthView(bool Usable, string Status, DateTime? End)
+    sealed record AuthView(bool Usable, string Status, DateTime? End, SubscriptionAuth? AuthRow)
     {
-        public static readonly AuthView None = new(false, "none", null);
+        public static readonly AuthView None = new(false, "none", null, null);
     }
 }

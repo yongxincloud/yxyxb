@@ -17,31 +17,35 @@ public sealed class ClientController : ControllerBase
     public ClientController(ClientAuthService clients) => _clients = clients;
 
     [HttpPost("login")]
-    public async Task<IActionResult> Login([FromBody] ClientLoginBody body)
-    {
-        var session = await _clients.LoginPasswordAsync(body.Email, body.Password, body.DeviceId, ClientIp());
-        return session.Ok ? Ok(session) : BadRequest(session);
-    }
+    public async Task<IActionResult> Login([FromBody] ClientLoginBody body) =>
+        ToResult(await _clients.LoginPasswordAsync(body.Email, body.Password, body.DeviceId, ClientIp()));
 
     [HttpPost("login-code")]
-    public async Task<IActionResult> LoginCode([FromBody] ClientCodeBody body)
-    {
-        var session = await _clients.LoginCodeAsync(body.Email, body.Code, body.DeviceId, ClientIp());
-        return session.Ok ? Ok(session) : BadRequest(session);
-    }
+    public async Task<IActionResult> LoginCode([FromBody] ClientCodeBody body) =>
+        ToResult(await _clients.LoginCodeAsync(body.Email, body.Code, body.DeviceId, ClientIp()));
 
     [HttpPost("verify")]
-    public async Task<IActionResult> Verify([FromBody] ClientVerifyBody body)
-    {
-        var session = await _clients.VerifyAsync(body.Token, body.DeviceId);
-        return session.Ok ? Ok(session) : BadRequest(session);
-    }
+    public async Task<IActionResult> Verify([FromBody] ClientVerifyBody body) =>
+        ToResult(await _clients.VerifyAsync(body.Token, body.DeviceId));
 
     [HttpPost("renew")]
-    public async Task<IActionResult> Renew([FromBody] ClientRenewBody body)
+    public async Task<IActionResult> Renew([FromBody] ClientRenewBody body) =>
+        ToResult(await _clients.RenewAsync(body.Token));
+
+    IActionResult ToResult(ClientSession session)
     {
-        var session = await _clients.RenewAsync(body.Token);
-        return session.Ok ? Ok(session) : BadRequest(session);
+        if (session.Ok) return Ok(session);
+        if (session.ErrorCode == "DEVICE_LIMIT")
+            return Conflict(new
+            {
+                ok = false,
+                error = session.Error,
+                errorCode = session.ErrorCode,
+                maxDevices = session.MaxDevices,
+                deviceCount = session.DeviceCount,
+                productNo = session.ProductNo
+            });
+        return BadRequest(new { ok = false, error = session.Error, errorCode = session.ErrorCode });
     }
 
     string? ClientIp()
