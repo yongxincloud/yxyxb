@@ -6,6 +6,7 @@ using Yxy.Api.Data;
 namespace Yxy.Api.Services;
 
 public sealed record OrderResult(bool Ok, string? Error, string? OrderNo = null, decimal? Amount = null, DateTime? AuthEndTime = null);
+public sealed record UpgradePreview(bool Ok, string? Error, decimal? Amount = null, int? DaysLeft = null, string? FromProductNo = null, string? ToProductNo = null);
 
 public sealed class OrderService
 {
@@ -19,12 +20,14 @@ public sealed class OrderService
     private readonly WebDb _db;
     private readonly TimeProvider _time;
     private readonly IAlipayGateway _alipay;
+    private readonly DeviceRegistryService _devices;
 
-    public OrderService(WebDb db, TimeProvider time, IAlipayGateway alipay)
+    public OrderService(WebDb db, TimeProvider time, IAlipayGateway alipay, DeviceRegistryService devices)
     {
         _db = db;
         _time = time;
         _alipay = alipay;
+        _devices = devices;
     }
 
     public async Task EnsureCatalogAsync()
@@ -62,10 +65,28 @@ public sealed class OrderService
         });
     }
 
+    public async Task<UpgradePreview> PreviewUpgradeAsync(long accountId, string? targetProductNo)
+    {
+        var now = _time.GetUtcNow().UtcDateTime;
+        var customer = await _db.Customers.SingleOrDefaultAsync(x => x.AccountId == accountId);
+        if (customer == null) return new UpgradePreview(false, "请先注册");
+        var auth = await CurrentUsableAuthAsync(customer.Id, now);
+        if (auth == null) return new UpgradePreview(false, "当前没有可升级的正式授权");
+        var oldProduct = await _db.Products.SingleOrDefaultAsync(x => x.Id == auth.ProductId);
+        var newProduct = await _db.Products.SingleOrDefaultAsync(x => x.ProductNo == targetProductNo && x.Status == 1);
+        if (oldProduct == null || newProduct == null) return new UpgradePreview(false, "产品不可购买");
+        if (newProduct.MaxDevices <= oldProduct.MaxDevices) return new UpgradePreview(false, "只能升级到设备上限更高的版本");
+        var daysLeft = Math.Max(0, (int)Math.Floor((auth.AuthEndTime - now).TotalDays));
+        var delta = ProductPricing.SalePrice(newProduct, now) - ProductPricing.SalePrice(oldProduct, now);
+        var amount = decimal.Round(daysLeft * delta / 365m, 2, MidpointRounding.AwayFromZero);
+        if (amount <= 0) return new UpgradePreview(false, "当前差价不足以升级");
+        return new UpgradePreview(true, null, amount, daysLeft, oldProduct.ProductNo, newProduct.ProductNo);
+    }
+
     public async Task<OrderResult> CreateAsync(long accountId, string? productNo, int orderType, string? channel)
     {
         if (channel is not "alipay") return new OrderResult(false, "请使用支付宝");
-        if (orderType is not (1 or 2)) return new OrderResult(false, "订单类型不正确");
+        if (orderType is not (1 or 2 or 3)) return new OrderResult(false, "订单类型不正确");
         await CloseExpiredAsync();
         var customer = await _db.Customers.SingleOrDefaultAsync(x => x.AccountId == accountId);
         if (customer == null) return new OrderResult(false, "请先注册");
@@ -79,12 +100,28 @@ public sealed class OrderService
             if (paidTrials >= 2) return new OrderResult(false, "试用次数已用完");
             amount = decimal.Parse(await ConfigAsync(paidTrials == 0 ? "trial_price_1" : "trial_price_2"));
         }
-        else amount = ProductPricing.SalePrice(product, now);
+        else if (orderType == 3)
+        {
+            var preview = await PreviewUpgradeAsync(accountId, product.ProductNo);
+            if (!preview.Ok) return new OrderResult(false, preview.Error);
+            amount = preview.Amount!.Value;
+        }
+        else
+        {
+            var currentAuth = await CurrentUsableAuthAsync(customer.Id, now);
+            if (currentAuth != null)
+            {
+                var deviceCount = (await _devices.ListActiveAsync(accountId)).Count;
+                if (deviceCount > product.MaxDevices)
+                    return new OrderResult(false, $"请先减少设备到 {product.MaxDevices} 台以内");
+            }
+            amount = ProductPricing.SalePrice(product, now);
+        }
 
         var self = await _db.Providers.SingleOrDefaultAsync(x => x.AccountId == accountId && x.Status == 1);
         var providerId = self?.Id ?? customer.DirectProviderId;
         decimal? rate = null;
-        if (orderType == 1 && providerId != null)
+        if (orderType is 1 or 3 && providerId != null)
         {
             var provider = self ?? await _db.Providers.SingleOrDefaultAsync(x => x.Id == providerId);
             if (provider != null && provider.Status == 1)
@@ -145,19 +182,31 @@ public sealed class OrderService
             Amount = amount,
             CreatedAt = now
         });
-        var end = await NextEndAsync(order, now);
-        _db.SubscriptionAuths.Add(new SubscriptionAuth
+        DateTime end;
+        if (order.OrderType == 3)
         {
-            CustomerId = order.CustomerId,
-            ProductId = order.ProductId,
-            OrderId = order.Id,
-            AuthStartTime = now,
-            AuthEndTime = end,
-            Status = 1,
-            GrantType = 1,
-            CreatedAt = now,
-            UpdatedAt = now
-        });
+            var auth = await CurrentUsableAuthAsync(order.CustomerId, now);
+            if (auth == null) return new OrderResult(false, "当前没有可升级的正式授权");
+            auth.ProductId = order.ProductId;
+            auth.UpdatedAt = now;
+            end = auth.AuthEndTime;
+        }
+        else
+        {
+            end = await NextEndAsync(order, now);
+            _db.SubscriptionAuths.Add(new SubscriptionAuth
+            {
+                CustomerId = order.CustomerId,
+                ProductId = order.ProductId,
+                OrderId = order.Id,
+                AuthStartTime = now,
+                AuthEndTime = end,
+                Status = 1,
+                GrantType = 1,
+                CreatedAt = now,
+                UpdatedAt = now
+            });
+        }
         await WriteCommissionAsync(order, now);
         await _db.SaveChangesAsync();
         return new OrderResult(true, null, order.OrderNo, order.Amount, end);
@@ -165,7 +214,7 @@ public sealed class OrderService
 
     async Task WriteCommissionAsync(SubscriptionOrder order, DateTime now)
     {
-        if (order.OrderType != 1 || order.ProviderId == null || order.CommissionRateSnapshot == null) return;
+        if (order.OrderType is not (1 or 3) || order.ProviderId == null || order.CommissionRateSnapshot == null) return;
         var provider = await _db.Providers.SingleOrDefaultAsync(x => x.Id == order.ProviderId);
         if (provider == null || provider.Status != 1) return;
         var exists = await _db.Commissions.AnyAsync(x => x.OrderId == order.Id && x.ProviderId == provider.Id && x.EntryType == 1);
@@ -281,6 +330,18 @@ public sealed class OrderService
             .OrderByDescending(x => x.AuthEndTime)
             .Select(x => (DateTime?)x.AuthEndTime)
             .FirstOrDefaultAsync();
+    }
+
+    async Task<SubscriptionAuth?> CurrentUsableAuthAsync(long customerId, DateTime now)
+    {
+        var row = await _db.SubscriptionAuths
+            .Where(x => x.CustomerId == customerId && x.Status == 1)
+            .OrderByDescending(x => x.AuthEndTime)
+            .FirstOrDefaultAsync();
+        if (row == null) return null;
+        if (now <= row.AuthEndTime) return row;
+        if (now <= row.AuthEndTime.AddDays(ClientAuthService.GraceDays)) return row;
+        return null;
     }
 
     public async Task CloseExpiredAsync()

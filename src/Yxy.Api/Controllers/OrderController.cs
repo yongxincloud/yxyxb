@@ -65,6 +65,14 @@ public sealed class OrderController : ControllerBase
     }
 
     [Authorize]
+    [HttpGet("upgrade-preview")]
+    public async Task<IActionResult> UpgradePreview([FromQuery] string? productNo)
+    {
+        var preview = await _orders.PreviewUpgradeAsync(AccountId(), productNo);
+        return preview.Ok ? Ok(preview) : BadRequest(preview);
+    }
+
+    [Authorize]
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateOrderBody body)
     {
