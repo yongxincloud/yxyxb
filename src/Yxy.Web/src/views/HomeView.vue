@@ -4,16 +4,16 @@ import { useRouter } from 'vue-router'
 import { get } from '../api.js'
 
 const router = useRouter()
-const price = ref('')
+const plans = ref([])
 
 onMounted(async () => {
   const data = await get('/api/public/price')
-  if (data.ok) price.value = data.price
+  if (data.ok) plans.value = data.plans || []
 })
 
-async function buy() {
+async function buy(productNo) {
   const me = await get('/api/account/me')
-  router.push(me.ok ? '/orders' : '/login')
+  router.push(me.ok ? '/orders?productNo=' + encodeURIComponent(productNo || '') : '/login')
 }
 </script>
 
@@ -30,8 +30,19 @@ async function buy() {
       <h1>文件被加密之后，靠的是事先离线的那一份</h1>
       <p>2026 年 8 月，国家计算机病毒应急处理中心通报，我国境内出现多起「Sorry」勒索事件。重要文件被加密后，官方说明：没有解密密钥时，暂时没有可靠的恢复办法。</p>
       <p>用心云备份运行在 Windows 上。它不查杀病毒，也不能解密。它把文件和 SQL Server 打成 zip，再拷到已登记的移动硬盘并离线。</p>
-      <p v-if="price">当前价格 {{ price }} 元 / 年。续费按当时价格，在原到期日上顺延 365 天。一个账号不限台数。</p>
-      <button class="btn-yxy" type="button" @click="buy">立即购买</button>
+      <p>三档版本按可同时登录设备数区分；续费按当时价格，在原到期日上顺延 365 天。价格由后台配置，促销期内显示促销价。</p>
+      <div class="plans" v-if="plans.length">
+        <article v-for="plan in plans" :key="plan.productNo" class="plan">
+          <h3>{{ plan.name }}</h3>
+          <p class="devices">最多 {{ plan.maxDevices }} 台设备</p>
+          <p class="price">
+            <s v-if="plan.promoActive">¥{{ plan.listPrice }}</s>
+            <strong>¥{{ plan.salePrice }}</strong>
+            <span> / 年</span>
+          </p>
+          <button class="btn-yxy" type="button" @click="buy(plan.productNo)">立即购买</button>
+        </article>
+      </div>
       <a class="btn-secondary" href="http://download.yongxinyun.com/yongxinyunbackup/yongxinyunbackup.zip">下载</a>
     </section>
     <section class="notice">
@@ -64,7 +75,7 @@ async function buy() {
     </section>
     <section id="download" class="download">
       <h2>下载</h2>
-      <p>Windows 客户端可以直接下载。解压后安装，安装后必须登录。一个账号不限台数，不绑电脑。</p>
+      <p>Windows 客户端可以直接下载。解压后安装，安装后必须登录。设备数按所购版本上限计入，可在门户或客户端踢出设备。</p>
       <a class="btn-yxy dl" href="http://download.yongxinyun.com/yongxinyunbackup/yongxinyunbackup.zip">下载客户端</a>
     </section>
     <footer>
@@ -90,6 +101,14 @@ async function buy() {
 }
 .hero h1 { font-size: 32px; margin: 0 0 12px; max-width: 760px; line-height: 1.35; }
 .hero p { max-width: 760px; }
+.plans { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; max-width: 960px; margin: 20px 0; }
+.plan { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.35); padding: 16px; border-radius: 6px; }
+.plan h3 { margin: 0 0 8px; font-size: 18px; }
+.plan .devices { margin: 0 0 8px; opacity: 0.9; }
+.plan .price { margin: 0 0 12px; }
+.plan .price s { margin-right: 8px; opacity: 0.75; }
+.plan .price strong { font-size: 24px; }
+@media (max-width: 768px) { .plans { grid-template-columns: 1fr; } }
 .btn-secondary {
   display: inline-block;
   margin-left: 12px;

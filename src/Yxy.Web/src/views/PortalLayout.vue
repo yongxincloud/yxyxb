@@ -10,6 +10,7 @@ const email = ref('')
 const links = [
   { to: '/home', label: '我的订阅' },
   { to: '/orders', label: '续费 / 订单' },
+  { to: '/portal/devices', label: '我的设备' },
   { to: '/portal/invoice', label: '开票' },
   { to: '/portal/provider', label: '申请服务商' },
   { to: '/portal/commission', label: '我的佣金' },

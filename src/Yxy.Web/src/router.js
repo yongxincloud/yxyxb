@@ -4,6 +4,7 @@ import RegisterView from './views/RegisterView.vue'
 import LoginView from './views/LoginView.vue'
 import ForgotView from './views/ForgotView.vue'
 import OrdersView from './views/OrdersView.vue'
+import PortalDevicesView from './views/PortalDevicesView.vue'
 import PortalView from './views/PortalView.vue'
 import PortalLayout from './views/PortalLayout.vue'
 import InvoiceView from './views/InvoiceView.vue'
@@ -57,6 +58,7 @@ export const router = createRouter({
       children: [
         { path: '', component: PortalView },
         { path: '/orders', component: OrdersView },
+        { path: '/portal/devices', component: PortalDevicesView },
         { path: '/portal/invoice', component: InvoiceView },
         { path: '/portal/provider', component: ProviderApplyView },
         { path: '/portal/download', component: DownloadView },
