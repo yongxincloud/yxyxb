@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -26,10 +27,29 @@ namespace Yxy.Client
         public DateTime? AuthEndUtc { get; set; }
         public string AuthStatus { get; set; }
         public int NextCheckDays { get; set; }
+        public string ProductNo { get; set; }
+        public string ProductName { get; set; }
+        public int? MaxDevices { get; set; }
 
         public bool Usable
         {
             get { return SiteGate.Allows(LoggedIn, Valid, AuthEndUtc, DateTime.UtcNow); }
+        }
+
+        public string EditionText
+        {
+            get
+            {
+                var name = (ProductName ?? "").Trim();
+                if (name.Length == 0)
+                {
+                    name = EditionLabel(ProductNo);
+                }
+
+                if (name.Length == 0) return "";
+                if (MaxDevices == null) return name;
+                return name + "（最多 " + MaxDevices.Value + " 台）";
+            }
         }
 
         public string DisplayName
@@ -65,16 +85,18 @@ namespace Yxy.Client
                 }
 
                 var who = DisplayName;
+                var edition = EditionText;
+                var editionSuffix = edition.Length == 0 ? "" : "，版本 " + edition;
                 if (AuthEndUtc == null || !Valid)
                 {
-                    return "已登录 " + who + "，当前没有可用授权。文件备份、数据库备份、云、UNC、FTP、邮件已停用。离线介质仍可使用。";
+                    return "已登录 " + who + editionSuffix + "，当前没有可用授权。文件备份、数据库备份、云、UNC、FTP、邮件已停用。离线介质仍可使用。";
                 }
 
                 var local = AuthEndUtc.Value.ToLocalTime();
                 var days = (int)Math.Ceiling((AuthEndUtc.Value - DateTime.UtcNow).TotalDays);
                 if (days > 0)
                 {
-                    var until = "已登录 " + who + "。可用至 " + local.ToString("yyyy-MM-dd");
+                    var until = "已登录 " + who + editionSuffix + "。可用至 " + local.ToString("yyyy-MM-dd");
                     if (days > 30) return until + "。";
                     return until + "，剩余 " + days + " 天。";
                 }
@@ -83,10 +105,54 @@ namespace Yxy.Client
                 if (DateTime.UtcNow <= grace)
                 {
                     var left = (int)Math.Ceiling((grace - DateTime.UtcNow).TotalDays);
-                    return "已登录 " + who + "。授权已于 " + local.ToString("yyyy-MM-dd") + " 到期，宽限还剩 " + left + " 天。请续费。";
+                    return "已登录 " + who + editionSuffix + "。授权已于 " + local.ToString("yyyy-MM-dd") + " 到期，宽限还剩 " + left + " 天。请续费。";
                 }
 
-                return "已登录 " + who + "。授权已到期。文件备份、数据库备份、云、UNC、FTP、邮件已停用。离线介质仍可使用。";
+                return "已登录 " + who + editionSuffix + "。授权已到期。文件备份、数据库备份、云、UNC、FTP、邮件已停用。离线介质仍可使用。";
+            }
+        }
+
+        public static string EditionLabel(string productNo)
+        {
+            if (string.IsNullOrWhiteSpace(productNo)) return "";
+            switch (productNo.Trim().ToUpperInvariant())
+            {
+                case "PERSONAL": return "个人版";
+                case "STANDARD": return "标准版";
+                case "PRO": return "专业版";
+                default: return productNo.Trim();
+            }
+        }
+    }
+
+    public sealed class SiteDeviceItem
+    {
+        public string DeviceId { get; set; }
+        public string DisplayName { get; set; }
+        public string FirstSeenLocal { get; set; }
+        public string LastSeenLocal { get; set; }
+        public bool IsThisDevice { get; set; }
+        public string ThisText
+        {
+            get { return IsThisDevice ? "是" : ""; }
+        }
+    }
+
+    public sealed class SiteDeviceList
+    {
+        public int? MaxDevices { get; set; }
+        public string ProductNo { get; set; }
+        public string ProductName { get; set; }
+        public List<SiteDeviceItem> Items { get; set; }
+
+        public string EditionText
+        {
+            get
+            {
+                var name = (ProductName ?? "").Trim();
+                if (name.Length == 0) name = SiteSession.EditionLabel(ProductNo);
+                if (name.Length == 0) return "—";
+                return name;
             }
         }
     }
@@ -140,6 +206,13 @@ namespace Yxy.Client
                     else if (key == "company") session.CompanyName = value;
                     else if (key == "valid") session.Valid = value == "true";
                     else if (key == "status") session.AuthStatus = value;
+                    else if (key == "productNo") session.ProductNo = value;
+                    else if (key == "productName") session.ProductName = value;
+                    else if (key == "maxDevices")
+                    {
+                        int max;
+                        if (int.TryParse(value, out max)) session.MaxDevices = max;
+                    }
                     else if (key == "days")
                     {
                         int days;
@@ -176,90 +249,81 @@ namespace Yxy.Client
             }
         }
 
-        public static void PromptDevices(Window owner)
+        public static string LocalDeviceId()
+        {
+            return DeviceId();
+        }
+
+        public static SiteDeviceList ListDevices()
         {
             var token = File.Exists(TokenFile) ? File.ReadAllText(TokenFile).Trim() : "";
             if (string.IsNullOrEmpty(token))
             {
-                MessageBox.Show(owner, "请先登录。", "我的设备");
-                return;
+                throw new InvalidOperationException("请先登录。");
             }
 
-            string body;
-            try
-            {
-                body = Post("/api/client/devices", "{\"token\":\"" + Escape(token) + "\"}");
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show(owner, ex.Message, "我的设备");
-                return;
-            }
+            var body = Post("/api/client/devices", "{\"token\":\"" + Escape(token) + "\"}");
+            var maxText = Match(body, "\"maxDevices\"\\s*:\\s*(\\d+)");
+            int? max = null;
+            int parsed;
+            if (int.TryParse(maxText, out parsed)) max = parsed;
+            var productNo = Match(body, "\"productNo\"\\s*:\\s*\"([^\"]*)\"");
+            var productName = Match(body, "\"productName\"\\s*:\\s*\"([^\"]*)\"");
+            RememberEdition(productNo, productName, max);
 
-            var max = Match(body, "\"maxDevices\"\\s*:\\s*(\\d+)");
-            var deviceBlocks = Regex.Matches(body ?? "", "\\{[^{}]*\"deviceId\"\\s*:\\s*\"([^\"]+)\"[^{}]*\\}");
-            var ids = new System.Collections.Generic.List<string>();
-            var labels = new System.Collections.Generic.List<string>();
-            foreach (Match block in deviceBlocks)
+            var localId = DeviceId();
+            var items = new List<SiteDeviceItem>();
+            foreach (Match block in Regex.Matches(body ?? "", "\\{[^{}]*\"deviceId\"\\s*:\\s*\"([^\"]+)\"[^{}]*\\}"))
             {
                 var id = block.Groups[1].Value;
                 var name = Match(block.Value, "\"displayName\"\\s*:\\s*\"([^\"]*)\"");
-                ids.Add(id);
-                labels.Add(string.IsNullOrEmpty(name) ? id : name);
-            }
-            var lines = new StringBuilder();
-            lines.AppendLine("设备上限：" + (string.IsNullOrEmpty(max) ? "—" : max));
-            lines.AppendLine("退出登录不释放名额。选择要踢出的设备编号：");
-            for (var i = 0; i < ids.Count; i++)
-            {
-                lines.AppendLine((i + 1) + ". " + labels[i]);
-                lines.AppendLine("   ID: " + ids[i]);
+                items.Add(new SiteDeviceItem
+                {
+                    DeviceId = id,
+                    DisplayName = string.IsNullOrEmpty(name) ? id : name,
+                    FirstSeenLocal = FormatUtcLocal(Match(block.Value, "\"firstSeenAt\"\\s*:\\s*\"([^\"]*)\"")),
+                    LastSeenLocal = FormatUtcLocal(Match(block.Value, "\"lastSeenAt\"\\s*:\\s*\"([^\"]*)\"")),
+                    IsThisDevice = string.Equals(id, localId, StringComparison.OrdinalIgnoreCase)
+                });
             }
 
-            if (ids.Count == 0)
+            return new SiteDeviceList
             {
-                MessageBox.Show(owner, lines.ToString() + "\n暂无占用中的设备。", "我的设备");
-                return;
-            }
-
-            var pickBox = new TextBox { Text = "1", Width = 60, Margin = new Thickness(0, 8, 0, 0) };
-            var panel = new StackPanel { Margin = new Thickness(16) };
-            panel.Children.Add(new TextBlock { Text = lines.ToString(), TextWrapping = TextWrapping.Wrap });
-            panel.Children.Add(pickBox);
-            var ok = new Button { Content = "踢出", Width = 80, Margin = new Thickness(0, 12, 0, 0), IsDefault = true };
-            panel.Children.Add(ok);
-            var win = new Window
-            {
-                Title = "我的设备",
-                Owner = owner,
-                Width = 420,
-                SizeToContent = SizeToContent.Height,
-                WindowStartupLocation = WindowStartupLocation.CenterOwner,
-                Content = panel,
-                FontFamily = new FontFamily("Microsoft YaHei")
+                MaxDevices = max,
+                ProductNo = productNo,
+                ProductName = productName,
+                Items = items
             };
-            ok.Click += delegate
-            {
-                int pick;
-                if (!int.TryParse(pickBox.Text, out pick) || pick < 1 || pick > ids.Count)
-                {
-                    MessageBox.Show(win, "请输入有效编号。", "我的设备");
-                    return;
-                }
+        }
 
-                var deviceId = ids[pick - 1];
-                try
-                {
-                    Post("/api/client/devices/kick", "{\"token\":\"" + Escape(token) + "\",\"deviceId\":\"" + Escape(deviceId) + "\"}");
-                    MessageBox.Show(win, "已踢出 " + deviceId, "我的设备");
-                    win.Close();
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show(win, ex.Message, "我的设备");
-                }
-            };
-            win.ShowDialog();
+        public static void KickDevice(string deviceId)
+        {
+            var token = File.Exists(TokenFile) ? File.ReadAllText(TokenFile).Trim() : "";
+            if (string.IsNullOrEmpty(token))
+            {
+                throw new InvalidOperationException("请先登录。");
+            }
+
+            if (string.IsNullOrWhiteSpace(deviceId))
+            {
+                throw new InvalidOperationException("缺少设备标识");
+            }
+
+            Post("/api/client/devices/kick",
+                "{\"token\":\"" + Escape(token) + "\",\"deviceId\":\"" + Escape(deviceId) + "\"}");
+        }
+
+        private static string FormatUtcLocal(string raw)
+        {
+            DateTime utc;
+            if (string.IsNullOrEmpty(raw)
+                || !DateTime.TryParse(raw, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out utc))
+            {
+                return raw ?? "";
+            }
+
+            if (utc.Kind == DateTimeKind.Unspecified) utc = DateTime.SpecifyKind(utc, DateTimeKind.Utc);
+            return utc.ToLocalTime().ToString("yyyy-MM-dd HH:mm");
         }
 
         public static void Prompt(Window owner, Action saved)
@@ -493,14 +557,62 @@ namespace Yxy.Client
             var name = Match(body, "\"name\"\\s*:\\s*\"([^\"]*)\"");
             var nickname = Match(body, "\"nickname\"\\s*:\\s*\"([^\"]*)\"");
             var company = Match(body, "\"companyName\"\\s*:\\s*\"([^\"]*)\"");
+            var productNo = Match(body, "\"productNo\"\\s*:\\s*\"([^\"]*)\"");
+            var productName = Match(body, "\"productName\"\\s*:\\s*\"([^\"]*)\"");
+            var maxDevices = Match(body, "\"maxDevices\"\\s*:\\s*(\\d+)");
+            WriteSession(email, name, nickname, company, valid, end, status, days, productNo, productName, maxDevices);
+        }
+
+        private static void RememberEdition(string productNo, string productName, int? maxDevices)
+        {
+            try
+            {
+                if (!File.Exists(SessionFile)) return;
+                var session = Load();
+                if (!session.LoggedIn) return;
+                WriteSession(
+                    session.Email,
+                    session.Name,
+                    session.Nickname,
+                    session.CompanyName,
+                    session.Valid ? "true" : "false",
+                    session.AuthEndUtc == null ? "" : session.AuthEndUtc.Value.ToString("o"),
+                    session.AuthStatus,
+                    session.NextCheckDays.ToString(),
+                    productNo,
+                    productName,
+                    maxDevices == null ? "" : maxDevices.Value.ToString());
+            }
+            catch (IOException)
+            {
+            }
+        }
+
+        private static void WriteSession(
+            string email,
+            string name,
+            string nickname,
+            string company,
+            string valid,
+            string end,
+            string status,
+            string days,
+            string productNo,
+            string productName,
+            string maxDevices)
+        {
+            AppPaths.EnsureDirectories();
             var text = "email=" + OneLine(email) + "\r\n"
                 + "name=" + OneLine(name) + "\r\n"
                 + "nickname=" + OneLine(nickname) + "\r\n"
                 + "company=" + OneLine(company) + "\r\n"
-                + "valid=" + valid + "\r\n"
-                + "end=" + end + "\r\n"
-                + "status=" + status + "\r\n"
-                + "days=" + days + "\r\n";
+                + "valid=" + OneLine(valid) + "\r\n"
+                + "end=" + OneLine(end) + "\r\n"
+                + "status=" + OneLine(status) + "\r\n"
+                + "days=" + OneLine(days) + "\r\n"
+                + "productNo=" + OneLine(productNo) + "\r\n"
+                + "productName=" + OneLine(productName) + "\r\n"
+                + "maxDevices=" + OneLine(maxDevices) + "\r\n";
             File.WriteAllText(SessionFile, text);
         }
 

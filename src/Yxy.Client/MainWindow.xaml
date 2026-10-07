@@ -43,8 +43,8 @@
                         <Button x:Name="NavCloud" Content="云备份" Style="{StaticResource NavButton}" Tag="cloud" Click="Nav_OnClick"/>
                         <Button x:Name="NavInstances" Content="实例" Style="{StaticResource NavButton}" Tag="instances" Click="Nav_OnClick"/>
                         <Button x:Name="NavLogs" Content="日志" Style="{StaticResource NavButton}" Tag="logs" Click="Nav_OnClick"/>
-                        <Button x:Name="NavRestore" Content="恢复（后续）" Style="{StaticResource NavButton}" IsEnabled="False"/>
-                        <Button x:Name="NavTools" Content="工具（后续）" Style="{StaticResource NavButton}" IsEnabled="False"/>
+                        <Button x:Name="NavRestore" Content="恢复" Style="{StaticResource NavButton}" Tag="restore" Click="Nav_OnClick"/>
+                        <Button x:Name="NavDevices" Content="我的设备" Style="{StaticResource NavButton}" Tag="devices" Click="Nav_OnClick"/>
                         <Button x:Name="NavSettings" Content="设置" Style="{StaticResource NavButton}" Tag="settings" Click="Nav_OnClick"/>
                     </StackPanel>
                 </DockPanel>

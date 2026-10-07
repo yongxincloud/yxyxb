@@ -47,6 +47,7 @@ namespace Yxy.Client
                 Close();
             });
             _tray.ContextMenuStrip = menu;
+            RefreshLoginButton();
             ShowPage("home");
         }
 
@@ -66,16 +67,26 @@ namespace Yxy.Client
             var session = SiteLogin.Load();
             if (session.LoggedIn)
             {
-                SiteLogin.PromptDevices(this);
+                ShowPage("devices");
                 return;
             }
 
             SiteLogin.Prompt(this, delegate
             {
-                var after = SiteLogin.Load();
-                BtnLogin.Content = after.LoggedIn ? "已登录" : "登录";
-                ShowPage("home");
+                RefreshLoginButton();
+                ShowPage(SiteLogin.Load().LoggedIn ? "devices" : "home");
             });
+        }
+
+        private void OnDeviceSignedOut()
+        {
+            RefreshLoginButton();
+            ShowPage("home");
+        }
+
+        private void RefreshLoginButton()
+        {
+            BtnLogin.Content = SiteLogin.Load().LoggedIn ? "已登录" : "登录";
         }
 
         private void Drag_OnDown(object sender, MouseButtonEventArgs e)
@@ -118,7 +129,7 @@ namespace Yxy.Client
                 }
 
                 SiteLogin.SignOut();
-                BtnLogin.Content = "登录";
+                RefreshLoginButton();
                 dialog.Close();
                 ShowPage(_current);
             };
@@ -193,6 +204,14 @@ namespace Yxy.Client
                     TxtTitle.Text = "日志";
                     PageHost.Content = new LogsPage(_boot);
                     break;
+                case "restore":
+                    TxtTitle.Text = "恢复";
+                    PageHost.Content = Licensed(key) ? (object)new RestorePage(_boot) : LockedPage();
+                    break;
+                case "devices":
+                    TxtTitle.Text = "我的设备";
+                    PageHost.Content = new DevicesPage(OnDeviceSignedOut);
+                    break;
                 case "settings":
                     TxtTitle.Text = "设置";
                     PageHost.Content = new SettingsPage(_boot);
@@ -229,6 +248,8 @@ namespace Yxy.Client
             SetNav(NavCloud, key == "cloud");
             SetNav(NavInstances, key == "instances");
             SetNav(NavLogs, key == "logs");
+            SetNav(NavRestore, key == "restore");
+            SetNav(NavDevices, key == "devices");
             SetNav(NavSettings, key == "settings");
         }
 

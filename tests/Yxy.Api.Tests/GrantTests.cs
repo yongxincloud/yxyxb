@@ -61,5 +61,46 @@ public sealed class GrantTests
         Assert.That(await db.OperationLogs.CountAsync(x => x.Module == "product" && x.Action == "update"), Is.EqualTo(1));
     }
 
+    [Test]
+    public async Task Change_Edition_Updates_Auth_And_Writes_Log()
+    {
+        await using var factory = new WebAppFactory();
+        var vendor = factory.CreateClient();
+        vendor.DefaultRequestHeaders.Add("X-Vendor-Key", VendorController.VendorKey);
+        var user = factory.CreateClient();
+        await AccountApi.Register(factory, user, "edition@example.com", "abc12345");
+        var granted = await AccountApi.Post(vendor, "/api/vendor/grants", new
+        {
+            email = "edition@example.com",
+            days = 30,
+            reason = "开通",
+            productNo = "PERSONAL"
+        });
+        Assert.That(granted.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+
+        await using (var scope = factory.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<WebDb>();
+            var customer = await db.Customers.SingleAsync();
+            var personal = await db.Products.SingleAsync(x => x.ProductNo == "PERSONAL");
+            Assert.That((await db.SubscriptionAuths.SingleAsync()).ProductId, Is.EqualTo(personal.Id));
+
+            var changed = await AccountApi.Post(vendor, "/api/vendor/customers/" + customer.Id + "/edition", new
+            {
+                productNo = "PRO",
+                reason = "升级试用"
+            });
+            Assert.That(changed.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+        }
+
+        await using var check = factory.Services.CreateAsyncScope();
+        var store = check.ServiceProvider.GetRequiredService<WebDb>();
+        var pro = await store.Products.SingleAsync(x => x.ProductNo == "PRO");
+        Assert.That((await store.SubscriptionAuths.SingleAsync()).ProductId, Is.EqualTo(pro.Id));
+        var log = await store.OperationLogs.SingleAsync(x => x.Module == "customer" && x.Action == "edition");
+        Assert.That(log.BeforeValue, Does.Contain("PERSONAL"));
+        Assert.That(log.AfterValue, Does.Contain("PRO"));
+    }
+
     sealed record OrderAmount(bool Ok, decimal Amount);
 }

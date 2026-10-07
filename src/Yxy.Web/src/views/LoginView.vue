@@ -59,7 +59,7 @@ function submit() {
     <aside>
       <div class="plate"><img class="logo" src="/logo.jpg" alt="用心云" /></div>
       <h1>登录后管理订阅和订单</h1>
-      <p>请使用注册邮箱。一个账号不限台数。</p>
+      <p>请使用注册邮箱登录。三档版本按可同时登录设备数区分，可在门户查看并管理设备。</p>
     </aside>
     <form class="panel" @submit.prevent="submit">
       <h2>登录</h2>

@@ -20,7 +20,8 @@ public sealed record ClientSession(
     string? ErrorCode = null,
     string? ProductNo = null,
     int? MaxDevices = null,
-    int? DeviceCount = null);
+    int? DeviceCount = null,
+    string? ProductName = null);
 
 public sealed class ClientAuthService
 {
@@ -102,12 +103,14 @@ public sealed class ClientAuthService
         var view = await LoadAuthAsync(accountId, now);
 
         string? productNo = null;
+        string? productName = null;
         int? maxDevices = null;
         var enforceLimit = false;
         if (view.Usable && view.AuthRow != null)
         {
             var product = await _db.Products.SingleOrDefaultAsync(x => x.Id == view.AuthRow.ProductId);
             productNo = product?.ProductNo;
+            productName = product?.Name;
             maxDevices = product?.MaxDevices;
             var trial = false;
             if (view.AuthRow.OrderId is long orderId)
@@ -120,7 +123,7 @@ public sealed class ClientAuthService
 
         var occupy = await _devices.TryOccupyAsync(accountId, deviceId, maxDevices, enforceLimit, NormalizeDisplayName(displayName));
         if (!occupy.Ok)
-            return Fail(occupy.Error, occupy.ErrorCode, productNo, occupy.MaxDevices, occupy.DeviceCount);
+            return Fail(occupy.Error, occupy.ErrorCode, productNo, occupy.MaxDevices, occupy.DeviceCount, productName);
 
         var days = NextCheckDays(view.End, now);
         var raw = MakeToken();
@@ -137,7 +140,7 @@ public sealed class ClientAuthService
         return new ClientSession(
             true, null, view.Usable, raw, account.Status, view.Status, view.End, days,
             customer?.Name, customer?.Nickname, customer?.CompanyName,
-            null, productNo, maxDevices, occupy.DeviceCount);
+            null, productNo, maxDevices, occupy.DeviceCount, productName);
     }
 
     async Task<AuthView> LoadAuthAsync(long accountId, DateTime now)
@@ -206,8 +209,9 @@ public sealed class ClientAuthService
         string? errorCode = null,
         string? productNo = null,
         int? maxDevices = null,
-        int? deviceCount = null) =>
-        new(false, error, false, null, null, null, null, null, null, null, null, errorCode, productNo, maxDevices, deviceCount);
+        int? deviceCount = null,
+        string? productName = null) =>
+        new(false, error, false, null, null, null, null, null, null, null, null, errorCode, productNo, maxDevices, deviceCount, productName);
 
     sealed record AuthView(bool Usable, string Status, DateTime? End, SubscriptionAuth? AuthRow)
     {

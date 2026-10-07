@@ -98,10 +98,11 @@ async function buy(productNo) {
   background: linear-gradient(160deg, var(--c-hero-from), var(--c-hero-to));
   color: #fff;
   padding: 65px 16px;
+  text-align: center;
 }
-.hero h1 { font-size: 32px; margin: 0 0 12px; max-width: 760px; line-height: 1.35; }
-.hero p { max-width: 760px; }
-.plans { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; max-width: 960px; margin: 20px 0; }
+.hero h1 { font-size: 32px; margin: 0 auto 12px; max-width: 760px; line-height: 1.35; }
+.hero p { max-width: 760px; margin-left: auto; margin-right: auto; }
+.plans { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; max-width: 960px; margin: 20px auto; text-align: center; }
 .plan { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.35); padding: 16px; border-radius: 6px; }
 .plan h3 { margin: 0 0 8px; font-size: 18px; }
 .plan .devices { margin: 0 0 8px; opacity: 0.9; }
@@ -121,7 +122,7 @@ async function buy(productNo) {
   border: 1px solid #fff;
   text-decoration: none;
 }
-.notice, .scope, .download { max-width: 1400px; margin: 0 auto; padding: 8px 16px 24px; }
+.notice, .scope, .download { max-width: 1400px; margin: 0 auto; padding: 8px 16px 24px; text-align: center; }
 .notice, .scope {
   background: #fff;
   border-radius: 6px;
@@ -130,9 +131,9 @@ async function buy(productNo) {
   max-width: calc(1400px - 32px);
 }
 .notice h2, .scope h2, .download h2, .cards h2 { margin: 0 0 8px; color: var(--c-title); font-size: 18px; }
-.notice p, .scope p, .download p, .cards p { margin: 0 0 10px; line-height: 1.7; }
+.notice p, .scope p, .download p, .cards p { margin: 0 auto 10px; line-height: 1.7; max-width: 760px; }
 .limit { color: var(--c-text-muted); margin-bottom: 0; }
-.cards { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+.cards { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; text-align: center; }
 .cards article { background: #fff; border-radius: 6px; padding: 24px; }
 .download { background: var(--c-surface-alt); padding: 24px 16px; }
 .dl { display: inline-block; line-height: 43px; text-decoration: none; }

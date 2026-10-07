@@ -43,7 +43,7 @@ onMounted(load)
         </div>
         <button class="btn-ghost" type="button" @click="kick(row.deviceId)">踢出</button>
       </article>
-      <p v-if="!devices.length">暂无占用中的设备。</p>
+      <p v-if="!error && !devices.length">暂无占用中的设备。</p>
     </div>
   </section>
 </template>

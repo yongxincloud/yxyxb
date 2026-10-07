@@ -48,9 +48,16 @@ public sealed class ClientController : ControllerBase
     {
         var accountId = await _clients.ResolveAccountIdAsync(body.Token);
         if (accountId == null) return BadRequest(new { ok = false, error = "登录已失效" });
-        var max = await CurrentMaxDevicesAsync(accountId.Value);
+        var product = await CurrentProductAsync(accountId.Value);
         var devices = await _devices.ListActiveAsync(accountId.Value);
-        return Ok(new { ok = true, maxDevices = max, devices });
+        return Ok(new
+        {
+            ok = true,
+            maxDevices = product?.MaxDevices,
+            productNo = product?.ProductNo,
+            productName = product?.Name,
+            devices
+        });
     }
 
     [HttpPost("devices/kick")]
@@ -64,7 +71,7 @@ public sealed class ClientController : ControllerBase
         return ok ? Ok(new { ok = true }) : BadRequest(new { ok = false, error = "设备不存在或已踢出" });
     }
 
-    async Task<int?> CurrentMaxDevicesAsync(long accountId)
+    async Task<Product?> CurrentProductAsync(long accountId)
     {
         var customer = await _db.Customers.SingleOrDefaultAsync(x => x.AccountId == accountId);
         if (customer == null) return null;
@@ -73,8 +80,7 @@ public sealed class ClientController : ControllerBase
             .OrderByDescending(x => x.AuthEndTime)
             .FirstOrDefaultAsync();
         if (auth == null) return null;
-        var product = await _db.Products.SingleOrDefaultAsync(x => x.Id == auth.ProductId);
-        return product?.MaxDevices;
+        return await _db.Products.SingleOrDefaultAsync(x => x.Id == auth.ProductId);
     }
 
     IActionResult ToResult(ClientSession session)
@@ -88,7 +94,8 @@ public sealed class ClientController : ControllerBase
                 errorCode = session.ErrorCode,
                 maxDevices = session.MaxDevices,
                 deviceCount = session.DeviceCount,
-                productNo = session.ProductNo
+                productNo = session.ProductNo,
+                productName = session.ProductName
             });
         return BadRequest(new { ok = false, error = session.Error, errorCode = session.ErrorCode });
     }

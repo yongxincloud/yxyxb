@@ -11,7 +11,8 @@ namespace Yxy.Api.Controllers;
 public sealed record LevelBody(string? Name, decimal Rate);
 public sealed record ApproveBody(long LevelId);
 public sealed record PayBody(string? VoucherNo);
-public sealed record GrantBody(string? Email, int? Days, DateTime? EndTime, string? Reason);
+public sealed record GrantBody(string? Email, int? Days, DateTime? EndTime, string? Reason, string? ProductNo);
+public sealed record EditionBody(string? ProductNo, string? Reason);
 public sealed record PriceBody(decimal Price);
 public sealed record ProductUpdateBody(
     decimal? Price,
@@ -85,7 +86,7 @@ public sealed class VendorController : ControllerBase
         var orders = await _db.Orders.OrderByDescending(x => x.Id).Take(200)
             .Select(x => new { x.Id, x.OrderNo, x.CustomerId, x.OrderType, x.Amount, x.PayStatus, x.PayChannel, x.PayTime, x.CreatedAt }).ToListAsync();
         var auths = await _db.SubscriptionAuths.OrderByDescending(x => x.Id).Take(200)
-            .Select(x => new { x.Id, x.CustomerId, x.AuthEndTime, x.Status, x.GrantType, x.GrantReason }).ToListAsync();
+            .Select(x => new { x.Id, x.CustomerId, x.ProductId, x.AuthEndTime, x.Status, x.GrantType, x.GrantReason }).ToListAsync();
         var providers = await _db.Providers.OrderByDescending(x => x.Id).Take(200)
             .Select(x => new { x.Id, x.ProviderNo, x.Name, x.LevelId, x.Status, x.AccountId }).ToListAsync();
         var levels = await _db.ProviderLevels.OrderBy(x => x.Id)
@@ -106,8 +107,9 @@ public sealed class VendorController : ControllerBase
             .Select(x => new { x.Module, x.Action, x.BeforeValue, x.AfterValue, x.CreatedAt }).ToListAsync();
         var applies = await _db.ProviderApplies.Where(x => x.Status == 0).OrderBy(x => x.Id)
             .Select(x => new { x.Id, x.CompanyName, x.TaxNo, x.ContactName, x.ContactEmail }).ToListAsync();
+        var productById = products.ToDictionary(x => x.Id, x => x);
         var latestAuth = (await _db.SubscriptionAuths
-            .Select(x => new { x.CustomerId, x.AuthEndTime, x.Status })
+            .Select(x => new { x.CustomerId, x.ProductId, x.AuthEndTime, x.Status })
             .ToListAsync())
             .GroupBy(x => x.CustomerId)
             .ToDictionary(g => g.Key, g => g.OrderByDescending(x => x.AuthEndTime).First());
@@ -118,12 +120,16 @@ public sealed class VendorController : ControllerBase
             customers = customers.Select(x =>
             {
                 latestAuth.TryGetValue(x.Id, out var auth);
+                productById.TryGetValue(auth?.ProductId ?? 0, out var product);
                 return new
                 {
                     x.Id, x.CustomerNo, x.Name, x.Status, x.DirectProviderId, x.CreatedAt,
                     email = emailOf.TryGetValue(x.AccountId, out var email) ? email : "",
                     authEndTime = auth == null ? (DateTime?)null : auth.AuthEndTime,
-                    authStatus = auth == null ? (int?)null : auth.Status
+                    authStatus = auth == null ? (int?)null : auth.Status,
+                    productNo = product?.ProductNo,
+                    productName = product?.Name,
+                    maxDevices = product?.MaxDevices
                 };
             }),
             orders = orders.Select(x => new
@@ -131,10 +137,16 @@ public sealed class VendorController : ControllerBase
                 x.Id, x.OrderNo, x.OrderType, x.Amount, x.PayStatus, x.PayChannel, x.PayTime, x.CreatedAt,
                 email = customerEmail.TryGetValue(x.CustomerId, out var email) ? email : ""
             }),
-            auths = auths.Select(x => new
+            auths = auths.Select(x =>
             {
-                x.Id, x.AuthEndTime, x.Status, x.GrantType, x.GrantReason,
-                email = customerEmail.TryGetValue(x.CustomerId, out var email) ? email : ""
+                productById.TryGetValue(x.ProductId, out var product);
+                return new
+                {
+                    x.Id, x.AuthEndTime, x.Status, x.GrantType, x.GrantReason,
+                    productNo = product?.ProductNo,
+                    productName = product?.Name,
+                    email = customerEmail.TryGetValue(x.CustomerId, out var email) ? email : ""
+                };
             }),
             providers = providers.Select(x => new
             {
@@ -272,7 +284,9 @@ public sealed class VendorController : ControllerBase
         if (account == null) return BadRequest(new { ok = false, error = "账号不存在，后台不能新建账号" });
         var customer = await _db.Customers.SingleOrDefaultAsync(x => x.AccountId == account.Id);
         if (customer == null) return BadRequest(new { ok = false, error = "账号不存在，后台不能新建账号" });
-        var product = await _db.Products.SingleAsync(x => x.ProductNo == OrderService.StandardProductNo);
+        var productNo = string.IsNullOrWhiteSpace(body.ProductNo) ? OrderService.StandardProductNo : body.ProductNo.Trim().ToUpperInvariant();
+        var product = await _db.Products.SingleOrDefaultAsync(x => x.ProductNo == productNo);
+        if (product == null || product.Status != 1) return BadRequest(new { ok = false, error = "产品不存在或已下架" });
         var now = DateTime.UtcNow;
         DateTime end;
         if (body.EndTime != null)
@@ -302,7 +316,7 @@ public sealed class VendorController : ControllerBase
         {
             Module = "auth",
             Action = "grant",
-            AfterValue = email + " " + end.ToString("yyyy-MM-dd"),
+            AfterValue = email + " " + product.ProductNo + " " + end.ToString("yyyy-MM-dd"),
             CreatedAt = now
         });
         _db.Messages.Add(new SiteMessage
@@ -471,6 +485,62 @@ public sealed class VendorController : ControllerBase
         var rows = await _db.Customers.OrderByDescending(x => x.Id).Take(100)
             .Select(x => new { x.Id, x.CustomerNo, x.DirectProviderId }).ToListAsync();
         return Ok(new { ok = true, rows });
+    }
+
+    [HttpPost("customers/{id:long}/edition")]
+    public async Task<IActionResult> ChangeEdition(long id, [FromBody] EditionBody body)
+    {
+        if (!Vendor()) return NotFound();
+        var customer = await _db.Customers.SingleOrDefaultAsync(x => x.Id == id);
+        if (customer == null) return BadRequest(new { ok = false, error = "客户不存在" });
+        var productNo = (body.ProductNo ?? "").Trim().ToUpperInvariant();
+        if (string.IsNullOrEmpty(productNo)) return BadRequest(new { ok = false, error = "请选择账号类型" });
+        var product = await _db.Products.SingleOrDefaultAsync(x => x.ProductNo == productNo);
+        if (product == null || product.Status != 1) return BadRequest(new { ok = false, error = "产品不存在或已下架" });
+
+        var auth = await _db.SubscriptionAuths
+            .Where(x => x.CustomerId == customer.Id)
+            .OrderByDescending(x => x.AuthEndTime)
+            .FirstOrDefaultAsync();
+        if (auth == null) return BadRequest(new { ok = false, error = "客户尚未开通授权，请先增加期限" });
+
+        var beforeProduct = await _db.Products.SingleOrDefaultAsync(x => x.Id == auth.ProductId);
+        if (beforeProduct != null && beforeProduct.Id == product.Id)
+            return BadRequest(new { ok = false, error = "账号类型未变化" });
+
+        var account = await _db.Accounts.SingleOrDefaultAsync(x => x.Id == customer.AccountId);
+        var email = account?.Email ?? customer.CustomerNo;
+        var before = (beforeProduct?.ProductNo ?? "?") + " " + (beforeProduct?.Name ?? "");
+        var after = product.ProductNo + " " + product.Name;
+        var now = DateTime.UtcNow;
+        auth.ProductId = product.Id;
+        auth.UpdatedAt = now;
+        if (!string.IsNullOrWhiteSpace(body.Reason))
+            auth.GrantReason = body.Reason.Trim();
+
+        _db.OperationLogs.Add(new OperationLog
+        {
+            Module = "customer",
+            Action = "edition",
+            BeforeValue = email + " " + before,
+            AfterValue = email + " " + after,
+            CreatedAt = now
+        });
+        _db.Messages.Add(new SiteMessage
+        {
+            AccountId = customer.AccountId,
+            Title = "账号类型已变更",
+            Content = "已调整为 " + product.Name + "（最多 " + product.MaxDevices + " 台设备）",
+            CreatedAt = now
+        });
+        await _db.SaveChangesAsync();
+        return Ok(new
+        {
+            ok = true,
+            productNo = product.ProductNo,
+            productName = product.Name,
+            maxDevices = product.MaxDevices
+        });
     }
 
     [HttpPost("customers/{id:long}/provider")]

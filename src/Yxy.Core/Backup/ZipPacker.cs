@@ -90,6 +90,103 @@ namespace Yxy.Core.Backup
             File.Move(part, destZip);
         }
 
+        /// <summary>解压 zip 中第一个匹配扩展名的文件到目录，返回解压后的完整路径。</summary>
+        public static string ExtractFirst(string zipPath, string password, string destDir, params string[] extensions)
+        {
+            if (string.IsNullOrEmpty(zipPath) || !File.Exists(zipPath))
+            {
+                throw new FileNotFoundException("找不到备份包。", zipPath);
+            }
+
+            if (string.IsNullOrEmpty(destDir))
+            {
+                throw new ArgumentException("destDir");
+            }
+
+            Directory.CreateDirectory(destDir);
+            var exts = NormalizeExts(extensions);
+            using (var stream = File.OpenRead(LongPath.Qualify(zipPath)))
+            using (var zip = new ZipInputStream(stream))
+            {
+                if (!string.IsNullOrEmpty(password))
+                {
+                    zip.Password = password;
+                }
+
+                ZipEntry entry;
+                while ((entry = zip.GetNextEntry()) != null)
+                {
+                    if (!entry.IsFile) continue;
+                    var name = Path.GetFileName(entry.Name.Replace('/', '\\'));
+                    if (string.IsNullOrEmpty(name)) continue;
+                    if (!MatchExt(name, exts)) continue;
+
+                    var dest = Path.Combine(destDir, SafeFileName(name));
+                    if (File.Exists(dest)) File.Delete(dest);
+                    using (var output = File.Create(LongPath.Qualify(dest)))
+                    {
+                        var buffer = new byte[81920];
+                        int read;
+                        while ((read = zip.Read(buffer, 0, buffer.Length)) > 0)
+                        {
+                            output.Write(buffer, 0, read);
+                        }
+                    }
+
+                    if (new FileInfo(dest).Length == 0)
+                    {
+                        throw new InvalidOperationException("解压结果为空，请检查压缩密码是否正确。");
+                    }
+
+                    return dest;
+                }
+            }
+
+            throw new InvalidOperationException("压缩包内没有找到可用的库备份文件（.bak / .sql）。");
+        }
+
+        private static string[] NormalizeExts(string[] extensions)
+        {
+            if (extensions == null || extensions.Length == 0)
+            {
+                return new[] { ".bak", ".sql" };
+            }
+
+            var list = new List<string>();
+            for (var i = 0; i < extensions.Length; i++)
+            {
+                var e = (extensions[i] ?? "").Trim();
+                if (e.Length == 0) continue;
+                if (e[0] != '.') e = "." + e;
+                list.Add(e.ToLowerInvariant());
+            }
+
+            return list.Count == 0 ? new[] { ".bak", ".sql" } : list.ToArray();
+        }
+
+        private static bool MatchExt(string name, string[] exts)
+        {
+            var ext = Path.GetExtension(name) ?? "";
+            for (var i = 0; i < exts.Length; i++)
+            {
+                if (string.Equals(ext, exts[i], StringComparison.OrdinalIgnoreCase)) return true;
+            }
+
+            return false;
+        }
+
+        private static string SafeFileName(string name)
+        {
+            var chars = Path.GetInvalidFileNameChars();
+            var text = name ?? "file";
+            for (var i = 0; i < chars.Length; i++)
+            {
+                text = text.Replace(chars[i], '_');
+            }
+
+            return text;
+        }
+
         private static void ReadCrc(string path, byte[] buffer, out long size, out long crc)
         {
             var checksum = new Crc32();
