@@ -63,6 +63,29 @@ public sealed class DeviceRegistryTests
     }
 
     [Test]
+    public async Task Occupy_Stores_DisplayName()
+    {
+        await using var factory = new WebAppFactory();
+        await using var scope = factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<WebDb>();
+        var devices = scope.ServiceProvider.GetRequiredService<DeviceRegistryService>();
+        var account = new Account
+        {
+            Email = "named-dev@example.com",
+            PasswordHash = "x",
+            Status = 1,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+        db.Accounts.Add(account);
+        await db.SaveChangesAsync();
+
+        await devices.TryOccupyAsync(account.Id, "pc-named", 3, true, "PC-A · AA-BB-CC-DD-EE-FF · alice");
+        var row = await db.AccountDevices.SingleAsync(x => x.AccountId == account.Id);
+        Assert.That(row.DisplayName, Is.EqualTo("PC-A · AA-BB-CC-DD-EE-FF · alice"));
+    }
+
+    [Test]
     public async Task Kick_Revokes_Device_Tokens()
     {
         await using var factory = new WebAppFactory();

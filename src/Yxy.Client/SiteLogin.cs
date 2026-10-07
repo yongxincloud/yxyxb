@@ -1,7 +1,9 @@
 using System;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Net;
+using System.Net.NetworkInformation;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -195,13 +197,23 @@ namespace Yxy.Client
             }
 
             var max = Match(body, "\"maxDevices\"\\s*:\\s*(\\d+)");
-            var ids = Regex.Matches(body ?? "", "\"deviceId\"\\s*:\\s*\"([^\"]+)\"");
+            var deviceBlocks = Regex.Matches(body ?? "", "\\{[^{}]*\"deviceId\"\\s*:\\s*\"([^\"]+)\"[^{}]*\\}");
+            var ids = new System.Collections.Generic.List<string>();
+            var labels = new System.Collections.Generic.List<string>();
+            foreach (Match block in deviceBlocks)
+            {
+                var id = block.Groups[1].Value;
+                var name = Match(block.Value, "\"displayName\"\\s*:\\s*\"([^\"]*)\"");
+                ids.Add(id);
+                labels.Add(string.IsNullOrEmpty(name) ? id : name);
+            }
             var lines = new StringBuilder();
             lines.AppendLine("设备上限：" + (string.IsNullOrEmpty(max) ? "—" : max));
             lines.AppendLine("退出登录不释放名额。选择要踢出的设备编号：");
             for (var i = 0; i < ids.Count; i++)
             {
-                lines.AppendLine((i + 1) + ". " + ids[i].Groups[1].Value);
+                lines.AppendLine((i + 1) + ". " + labels[i]);
+                lines.AppendLine("   ID: " + ids[i]);
             }
 
             if (ids.Count == 0)
@@ -235,7 +247,7 @@ namespace Yxy.Client
                     return;
                 }
 
-                var deviceId = ids[pick - 1].Groups[1].Value;
+                var deviceId = ids[pick - 1];
                 try
                 {
                     Post("/api/client/devices/kick", "{\"token\":\"" + Escape(token) + "\",\"deviceId\":\"" + Escape(deviceId) + "\"}");
@@ -365,15 +377,19 @@ namespace Yxy.Client
         {
             string path;
             string json;
+            var deviceLabel = Escape(DeviceDisplayName());
+            var deviceId = Escape(DeviceId());
             if (string.IsNullOrEmpty(code))
             {
                 path = "/api/client/login";
-                json = "{\"email\":\"" + Escape(email) + "\",\"password\":\"" + Escape(password) + "\",\"deviceId\":\"" + Escape(DeviceId()) + "\"}";
+                json = "{\"email\":\"" + Escape(email) + "\",\"password\":\"" + Escape(password)
+                    + "\",\"deviceId\":\"" + deviceId + "\",\"displayName\":\"" + deviceLabel + "\"}";
             }
             else
             {
                 path = "/api/client/login-code";
-                json = "{\"email\":\"" + Escape(email) + "\",\"code\":\"" + Escape(code) + "\",\"deviceId\":\"" + Escape(DeviceId()) + "\"}";
+                json = "{\"email\":\"" + Escape(email) + "\",\"code\":\"" + Escape(code)
+                    + "\",\"deviceId\":\"" + deviceId + "\",\"displayName\":\"" + deviceLabel + "\"}";
             }
 
             var body = Post(path, json);
@@ -516,6 +532,37 @@ namespace Yxy.Client
             catch (IOException)
             {
                 return "pc";
+            }
+        }
+
+        /// <summary>电脑名 · MAC · Windows 登录用户，便于门户辨认设备。</summary>
+        public static string DeviceDisplayName()
+        {
+            var machine = Environment.MachineName ?? "";
+            var user = Environment.UserName ?? "";
+            var mac = PrimaryMacAddress();
+            return (machine + " · " + mac + " · " + user).Trim(' ', '·');
+        }
+
+        static string PrimaryMacAddress()
+        {
+            try
+            {
+                var nic = NetworkInterface.GetAllNetworkInterfaces()
+                    .Where(n =>
+                        n.OperationalStatus == OperationalStatus.Up
+                        && n.NetworkInterfaceType != NetworkInterfaceType.Loopback
+                        && n.NetworkInterfaceType != NetworkInterfaceType.Tunnel)
+                    .OrderByDescending(n => n.Speed)
+                    .FirstOrDefault();
+                if (nic == null) return "无MAC";
+                var bytes = nic.GetPhysicalAddress().GetAddressBytes();
+                if (bytes == null || bytes.Length == 0) return "无MAC";
+                return string.Join("-", bytes.Select(b => b.ToString("X2")));
+            }
+            catch
+            {
+                return "无MAC";
             }
         }
 

@@ -6,9 +6,9 @@ using Yxy.Api.Services;
 
 namespace Yxy.Api.Controllers;
 
-public sealed record ClientLoginBody(string? Email, string? Password, string? DeviceId);
-public sealed record ClientCodeBody(string? Email, string? Code, string? DeviceId);
-public sealed record ClientVerifyBody(string? Token, string? DeviceId);
+public sealed record ClientLoginBody(string? Email, string? Password, string? DeviceId, string? DisplayName);
+public sealed record ClientCodeBody(string? Email, string? Code, string? DeviceId, string? DisplayName);
+public sealed record ClientVerifyBody(string? Token, string? DeviceId, string? DisplayName);
 public sealed record ClientRenewBody(string? Token);
 public sealed record ClientDevicesBody(string? Token);
 public sealed record ClientKickBody(string? Token, string? DeviceId);
@@ -29,15 +29,15 @@ public sealed class ClientController : ControllerBase
 
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] ClientLoginBody body) =>
-        ToResult(await _clients.LoginPasswordAsync(body.Email, body.Password, body.DeviceId, ClientIp()));
+        ToResult(await _clients.LoginPasswordAsync(body.Email, body.Password, body.DeviceId, ClientIp(), body.DisplayName));
 
     [HttpPost("login-code")]
     public async Task<IActionResult> LoginCode([FromBody] ClientCodeBody body) =>
-        ToResult(await _clients.LoginCodeAsync(body.Email, body.Code, body.DeviceId, ClientIp()));
+        ToResult(await _clients.LoginCodeAsync(body.Email, body.Code, body.DeviceId, ClientIp(), body.DisplayName));
 
     [HttpPost("verify")]
     public async Task<IActionResult> Verify([FromBody] ClientVerifyBody body) =>
-        ToResult(await _clients.VerifyAsync(body.Token, body.DeviceId));
+        ToResult(await _clients.VerifyAsync(body.Token, body.DeviceId, body.DisplayName));
 
     [HttpPost("renew")]
     public async Task<IActionResult> Renew([FromBody] ClientRenewBody body) =>

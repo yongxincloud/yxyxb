@@ -37,8 +37,9 @@ onMounted(load)
     <div class="list">
       <article v-for="row in devices" :key="row.deviceId">
         <div>
-          <strong>{{ row.displayName || row.deviceId }}</strong>
-          <span class="muted">{{ row.deviceId }}</span>
+          <strong>{{ row.displayName || '未上报名称' }}</strong>
+          <span class="muted">设备 ID：{{ row.deviceId }}</span>
+          <span class="muted" v-if="row.displayName">格式：电脑名 · MAC · Windows 用户</span>
         </div>
         <button class="btn-ghost" type="button" @click="kick(row.deviceId)">踢出</button>
       </article>
