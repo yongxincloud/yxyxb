@@ -17,6 +17,7 @@ public sealed class WebDb : DbContext
     public DbSet<OperationLog> OperationLogs => Set<OperationLog>();
     public DbSet<SiteMessage> Messages => Set<SiteMessage>();
     public DbSet<AuthToken> AuthTokens => Set<AuthToken>();
+    public DbSet<AccountDevice> AccountDevices => Set<AccountDevice>();
     public DbSet<SubscriptionAuth> SubscriptionAuths => Set<SubscriptionAuth>();
     public DbSet<Product> Products => Set<Product>();
     public DbSet<SubscriptionOrder> Orders => Set<SubscriptionOrder>();
@@ -37,6 +38,7 @@ public sealed class WebDb : DbContext
         b.Entity<Settlement>().HasIndex(x => x.SettlementNo).IsUnique();
         b.Entity<ProviderLevel>().HasIndex(x => x.Name).IsUnique();
         b.Entity<AuthToken>().HasIndex(x => x.TokenHash).IsUnique();
+        b.Entity<AccountDevice>().HasIndex(x => new { x.AccountId, x.DeviceId }).IsUnique();
         b.Entity<SubscriptionAuth>().HasIndex(x => new { x.CustomerId, x.AuthEndTime });
         b.Entity<Product>().HasIndex(x => x.ProductNo).IsUnique();
         b.Entity<SubscriptionOrder>().HasIndex(x => x.OrderNo).IsUnique();

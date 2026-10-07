@@ -57,6 +57,18 @@ public sealed class AuthToken
     public DateTime? RevokedAt { get; set; }
 }
 
+public sealed class AccountDevice
+{
+    public long Id { get; set; }
+    public long AccountId { get; set; }
+    public string DeviceId { get; set; } = "";
+    public string? DisplayName { get; set; }
+    public DateTime FirstSeenAt { get; set; }
+    public DateTime LastSeenAt { get; set; }
+    public int Status { get; set; } = 1;
+    public DateTime? KickedAt { get; set; }
+}
+
 public sealed class ProviderApply
 {
     public long Id { get; set; }

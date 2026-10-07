@@ -39,6 +39,7 @@ builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
 builder.Services.AddScoped<EmailCodeService>();
 builder.Services.AddScoped<CaptchaService>();
 builder.Services.AddScoped<AccountService>();
+builder.Services.AddScoped<DeviceRegistryService>();
 builder.Services.AddScoped<ClientAuthService>();
 builder.Services.AddHttpClient("alipay", client => client.Timeout = TimeSpan.FromSeconds(20));
 builder.Services.AddScoped<IAlipayGateway, AlipayGateway>();
@@ -110,6 +111,17 @@ using (var scope = app.Services.CreateScope())
     AddColumn(db, "Products", "SortOrder", "INTEGER NOT NULL DEFAULT 0");
     await scope.ServiceProvider.GetRequiredService<OrderService>().EnsureCatalogAsync();
     db.Database.ExecuteSqlRaw("""
+        CREATE TABLE IF NOT EXISTS "AccountDevices" (
+          "Id" INTEGER NOT NULL CONSTRAINT "PK_AccountDevices" PRIMARY KEY AUTOINCREMENT,
+          "AccountId" INTEGER NOT NULL,
+          "DeviceId" TEXT NOT NULL,
+          "DisplayName" TEXT NULL,
+          "FirstSeenAt" TEXT NOT NULL,
+          "LastSeenAt" TEXT NOT NULL,
+          "Status" INTEGER NOT NULL,
+          "KickedAt" TEXT NULL
+        );
+        CREATE UNIQUE INDEX IF NOT EXISTS "IX_AccountDevices_Account_Device" ON "AccountDevices" ("AccountId", "DeviceId");
         CREATE TABLE IF NOT EXISTS "AuthTokens" (
           "Id" INTEGER NOT NULL CONSTRAINT "PK_AuthTokens" PRIMARY KEY AUTOINCREMENT,
           "AccountId" INTEGER NOT NULL,
