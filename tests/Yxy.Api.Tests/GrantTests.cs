@@ -58,7 +58,7 @@ public sealed class GrantTests
         var db = scope.ServiceProvider.GetRequiredService<WebDb>();
         var amounts = await db.Orders.OrderBy(x => x.Id).Select(x => x.Amount).ToListAsync();
         Assert.That(amounts, Is.EqualTo(new[] { 98m, 120m }));
-        Assert.That(await db.OperationLogs.CountAsync(x => x.Action == "price"), Is.EqualTo(1));
+        Assert.That(await db.OperationLogs.CountAsync(x => x.Module == "product" && x.Action == "update"), Is.EqualTo(1));
     }
 
     sealed record OrderAmount(bool Ok, decimal Amount);
