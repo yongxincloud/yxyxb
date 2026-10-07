@@ -122,7 +122,7 @@ public sealed class AlipayPayTests
         factory.ExtraConfig["Alipay:NotifyUrl"] = "https://pay.example.com/api/payments/alipay/notify";
         factory.GatewayOverride = new ThrowingAlipayGateway();
         var client = await LoginAsync(factory);
-        var created = await client.PostAsJsonAsync("/api/orders", new { productNo = "STD", orderType = 2, channel = "alipay" });
+        var created = await client.PostAsJsonAsync("/api/orders", new { productNo = "STANDARD", orderType = 2, channel = "alipay" });
         var order = await created.Content.ReadFromJsonAsync<OrderResult>();
         var notify = new HttpRequestMessage(HttpMethod.Post, "/api/payments/notify")
         {
@@ -159,7 +159,7 @@ public sealed class AlipayPayTests
         var fake = new FakeAlipayGateway { Next = new OrderResult(false, "卖家余额不足") };
         factory.GatewayOverride = fake;
         var client = await LoginAsync(factory);
-        var created = await client.PostAsJsonAsync("/api/orders", new { productNo = "STD", orderType = 2, channel = "alipay" });
+        var created = await client.PostAsJsonAsync("/api/orders", new { productNo = "STANDARD", orderType = 2, channel = "alipay" });
         var order = await created.Content.ReadFromJsonAsync<OrderResult>();
         Assert.That(created.StatusCode, Is.EqualTo(HttpStatusCode.OK));
         var notify = new HttpRequestMessage(HttpMethod.Post, "/api/payments/notify")
@@ -209,7 +209,7 @@ public sealed class AlipayPayTests
         factory.ExtraConfig["Alipay:NotifyUrl"] = "https://pay.example.com/api/payments/alipay/notify";
         factory.ExtraConfig["Alipay:ReturnUrl"] = "https://pay.example.com/orders";
         var client = await LoginAsync(factory);
-        var created = await client.PostAsJsonAsync("/api/orders", new { productNo = "STD", orderType = 1, channel = "alipay" });
+        var created = await client.PostAsJsonAsync("/api/orders", new { productNo = "STANDARD", orderType = 1, channel = "alipay" });
         var order = await created.Content.ReadFromJsonAsync<OrderResult>();
         Assert.That(created.StatusCode, Is.EqualTo(HttpStatusCode.OK));
 
@@ -218,7 +218,7 @@ public sealed class AlipayPayTests
         Assert.That(pay.StatusCode, Is.EqualTo(HttpStatusCode.OK), await pay.Content.ReadAsStringAsync());
         Assert.That(payBody!.PayUrl, Does.Contain("app_id=2021000000000001"));
 
-        var fields = NotifyFields(order.OrderNo!, "T100", "12.00");
+        var fields = NotifyFields(order.OrderNo!, "T100", "98.00");
         fields["sign"] = AlipayPay.Sign(fields, Convert.ToBase64String(alipay.ExportPkcs8PrivateKey()), excludeSignType: true);
         var first = await client.PostAsync("/api/payments/alipay/notify", new FormUrlEncodedContent(fields));
         var second = await client.PostAsync("/api/payments/alipay/notify", new FormUrlEncodedContent(fields));

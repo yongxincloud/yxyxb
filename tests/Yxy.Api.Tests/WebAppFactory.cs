@@ -4,6 +4,7 @@ using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Yxy.Api.Controllers;
 using Yxy.Api.Services;
 
 namespace Yxy.Api.Tests;
@@ -21,7 +22,9 @@ public class WebAppFactory : WebApplicationFactory<Program>
         {
             var data = new Dictionary<string, string?>
             {
-                ["ConnectionStrings:Web"] = "Data Source=" + DbPath
+                ["ConnectionStrings:Web"] = "Data Source=" + DbPath,
+                ["Admin:Username"] = VendorController.DefaultAdminUser,
+                ["Admin:Password"] = VendorController.DefaultAdminPassword
             };
             foreach (var pair in ExtraConfig) data[pair.Key] = pair.Value;
             config.AddInMemoryCollection(data);

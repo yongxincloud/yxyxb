@@ -12,7 +12,9 @@ public sealed class OrderService
     public const int FormalDays = 365;
     public const int TrialDays = 30;
     public const int PayMinutes = 30;
-    public const string StandardProductNo = "STD";
+    public const string PersonalProductNo = "PERSONAL";
+    public const string StandardProductNo = "STANDARD";
+    public const string ProProductNo = "PRO";
 
     private readonly WebDb _db;
     private readonly TimeProvider _time;
@@ -28,23 +30,36 @@ public sealed class OrderService
     public async Task EnsureCatalogAsync()
     {
         var now = _time.GetUtcNow().UtcDateTime;
-        if (!await _db.Products.AnyAsync(x => x.ProductNo == StandardProductNo))
+        await EnsureTierAsync(PersonalProductNo, "个人版", "最多 3 台设备", 36m, 3, 1, now);
+        await EnsureTierAsync(StandardProductNo, "标准版", "最多 10 台设备", 98m, 10, 2, now);
+        await EnsureTierAsync(ProProductNo, "专业版", "最多 50 台设备", 198m, 50, 3, now);
+        var legacy = await _db.Products.SingleOrDefaultAsync(x => x.ProductNo == "STD");
+        if (legacy != null)
         {
-            _db.Products.Add(new Product
-            {
-                ProductNo = StandardProductNo,
-                Name = "标准版",
-                Description = "一个账号不限台数",
-                Price = 12m,
-                PeriodDays = FormalDays,
-                Status = 1,
-                CreatedAt = now,
-                UpdatedAt = now
-            });
+            legacy.Status = 0;
+            legacy.UpdatedAt = now;
         }
         await PutConfigAsync("trial_price_1", "0.10");
         await PutConfigAsync("trial_price_2", "0.50");
         await _db.SaveChangesAsync();
+    }
+
+    async Task EnsureTierAsync(string productNo, string name, string description, decimal price, int maxDevices, int sortOrder, DateTime now)
+    {
+        if (await _db.Products.AnyAsync(x => x.ProductNo == productNo)) return;
+        _db.Products.Add(new Product
+        {
+            ProductNo = productNo,
+            Name = name,
+            Description = description,
+            Price = price,
+            MaxDevices = maxDevices,
+            SortOrder = sortOrder,
+            PeriodDays = FormalDays,
+            Status = 1,
+            CreatedAt = now,
+            UpdatedAt = now
+        });
     }
 
     public async Task<OrderResult> CreateAsync(long accountId, string? productNo, int orderType, string? channel)

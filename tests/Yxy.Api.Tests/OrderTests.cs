@@ -16,13 +16,13 @@ public sealed class OrderTests
     {
         await using var factory = new WebAppFactory();
         var client = await LoginAsync(factory);
-        var created = await Read(await AccountApi.Post(client, "/api/orders", new { productNo = "STD", orderType = 1, channel = "alipay" }));
+        var created = await Read(await AccountApi.Post(client, "/api/orders", new { productNo = "STANDARD", orderType = 1, channel = "alipay" }));
         var removed = await AccountApi.Post(client, "/api/orders/" + created.OrderNo + "/delete", new { });
         Assert.That(removed.StatusCode, Is.EqualTo(HttpStatusCode.OK));
         var list = await client.GetFromJsonAsync<OrderList>("/api/orders");
         Assert.That(list!.Orders, Is.Empty);
-        var again = await Read(await AccountApi.Post(client, "/api/orders", new { productNo = "STD", orderType = 1, channel = "alipay" }));
-        await Notify(client, again.OrderNo!, "HIDE1", "alipay", 12m);
+        var again = await Read(await AccountApi.Post(client, "/api/orders", new { productNo = "STANDARD", orderType = 1, channel = "alipay" }));
+        await Notify(client, again.OrderNo!, "HIDE1", "alipay", 98m);
         var blocked = await AccountApi.Post(client, "/api/orders/" + again.OrderNo + "/delete", new { });
         Assert.That(await AccountApi.Body(blocked), Does.Contain("已支付的订单请先退款后再删除"));
     }
@@ -34,7 +34,7 @@ public sealed class OrderTests
     public async Task Anonymous_Order_Is_Rejected()
     {
         await using var factory = new WebAppFactory();
-        var response = await AccountApi.Post(factory.CreateClient(), "/api/orders", new { productNo = "STD", orderType = 1, channel = "alipay" });
+        var response = await AccountApi.Post(factory.CreateClient(), "/api/orders", new { productNo = "STANDARD", orderType = 1, channel = "alipay" });
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Unauthorized));
     }
 
@@ -43,10 +43,10 @@ public sealed class OrderTests
     {
         await using var factory = new WebAppFactory();
         var client = await LoginAsync(factory);
-        var created = await Read(await AccountApi.Post(client, "/api/orders", new { productNo = "STD", orderType = 1, channel = "alipay" }));
-        Assert.That(created.Amount, Is.EqualTo(12m));
-        var first = await Notify(client, created.OrderNo!, "T1", "wechat", 12m);
-        var second = await Notify(client, created.OrderNo!, "T1", "wechat", 12m);
+        var created = await Read(await AccountApi.Post(client, "/api/orders", new { productNo = "STANDARD", orderType = 1, channel = "alipay" }));
+        Assert.That(created.Amount, Is.EqualTo(98m));
+        var first = await Notify(client, created.OrderNo!, "T1", "wechat", 98m);
+        var second = await Notify(client, created.OrderNo!, "T1", "wechat", 98m);
         Assert.That(first.StatusCode, Is.EqualTo(HttpStatusCode.OK));
         Assert.That(second.StatusCode, Is.EqualTo(HttpStatusCode.OK));
         await using var scope = factory.Services.CreateAsyncScope();
@@ -62,7 +62,7 @@ public sealed class OrderTests
     {
         await using var factory = new WebAppFactory();
         var client = await LoginAsync(factory);
-        var created = await Read(await AccountApi.Post(client, "/api/orders", new { productNo = "STD", orderType = 1, channel = "alipay" }));
+        var created = await Read(await AccountApi.Post(client, "/api/orders", new { productNo = "STANDARD", orderType = 1, channel = "alipay" }));
         await using (var scope = factory.Services.CreateAsyncScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<WebDb>();
@@ -70,7 +70,7 @@ public sealed class OrderTests
             order.ExpiresAt = DateTime.UtcNow.AddMinutes(-1);
             await db.SaveChangesAsync();
         }
-        var late = await Notify(client, created.OrderNo!, "LATE", "alipay", 12m);
+        var late = await Notify(client, created.OrderNo!, "LATE", "alipay", 98m);
         Assert.That(late.StatusCode, Is.EqualTo(HttpStatusCode.BadRequest));
         await using var check = factory.Services.CreateAsyncScope();
         var store = check.ServiceProvider.GetRequiredService<WebDb>();
@@ -83,16 +83,16 @@ public sealed class OrderTests
     {
         await using var factory = new WebAppFactory();
         var client = await LoginAsync(factory);
-        var created = await Read(await AccountApi.Post(client, "/api/orders", new { productNo = "STD", orderType = 1, channel = "alipay" }));
+        var created = await Read(await AccountApi.Post(client, "/api/orders", new { productNo = "STANDARD", orderType = 1, channel = "alipay" }));
         await using (var scope = factory.Services.CreateAsyncScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<WebDb>();
-            var product = await db.Products.SingleAsync();
+            var product = await db.Products.SingleAsync(x => x.ProductNo == "STANDARD");
             product.Price = 120m;
             await db.SaveChangesAsync();
         }
-        var again = await Read(await AccountApi.Post(client, "/api/orders", new { productNo = "STD", orderType = 1, channel = "alipay" }));
-        Assert.That(created.Amount, Is.EqualTo(12m));
+        var again = await Read(await AccountApi.Post(client, "/api/orders", new { productNo = "STANDARD", orderType = 1, channel = "alipay" }));
+        Assert.That(created.Amount, Is.EqualTo(98m));
         Assert.That(again.Amount, Is.EqualTo(120m));
     }
 
@@ -101,8 +101,8 @@ public sealed class OrderTests
     {
         await using var factory = new WebAppFactory();
         var client = await LoginAsync(factory);
-        var first = await Read(await AccountApi.Post(client, "/api/orders", new { productNo = "STD", orderType = 1, channel = "alipay" }));
-        await Notify(client, first.OrderNo!, "R1", "wechat", 12m);
+        var first = await Read(await AccountApi.Post(client, "/api/orders", new { productNo = "STANDARD", orderType = 1, channel = "alipay" }));
+        await Notify(client, first.OrderNo!, "R1", "wechat", 98m);
         DateTime oldEnd;
         await using (var scope = factory.Services.CreateAsyncScope())
         {
@@ -112,8 +112,8 @@ public sealed class OrderTests
             auth.AuthEndTime = oldEnd;
             await db.SaveChangesAsync();
         }
-        var second = await Read(await AccountApi.Post(client, "/api/orders", new { productNo = "STD", orderType = 1, channel = "alipay" }));
-        var paid = await Read(await Notify(client, second.OrderNo!, "R2", "wechat", 12m));
+        var second = await Read(await AccountApi.Post(client, "/api/orders", new { productNo = "STANDARD", orderType = 1, channel = "alipay" }));
+        var paid = await Read(await Notify(client, second.OrderNo!, "R2", "wechat", 98m));
         Assert.That(paid.AuthEndTime, Is.EqualTo(oldEnd.AddDays(365)).Within(TimeSpan.FromSeconds(1)));
     }
 
@@ -122,13 +122,13 @@ public sealed class OrderTests
     {
         await using var factory = new WebAppFactory();
         var client = await LoginAsync(factory);
-        var first = await Read(await AccountApi.Post(client, "/api/orders", new { productNo = "STD", orderType = 2, channel = "alipay" }));
+        var first = await Read(await AccountApi.Post(client, "/api/orders", new { productNo = "STANDARD", orderType = 2, channel = "alipay" }));
         Assert.That(first.Amount, Is.EqualTo(0.10m));
         await Notify(client, first.OrderNo!, "TR1", "wechat", 0.10m);
-        var second = await Read(await AccountApi.Post(client, "/api/orders", new { productNo = "STD", orderType = 2, channel = "alipay" }));
+        var second = await Read(await AccountApi.Post(client, "/api/orders", new { productNo = "STANDARD", orderType = 2, channel = "alipay" }));
         Assert.That(second.Amount, Is.EqualTo(0.50m));
         await Notify(client, second.OrderNo!, "TR2", "alipay", 0.50m);
-        var third = await AccountApi.Post(client, "/api/orders", new { productNo = "STD", orderType = 2, channel = "alipay" });
+        var third = await AccountApi.Post(client, "/api/orders", new { productNo = "STANDARD", orderType = 2, channel = "alipay" });
         Assert.That(await AccountApi.Body(third), Does.Contain("试用次数已用完"));
     }
 

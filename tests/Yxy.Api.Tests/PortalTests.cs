@@ -16,7 +16,7 @@ public sealed class PortalTests
     {
         await using var factory = new WebAppFactory();
         var body = await factory.CreateClient().GetFromJsonAsync<PriceDto>("/api/public/price");
-        Assert.That(body!.Price, Is.EqualTo(12m));
+        Assert.That(body!.Price, Is.EqualTo(98m));
     }
 
     [Test]
@@ -64,11 +64,11 @@ public sealed class PortalTests
         var client = factory.CreateClient();
         await AccountApi.Register(factory, client, "invoice@example.com", "abc12345");
         await AccountApi.Post(client, "/api/account/login", new { email = "invoice@example.com", password = "abc12345" });
-        var created = await client.PostAsJsonAsync("/api/orders", new { productNo = "STD", orderType = 1, channel = "alipay" });
+        var created = await client.PostAsJsonAsync("/api/orders", new { productNo = "STANDARD", orderType = 1, channel = "alipay" });
         var order = await created.Content.ReadFromJsonAsync<OrderResult>();
-        var unpaid = await client.PostAsJsonAsync("/api/orders", new { productNo = "STD", orderType = 1, channel = "alipay" });
+        var unpaid = await client.PostAsJsonAsync("/api/orders", new { productNo = "STANDARD", orderType = 1, channel = "alipay" });
         var unpaidOrder = await unpaid.Content.ReadFromJsonAsync<OrderResult>();
-        await Notify(client, order!.OrderNo!, "INV1", 12m);
+        await Notify(client, order!.OrderNo!, "INV1", 98m);
         await Notify(client, unpaidOrder!.OrderNo!, "INV0", 0m);
         await using (var scope = factory.Services.CreateAsyncScope())
         {

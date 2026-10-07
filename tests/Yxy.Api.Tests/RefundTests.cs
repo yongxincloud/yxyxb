@@ -43,9 +43,9 @@ public sealed class RefundTests
         var buyer = factory.CreateClient();
         await AccountApi.Register(factory, buyer, "refund-buyer@example.com", "abc12345", providerNo);
         await AccountApi.Post(buyer, "/api/account/login", new { email = "refund-buyer@example.com", password = "abc12345" });
-        var created = await buyer.PostAsJsonAsync("/api/orders", new { productNo = "STD", orderType = 1, channel = "alipay" });
+        var created = await buyer.PostAsJsonAsync("/api/orders", new { productNo = "STANDARD", orderType = 1, channel = "alipay" });
         var order = await created.Content.ReadFromJsonAsync<OrderResult>();
-        await Notify(buyer, order!.OrderNo!, "RF1", "wechat", 12m);
+        await Notify(buyer, order!.OrderNo!, "RF1", "wechat", 98m);
         var refund = await AccountApi.Post(buyer, "/api/orders/" + order.OrderNo + "/refund", new { });
         Assert.That(refund.StatusCode, Is.EqualTo(HttpStatusCode.OK));
         var again = await AccountApi.Post(buyer, "/api/orders/" + order.OrderNo + "/refund", new { });
@@ -56,8 +56,8 @@ public sealed class RefundTests
         Assert.That((await store.SubscriptionAuths.SingleAsync()).Status, Is.EqualTo(0));
         var rows = await store.Commissions.OrderBy(x => x.EntryType).ToListAsync();
         Assert.That(rows.Count, Is.EqualTo(2));
-        Assert.That(rows[0].Amount, Is.EqualTo(6m));
-        Assert.That(rows[1].Amount, Is.EqualTo(-6m));
+        Assert.That(rows[0].Amount, Is.EqualTo(49m));
+        Assert.That(rows[1].Amount, Is.EqualTo(-49m));
         Assert.That(rows[1].Settled, Is.EqualTo(0));
     }
 
@@ -68,9 +68,9 @@ public sealed class RefundTests
         var buyer = factory.CreateClient();
         await AccountApi.Register(factory, buyer, "late-refund@example.com", "abc12345");
         await AccountApi.Post(buyer, "/api/account/login", new { email = "late-refund@example.com", password = "abc12345" });
-        var created = await buyer.PostAsJsonAsync("/api/orders", new { productNo = "STD", orderType = 1, channel = "alipay" });
+        var created = await buyer.PostAsJsonAsync("/api/orders", new { productNo = "STANDARD", orderType = 1, channel = "alipay" });
         var order = await created.Content.ReadFromJsonAsync<OrderResult>();
-        await Notify(buyer, order!.OrderNo!, "RF2", "alipay", 12m);
+        await Notify(buyer, order!.OrderNo!, "RF2", "alipay", 98m);
         await using (var scope = factory.Services.CreateAsyncScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<WebDb>();

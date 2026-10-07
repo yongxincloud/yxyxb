@@ -46,18 +46,18 @@ public sealed class GrantTests
         var user = factory.CreateClient();
         await AccountApi.Register(factory, user, "price@example.com", "abc12345");
         await AccountApi.Post(user, "/api/account/login", new { email = "price@example.com", password = "abc12345" });
-        var created = await user.PostAsJsonAsync("/api/orders", new { productNo = "STD", orderType = 1, channel = "alipay" });
-        Assert.That((await created.Content.ReadFromJsonAsync<OrderAmount>())!.Amount, Is.EqualTo(12m));
+        var created = await user.PostAsJsonAsync("/api/orders", new { productNo = "STANDARD", orderType = 1, channel = "alipay" });
+        Assert.That((await created.Content.ReadFromJsonAsync<OrderAmount>())!.Amount, Is.EqualTo(98m));
         var vendor = factory.CreateClient();
         vendor.DefaultRequestHeaders.Add("X-Vendor-Key", VendorController.VendorKey);
-        var changed = await AccountApi.Post(vendor, "/api/vendor/products/STD/price", new { price = 120m });
+        var changed = await AccountApi.Post(vendor, "/api/vendor/products/STANDARD/price", new { price = 120m });
         Assert.That(changed.StatusCode, Is.EqualTo(HttpStatusCode.OK));
-        var next = await user.PostAsJsonAsync("/api/orders", new { productNo = "STD", orderType = 1, channel = "alipay" });
+        var next = await user.PostAsJsonAsync("/api/orders", new { productNo = "STANDARD", orderType = 1, channel = "alipay" });
         Assert.That((await next.Content.ReadFromJsonAsync<OrderAmount>())!.Amount, Is.EqualTo(120m));
         await using var scope = factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<WebDb>();
         var amounts = await db.Orders.OrderBy(x => x.Id).Select(x => x.Amount).ToListAsync();
-        Assert.That(amounts, Is.EqualTo(new[] { 12m, 120m }));
+        Assert.That(amounts, Is.EqualTo(new[] { 98m, 120m }));
         Assert.That(await db.OperationLogs.CountAsync(x => x.Action == "price"), Is.EqualTo(1));
     }
 

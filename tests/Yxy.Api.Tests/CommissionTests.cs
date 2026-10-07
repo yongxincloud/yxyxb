@@ -36,16 +36,16 @@ public sealed class CommissionTests
         var buyer = factory.CreateClient();
         await AccountApi.Register(factory, buyer, "buyer@example.com", "abc12345", providerNo);
         await AccountApi.Post(buyer, "/api/account/login", new { email = "buyer@example.com", password = "abc12345" });
-        var created = await buyer.PostAsJsonAsync("/api/orders", new { productNo = "STD", orderType = 1, channel = "alipay" });
+        var created = await buyer.PostAsJsonAsync("/api/orders", new { productNo = "STANDARD", orderType = 1, channel = "alipay" });
         var order = await created.Content.ReadFromJsonAsync<OrderResult>();
-        await Notify(buyer, order!.OrderNo!, "C1", "wechat", 12m);
-        await Notify(buyer, order.OrderNo!, "C1", "wechat", 12m);
+        await Notify(buyer, order!.OrderNo!, "C1", "wechat", 98m);
+        await Notify(buyer, order.OrderNo!, "C1", "wechat", 98m);
 
         await using var scope = factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<WebDb>();
         var row = await db.Commissions.SingleAsync();
-        Assert.That(row.Amount, Is.EqualTo(7.20m));
-        Assert.That(12m - row.Amount, Is.EqualTo(4.80m));
+        Assert.That(row.Amount, Is.EqualTo(58.80m));
+        Assert.That(98m - row.Amount, Is.EqualTo(39.20m));
     }
 
     [Test]
@@ -79,12 +79,12 @@ public sealed class CommissionTests
             provider.Status = 0;
             await db.SaveChangesAsync();
         }
-        var trial = await buyer.PostAsJsonAsync("/api/orders", new { productNo = "STD", orderType = 2, channel = "alipay" });
+        var trial = await buyer.PostAsJsonAsync("/api/orders", new { productNo = "STANDARD", orderType = 2, channel = "alipay" });
         var trialOrder = await trial.Content.ReadFromJsonAsync<OrderResult>();
         await Notify(buyer, trialOrder!.OrderNo!, "T1", "alipay", 0.10m);
-        var formal = await buyer.PostAsJsonAsync("/api/orders", new { productNo = "STD", orderType = 1, channel = "alipay" });
+        var formal = await buyer.PostAsJsonAsync("/api/orders", new { productNo = "STANDARD", orderType = 1, channel = "alipay" });
         var formalOrder = await formal.Content.ReadFromJsonAsync<OrderResult>();
-        await Notify(buyer, formalOrder!.OrderNo!, "F1", "wechat", 12m);
+        await Notify(buyer, formalOrder!.OrderNo!, "F1", "wechat", 98m);
 
         await using var check = factory.Services.CreateAsyncScope();
         var store = check.ServiceProvider.GetRequiredService<WebDb>();

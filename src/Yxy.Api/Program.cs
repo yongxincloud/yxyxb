@@ -103,6 +103,11 @@ using (var scope = app.Services.CreateScope())
         );
         CREATE UNIQUE INDEX IF NOT EXISTS "IX_Configs_CfgKey" ON "Configs" ("CfgKey");
         """);
+    AddColumn(db, "Products", "PromoPrice", "TEXT NULL");
+    AddColumn(db, "Products", "PromoStart", "TEXT NULL");
+    AddColumn(db, "Products", "PromoEnd", "TEXT NULL");
+    AddColumn(db, "Products", "MaxDevices", "INTEGER NOT NULL DEFAULT 10");
+    AddColumn(db, "Products", "SortOrder", "INTEGER NOT NULL DEFAULT 0");
     await scope.ServiceProvider.GetRequiredService<OrderService>().EnsureCatalogAsync();
     db.Database.ExecuteSqlRaw("""
         CREATE TABLE IF NOT EXISTS "AuthTokens" (

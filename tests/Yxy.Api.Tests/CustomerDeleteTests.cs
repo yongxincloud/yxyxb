@@ -17,7 +17,7 @@ public sealed class CustomerDeleteTests
         var user = factory.CreateClient();
         await AccountApi.Register(factory, user, "drop@example.com", "abc12345");
         await AccountApi.Post(user, "/api/account/login", new { email = "drop@example.com", password = "abc12345" });
-        await user.PostAsJsonAsync("/api/orders", new { productNo = "STD", orderType = 1, channel = "alipay" });
+        await user.PostAsJsonAsync("/api/orders", new { productNo = "STANDARD", orderType = 1, channel = "alipay" });
 
         long customerId;
         await using (var scope = factory.Services.CreateAsyncScope())

@@ -42,11 +42,11 @@ public sealed class SettlementTests
         await using (var scope = factory.Services.CreateAsyncScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<WebDb>();
-            var product = await db.Products.SingleAsync();
+            var product = await db.Products.SingleAsync(x => x.ProductNo == "STANDARD");
             product.Price = 200m;
             await db.SaveChangesAsync();
         }
-        var created = await shop.PostAsJsonAsync("/api/orders", new { productNo = "STD", orderType = 1, channel = "alipay" });
+        var created = await shop.PostAsJsonAsync("/api/orders", new { productNo = "STANDARD", orderType = 1, channel = "alipay" });
         var order = await created.Content.ReadFromJsonAsync<OrderResult>();
         await Notify(shop, order!.OrderNo!, "SET1", "wechat", 200m);
         await using (var scope = factory.Services.CreateAsyncScope())

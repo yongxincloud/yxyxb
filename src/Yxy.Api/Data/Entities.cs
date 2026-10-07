@@ -94,6 +94,11 @@ public sealed class Product
     public string Name { get; set; } = "";
     public string? Description { get; set; }
     public decimal Price { get; set; }
+    public decimal? PromoPrice { get; set; }
+    public DateTime? PromoStart { get; set; }
+    public DateTime? PromoEnd { get; set; }
+    public int MaxDevices { get; set; } = 10;
+    public int SortOrder { get; set; }
     public int PeriodDays { get; set; } = 365;
     public int Status { get; set; } = 1;
     public DateTime CreatedAt { get; set; }
