@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
+using Yxy.Api.Data;
 using Yxy.Api.Services;
 
 namespace Yxy.Api.Controllers;
@@ -8,13 +10,22 @@ public sealed record ClientLoginBody(string? Email, string? Password, string? De
 public sealed record ClientCodeBody(string? Email, string? Code, string? DeviceId);
 public sealed record ClientVerifyBody(string? Token, string? DeviceId);
 public sealed record ClientRenewBody(string? Token);
+public sealed record ClientDevicesBody(string? Token);
+public sealed record ClientKickBody(string? Token, string? DeviceId);
 
 [ApiController]
 [Route("api/client")]
 public sealed class ClientController : ControllerBase
 {
     private readonly ClientAuthService _clients;
-    public ClientController(ClientAuthService clients) => _clients = clients;
+    private readonly DeviceRegistryService _devices;
+    private readonly WebDb _db;
+    public ClientController(ClientAuthService clients, DeviceRegistryService devices, WebDb db)
+    {
+        _clients = clients;
+        _devices = devices;
+        _db = db;
+    }
 
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] ClientLoginBody body) =>
@@ -31,6 +42,40 @@ public sealed class ClientController : ControllerBase
     [HttpPost("renew")]
     public async Task<IActionResult> Renew([FromBody] ClientRenewBody body) =>
         ToResult(await _clients.RenewAsync(body.Token));
+
+    [HttpPost("devices")]
+    public async Task<IActionResult> Devices([FromBody] ClientDevicesBody body)
+    {
+        var accountId = await _clients.ResolveAccountIdAsync(body.Token);
+        if (accountId == null) return BadRequest(new { ok = false, error = "登录已失效" });
+        var max = await CurrentMaxDevicesAsync(accountId.Value);
+        var devices = await _devices.ListActiveAsync(accountId.Value);
+        return Ok(new { ok = true, maxDevices = max, devices });
+    }
+
+    [HttpPost("devices/kick")]
+    public async Task<IActionResult> Kick([FromBody] ClientKickBody body)
+    {
+        var accountId = await _clients.ResolveAccountIdAsync(body.Token);
+        if (accountId == null) return BadRequest(new { ok = false, error = "登录已失效" });
+        if (string.IsNullOrWhiteSpace(body.DeviceId))
+            return BadRequest(new { ok = false, error = "缺少设备标识" });
+        var ok = await _devices.KickAsync(accountId.Value, body.DeviceId);
+        return ok ? Ok(new { ok = true }) : BadRequest(new { ok = false, error = "设备不存在或已踢出" });
+    }
+
+    async Task<int?> CurrentMaxDevicesAsync(long accountId)
+    {
+        var customer = await _db.Customers.SingleOrDefaultAsync(x => x.AccountId == accountId);
+        if (customer == null) return null;
+        var auth = await _db.SubscriptionAuths
+            .Where(x => x.CustomerId == customer.Id && x.Status == 1)
+            .OrderByDescending(x => x.AuthEndTime)
+            .FirstOrDefaultAsync();
+        if (auth == null) return null;
+        var product = await _db.Products.SingleOrDefaultAsync(x => x.Id == auth.ProductId);
+        return product?.MaxDevices;
+    }
 
     IActionResult ToResult(ClientSession session)
     {

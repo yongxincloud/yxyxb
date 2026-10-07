@@ -10,6 +10,7 @@ namespace Yxy.Api.Controllers;
 public sealed record ProviderApplyBody(string? CompanyName, string? TaxNo, string? LicenseFile, string? ContactName, string? ContactEmail, string? ContactPhone);
 public sealed record InvoiceApplyBody(string? TitleName, string? TaxNo, string? Email, string? LicenseFile, string[]? OrderNos);
 public sealed record SettlementBody(string? InvoiceFile);
+public sealed record KickDeviceBody(string? DeviceId);
 
 [ApiController]
 public sealed class PortalController : ControllerBase
@@ -17,11 +18,13 @@ public sealed class PortalController : ControllerBase
     private readonly WebDb _db;
     private readonly ClientAuthService _clients;
     private readonly OrderService _orders;
-    public PortalController(WebDb db, ClientAuthService clients, OrderService orders)
+    private readonly DeviceRegistryService _devices;
+    public PortalController(WebDb db, ClientAuthService clients, OrderService orders, DeviceRegistryService devices)
     {
         _db = db;
         _clients = clients;
         _orders = orders;
+        _devices = devices;
     }
 
     [AllowAnonymous]
@@ -66,6 +69,39 @@ public sealed class PortalController : ControllerBase
             nextCheckAt = described.Usable ? nextCheck : null,
             usable = described.Usable
         });
+    }
+
+    [Authorize]
+    [HttpGet("/api/portal/devices")]
+    public async Task<IActionResult> Devices()
+    {
+        var accountId = AccountId();
+        var max = await CurrentMaxDevicesAsync(accountId);
+        var devices = await _devices.ListActiveAsync(accountId);
+        return Ok(new { ok = true, maxDevices = max, devices });
+    }
+
+    [Authorize]
+    [HttpPost("/api/portal/devices/kick")]
+    public async Task<IActionResult> KickDevice([FromBody] KickDeviceBody body)
+    {
+        if (string.IsNullOrWhiteSpace(body.DeviceId))
+            return BadRequest(new { ok = false, error = "缺少设备标识" });
+        var ok = await _devices.KickAsync(AccountId(), body.DeviceId);
+        return ok ? Ok(new { ok = true }) : BadRequest(new { ok = false, error = "设备不存在或已踢出" });
+    }
+
+    async Task<int?> CurrentMaxDevicesAsync(long accountId)
+    {
+        var customer = await _db.Customers.SingleOrDefaultAsync(x => x.AccountId == accountId);
+        if (customer == null) return null;
+        var auth = await _db.SubscriptionAuths
+            .Where(x => x.CustomerId == customer.Id && x.Status == 1)
+            .OrderByDescending(x => x.AuthEndTime)
+            .FirstOrDefaultAsync();
+        if (auth == null) return null;
+        var product = await _db.Products.SingleOrDefaultAsync(x => x.Id == auth.ProductId);
+        return product?.MaxDevices;
     }
 
     [Authorize]

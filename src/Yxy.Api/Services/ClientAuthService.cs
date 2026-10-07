@@ -58,6 +58,12 @@ public sealed class ClientAuthService
 
     public Task<ClientSession> RenewAsync(string? token) => RefreshAsync(token, null);
 
+    public async Task<long?> ResolveAccountIdAsync(string? rawToken)
+    {
+        var row = await FindLiveAsync(rawToken);
+        return row?.AccountId;
+    }
+
     public async Task<(string Status, DateTime? End, int NextDays, bool Usable)> DescribeAsync(long accountId)
     {
         var now = _time.GetUtcNow().UtcDateTime;
