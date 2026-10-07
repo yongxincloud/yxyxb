@@ -16,7 +16,8 @@ public sealed class PortalTests
     {
         await using var factory = new WebAppFactory();
         var body = await factory.CreateClient().GetFromJsonAsync<PriceDto>("/api/public/price");
-        Assert.That(body!.Price, Is.EqualTo(98m));
+        Assert.That(body!.Plans, Is.Not.Null.And.Not.Empty);
+        Assert.That(body.Plans.Single(p => p.ProductNo == "STANDARD").ListPrice, Is.EqualTo(98m));
     }
 
     [Test]
@@ -118,7 +119,8 @@ public sealed class PortalTests
         return client.SendAsync(req);
     }
 
-    sealed record PriceDto(bool Ok, decimal Price, string Name);
+    sealed record PriceDto(bool Ok, PlanRow[] Plans);
+    sealed record PlanRow(string ProductNo, decimal ListPrice);
     sealed record InvoiceOrdersDto(bool Ok, InvoiceOrderDto[] Orders);
     sealed record InvoiceOrderDto(string OrderNo, decimal Amount);
     sealed record SubDto(bool Ok, string AuthStatus, bool Usable);

@@ -34,17 +34,33 @@ public sealed class OrderController : ControllerBase
     public async Task<IActionResult> Catalog()
     {
         await _orders.EnsureCatalogAsync();
-        var product = await _db.Products.SingleAsync(x => x.ProductNo == OrderService.StandardProductNo);
+        var now = DateTime.UtcNow;
+        var plans = await _db.Products.Where(x => x.Status == 1)
+            .OrderBy(x => x.SortOrder)
+            .ThenBy(x => x.Id)
+            .ToListAsync();
         var trial1 = await _db.Configs.SingleAsync(x => x.CfgKey == "trial_price_1");
         var trial2 = await _db.Configs.SingleAsync(x => x.CfgKey == "trial_price_2");
+        var standard = plans.FirstOrDefault(x => x.ProductNo == OrderService.StandardProductNo) ?? plans.First();
         return Ok(new
         {
             ok = true,
-            productNo = product.ProductNo,
-            name = product.Name,
-            price = product.Price,
+            productNo = standard.ProductNo,
+            name = standard.Name,
+            price = ProductPricing.SalePrice(standard, now),
             trialPrice1 = decimal.Parse(trial1.CfgValue),
-            trialPrice2 = decimal.Parse(trial2.CfgValue)
+            trialPrice2 = decimal.Parse(trial2.CfgValue),
+            plans = plans.Select(p => new
+            {
+                productNo = p.ProductNo,
+                name = p.Name,
+                maxDevices = p.MaxDevices,
+                listPrice = p.Price,
+                salePrice = ProductPricing.SalePrice(p, now),
+                promoActive = ProductPricing.IsPromoActive(p, now),
+                promoEnd = p.PromoEnd,
+                sortOrder = p.SortOrder
+            })
         });
     }
 

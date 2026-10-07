@@ -29,8 +29,26 @@ public sealed class PortalController : ControllerBase
     public async Task<IActionResult> Price()
     {
         await _orders.EnsureCatalogAsync();
-        var product = await _db.Products.SingleAsync(x => x.ProductNo == OrderService.StandardProductNo);
-        return Ok(new { ok = true, price = product.Price, name = product.Name });
+        var now = DateTime.UtcNow;
+        var plans = await _db.Products.Where(x => x.Status == 1)
+            .OrderBy(x => x.SortOrder)
+            .ThenBy(x => x.Id)
+            .ToListAsync();
+        return Ok(new
+        {
+            ok = true,
+            plans = plans.Select(p => new
+            {
+                productNo = p.ProductNo,
+                name = p.Name,
+                maxDevices = p.MaxDevices,
+                listPrice = p.Price,
+                salePrice = ProductPricing.SalePrice(p, now),
+                promoActive = ProductPricing.IsPromoActive(p, now),
+                promoEnd = p.PromoEnd,
+                sortOrder = p.SortOrder
+            })
+        });
     }
 
     [Authorize]

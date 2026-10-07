@@ -71,6 +71,7 @@ public sealed class OrderService
         if (customer == null) return new OrderResult(false, "请先注册");
         var product = await _db.Products.SingleOrDefaultAsync(x => x.ProductNo == (productNo ?? StandardProductNo));
         if (product == null || product.Status != 1) return new OrderResult(false, "产品不可购买");
+        var now = _time.GetUtcNow().UtcDateTime;
         decimal amount;
         if (orderType == 2)
         {
@@ -78,7 +79,7 @@ public sealed class OrderService
             if (paidTrials >= 2) return new OrderResult(false, "试用次数已用完");
             amount = decimal.Parse(await ConfigAsync(paidTrials == 0 ? "trial_price_1" : "trial_price_2"));
         }
-        else amount = product.Price;
+        else amount = ProductPricing.SalePrice(product, now);
 
         var self = await _db.Providers.SingleOrDefaultAsync(x => x.AccountId == accountId && x.Status == 1);
         var providerId = self?.Id ?? customer.DirectProviderId;
@@ -93,8 +94,6 @@ public sealed class OrderService
                 providerId = provider.Id;
             }
         }
-
-        var now = _time.GetUtcNow().UtcDateTime;
         var order = new SubscriptionOrder
         {
             OrderNo = "O" + now.ToString("yyyyMMddHHmmssfff") + Random.Shared.Next(1000, 9999),
