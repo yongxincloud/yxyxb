@@ -174,6 +174,82 @@ namespace Yxy.Client
             }
         }
 
+        public static void PromptDevices(Window owner)
+        {
+            var token = File.Exists(TokenFile) ? File.ReadAllText(TokenFile).Trim() : "";
+            if (string.IsNullOrEmpty(token))
+            {
+                MessageBox.Show(owner, "请先登录。", "我的设备");
+                return;
+            }
+
+            string body;
+            try
+            {
+                body = Post("/api/client/devices", "{\"token\":\"" + Escape(token) + "\"}");
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(owner, ex.Message, "我的设备");
+                return;
+            }
+
+            var max = Match(body, "\"maxDevices\"\\s*:\\s*(\\d+)");
+            var ids = Regex.Matches(body ?? "", "\"deviceId\"\\s*:\\s*\"([^\"]+)\"");
+            var lines = new StringBuilder();
+            lines.AppendLine("设备上限：" + (string.IsNullOrEmpty(max) ? "—" : max));
+            lines.AppendLine("退出登录不释放名额。选择要踢出的设备编号：");
+            for (var i = 0; i < ids.Count; i++)
+            {
+                lines.AppendLine((i + 1) + ". " + ids[i].Groups[1].Value);
+            }
+
+            if (ids.Count == 0)
+            {
+                MessageBox.Show(owner, lines.ToString() + "\n暂无占用中的设备。", "我的设备");
+                return;
+            }
+
+            var pickBox = new TextBox { Text = "1", Width = 60, Margin = new Thickness(0, 8, 0, 0) };
+            var panel = new StackPanel { Margin = new Thickness(16) };
+            panel.Children.Add(new TextBlock { Text = lines.ToString(), TextWrapping = TextWrapping.Wrap });
+            panel.Children.Add(pickBox);
+            var ok = new Button { Content = "踢出", Width = 80, Margin = new Thickness(0, 12, 0, 0), IsDefault = true };
+            panel.Children.Add(ok);
+            var win = new Window
+            {
+                Title = "我的设备",
+                Owner = owner,
+                Width = 420,
+                SizeToContent = SizeToContent.Height,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                Content = panel,
+                FontFamily = new FontFamily("Microsoft YaHei")
+            };
+            ok.Click += delegate
+            {
+                int pick;
+                if (!int.TryParse(pickBox.Text, out pick) || pick < 1 || pick > ids.Count)
+                {
+                    MessageBox.Show(win, "请输入有效编号。", "我的设备");
+                    return;
+                }
+
+                var deviceId = ids[pick - 1].Groups[1].Value;
+                try
+                {
+                    Post("/api/client/devices/kick", "{\"token\":\"" + Escape(token) + "\",\"deviceId\":\"" + Escape(deviceId) + "\"}");
+                    MessageBox.Show(win, "已踢出 " + deviceId, "我的设备");
+                    win.Close();
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show(win, ex.Message, "我的设备");
+                }
+            };
+            win.ShowDialog();
+        }
+
         public static void Prompt(Window owner, Action saved)
         {
             var dialog = new Window
@@ -374,6 +450,13 @@ namespace Yxy.Client
             }
 
             var err = Regex.Match(body ?? "", "\"error\"\\s*:\\s*\"([^\"]*)\"");
+            var errorCode = Regex.Match(body ?? "", "\"errorCode\"\\s*:\\s*\"([^\"]*)\"");
+            if (errorCode.Success && errorCode.Groups[1].Value == "DEVICE_LIMIT")
+            {
+                var msg = err.Success ? err.Groups[1].Value : "设备数已达上限";
+                throw new InvalidOperationException(msg + "。请在网站「我的设备」踢出设备，或升级更高版本后再登录。");
+            }
+
             throw new InvalidOperationException(err.Success ? err.Groups[1].Value : "登录失败");
         }
 

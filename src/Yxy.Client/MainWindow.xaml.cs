@@ -63,10 +63,17 @@ namespace Yxy.Client
 
         private void BtnLogin_OnClick(object sender, RoutedEventArgs e)
         {
+            var session = SiteLogin.Load();
+            if (session.LoggedIn)
+            {
+                SiteLogin.PromptDevices(this);
+                return;
+            }
+
             SiteLogin.Prompt(this, delegate
             {
-                var session = SiteLogin.Load();
-                BtnLogin.Content = session.LoggedIn ? "已登录" : "登录";
+                var after = SiteLogin.Load();
+                BtnLogin.Content = after.LoggedIn ? "已登录" : "登录";
                 ShowPage("home");
             });
         }
