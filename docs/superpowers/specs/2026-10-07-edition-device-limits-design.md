@@ -81,7 +81,7 @@ Yxy.Web                         Yxy.Api
 | 字段 | 说明 |
 | --- | --- |
 | `AccountId` + `DeviceId` | 唯一 |
-| `DisplayName` | 可选展示名 |
+| `DisplayName` | 展示名；客户端登录上报，格式 `电脑名 · MAC · Windows用户` |
 | `FirstSeenAt` / `LastSeenAt` | 首次占坑 / 最近活动 |
 | `Status` | 1=占用，0=已踢出 |
 | `KickedAt` | 踢出时间，可空 |
