@@ -19,7 +19,7 @@ namespace Yxy.Mssql
             // SQL Server 服务需能读盘路径，优先放公共目录而非用户 Temp。
             var work = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
-                "用心云备份",
+                "用心云循备",
                 "mssql-restore");
             Directory.CreateDirectory(work);
             string bakFile = null;

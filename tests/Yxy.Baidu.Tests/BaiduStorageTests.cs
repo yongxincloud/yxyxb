@@ -18,11 +18,11 @@ namespace Yxy.Baidu.Tests
             var file = WriteTemp(new byte[] { 1, 2, 3, 4, 5 });
             try
             {
-                storage.Upload(file, "用心云备份/file/日报/x.zip");
+                storage.Upload(file, "用心云循备/file/日报/x.zip");
                 Assert.That(Joined(fake), Does.Contain("method=precreate"));
                 Assert.That(Joined(fake), Does.Contain("superfile2"));
                 Assert.That(Joined(fake), Does.Contain("method=create"));
-                Assert.That(Uri.UnescapeDataString(fake.Calls[0]), Does.Contain("/apps/用心云备份/"));
+                Assert.That(Uri.UnescapeDataString(fake.Calls[0]), Does.Contain("/apps/用心云循备/"));
             }
             finally
             {
@@ -38,7 +38,7 @@ namespace Yxy.Baidu.Tests
             var file = WriteTemp(new byte[] { 1, 2, 3, 4, 5 });
             try
             {
-                storage.Upload(file, "用心云备份/file/日报/x.zip");
+                storage.Upload(file, "用心云循备/file/日报/x.zip");
                 Assert.That(Joined(fake), Does.Contain("method=precreate"));
                 Assert.That(Joined(fake), Does.Not.Contain("superfile2"));
             }
@@ -57,15 +57,15 @@ namespace Yxy.Baidu.Tests
             var fake = new FakeBaiduTransport
             {
                 ListJson = "{\"errno\":0,\"list\":["
-                    + "{\"path\":\"/apps/用心云备份/用心云备份/file/old.zip\",\"isdir\":0,\"server_mtime\":" + oldUnix + "},"
-                    + "{\"path\":\"/apps/用心云备份/用心云备份/file/new.zip\",\"isdir\":0,\"server_mtime\":" + newUnix + "}"
+                    + "{\"path\":\"/apps/用心云循备/用心云循备/file/old.zip\",\"isdir\":0,\"server_mtime\":" + oldUnix + "},"
+                    + "{\"path\":\"/apps/用心云循备/用心云循备/file/new.zip\",\"isdir\":0,\"server_mtime\":" + newUnix + "}"
                     + "]}"
             };
             var storage = Create(fake, now.AddHours(1));
             var deleted = new System.Collections.Generic.List<string>();
-            var n = storage.DeleteExpired("用心云备份/", now.AddDays(-1), delegate(string key) { deleted.Add(key); });
+            var n = storage.DeleteExpired("用心云循备/", now.AddDays(-1), delegate(string key) { deleted.Add(key); });
             Assert.That(n, Is.EqualTo(1));
-            Assert.That(deleted, Is.EqualTo(new[] { "/apps/用心云备份/用心云备份/file/old.zip" }));
+            Assert.That(deleted, Is.EqualTo(new[] { "/apps/用心云循备/用心云循备/file/old.zip" }));
             Assert.That(Joined(fake), Does.Contain("filemanager"));
             Assert.That(Joined(fake), Does.Not.Contain("new.zip"));
         }
@@ -76,7 +76,7 @@ namespace Yxy.Baidu.Tests
             var now = DateTime.UtcNow;
             var oldUnix = (long)(now.AddDays(-10) - new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalSeconds;
             var newUnix = (long)(now - new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalSeconds;
-            var root = "/apps/用心云备份/用心云备份";
+            var root = "/apps/用心云循备/用心云循备";
             var mssql = root + "/mssql";
             var task = mssql + "/服务站用户数据";
             var fake = new FakeBaiduTransport
@@ -94,15 +94,15 @@ namespace Yxy.Baidu.Tests
                     {
                         task,
                         "{\"errno\":0,\"list\":["
-                            + "{\"path\":\"" + task + "/用心云备份_服务站_20260101-120000.zip\",\"isdir\":0,\"server_mtime\":" + oldUnix + "},"
-                            + "{\"path\":\"" + task + "/用心云备份_服务站_20261008-063204.zip\",\"isdir\":0,\"server_mtime\":" + newUnix + "}"
+                            + "{\"path\":\"" + task + "/用心云循备_服务站_20260101-120000.zip\",\"isdir\":0,\"server_mtime\":" + oldUnix + "},"
+                            + "{\"path\":\"" + task + "/用心云循备_服务站_20261008-063204.zip\",\"isdir\":0,\"server_mtime\":" + newUnix + "}"
                             + "]}"
                     }
                 }
             };
             var storage = Create(fake, now.AddHours(1));
             var deleted = new System.Collections.Generic.List<string>();
-            var n = storage.DeleteExpired("用心云备份/", now.AddDays(-2), delegate(string key) { deleted.Add(key); });
+            var n = storage.DeleteExpired("用心云循备/", now.AddDays(-2), delegate(string key) { deleted.Add(key); });
             Assert.That(n, Is.EqualTo(1));
             Assert.That(deleted.Count, Is.EqualTo(1));
             Assert.That(deleted[0], Does.Contain("20260101-120000.zip"));
@@ -210,7 +210,7 @@ namespace Yxy.Baidu.Tests
                 }
 
                 var full = Path.GetFullPath(file);
-                var remote = CloudObjectKeys.BaiduRemotePath("用心云备份", "k.zip");
+                var remote = CloudObjectKeys.BaiduRemotePath("用心云循备", "k.zip");
                 BaiduUploadCheckpoint.Save(AppPaths.DataDirectory, new BaiduUploadCheckpoint
                 {
                     LocalPath = full,
@@ -284,7 +284,7 @@ namespace Yxy.Baidu.Tests
 
         private static BaiduAppConfig Cfg()
         {
-            return new BaiduAppConfig { AppKey = "k", AppSecret = "s", AppFolderName = "用心云备份" };
+            return new BaiduAppConfig { AppKey = "k", AppSecret = "s", AppFolderName = "用心云循备" };
         }
 
         private static string WriteTemp(byte[] bytes)

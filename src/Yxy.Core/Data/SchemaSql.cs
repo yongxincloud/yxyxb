@@ -148,7 +148,7 @@ CREATE TABLE IF NOT EXISTS media_tasks (
     media_id INTEGER NOT NULL,
     enabled INTEGER NOT NULL DEFAULT 1,
     source_path TEXT,
-    target_folder TEXT NOT NULL DEFAULT '用心云备份',
+    target_folder TEXT NOT NULL DEFAULT '用心云循备',
     window_start TEXT NOT NULL,
     window_end TEXT NOT NULL,
     wait_minutes INTEGER NOT NULL DEFAULT 30,

@@ -57,7 +57,7 @@ namespace Yxy.Baidu.Tests
                     Size = 3L * BaiduSlices.BlockSize,
                     BlockSize = BaiduSlices.BlockSize,
                     BlockMd5 = md5,
-                    RemotePath = "/apps/用心云备份/x.zip",
+                    RemotePath = "/apps/用心云循备/x.zip",
                     UploadId = "u1",
                     DonePartSeq = new[] { 0, 1 }
                 };
@@ -88,12 +88,12 @@ namespace Yxy.Baidu.Tests
         public void Config_LoadUtf8FolderName()
         {
             var path = Path.Combine(Path.GetTempPath(), "yxy-baidu-app-" + Guid.NewGuid().ToString("N") + ".json");
-            var json = "{\"AppKey\":\"k\",\"AppSecret\":\"s\",\"RedirectUri\":\"http://127.0.0.1:17890/baidu/\",\"AppFolderName\":\"用心云备份\"}";
+            var json = "{\"AppKey\":\"k\",\"AppSecret\":\"s\",\"RedirectUri\":\"http://127.0.0.1:17890/baidu/\",\"AppFolderName\":\"用心云循备\"}";
             File.WriteAllText(path, json, new UTF8Encoding(false));
             try
             {
                 var cfg = BaiduAppConfig.Load(path);
-                Assert.That(cfg.AppFolderName, Is.EqualTo("用心云备份"));
+                Assert.That(cfg.AppFolderName, Is.EqualTo("用心云循备"));
             }
             finally
             {
@@ -109,7 +109,7 @@ namespace Yxy.Baidu.Tests
                 AppKey = "ak",
                 AppSecret = "sk",
                 RedirectUri = "http://127.0.0.1:17890/baidu/",
-                AppFolderName = "用心云备份"
+                AppFolderName = "用心云循备"
             };
             var url = BaiduOAuth.AuthorizeUrl(cfg, "st-1");
             Assert.That(url, Does.Contain("client_id=ak"));

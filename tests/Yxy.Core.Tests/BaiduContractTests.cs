@@ -17,9 +17,9 @@ namespace Yxy.Core.Tests
         [Test]
         public void RemotePath_UsesAppsFolderAndObjectKey()
         {
-            var key = CloudObjectKeys.ForZip("用心云备份", "file", "日报", @"D:\a\x.zip");
-            var path = CloudObjectKeys.BaiduRemotePath("用心云备份", key);
-            Assert.That(path, Is.EqualTo("/apps/用心云备份/" + key));
+            var key = CloudObjectKeys.ForZip("用心云循备", "file", "日报", @"D:\a\x.zip");
+            var path = CloudObjectKeys.BaiduRemotePath("用心云循备", key);
+            Assert.That(path, Is.EqualTo("/apps/用心云循备/" + key));
         }
 
         [Test]

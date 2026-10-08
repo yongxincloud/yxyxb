@@ -94,10 +94,10 @@ namespace Yxy.Core.Tests
         [Test]
         public void ObjectKey_UsesProductPrefix()
         {
-            var key = CloudObjectKeys.ForZip("用心云备份", "file", "日报", @"D:\a\x.zip");
-            Assert.That(key, Does.StartWith("用心云备份/file/日报/"));
+            var key = CloudObjectKeys.ForZip("用心云循备", "file", "日报", @"D:\a\x.zip");
+            Assert.That(key, Does.StartWith("用心云循备/file/日报/"));
             Assert.That(key, Does.EndWith("x.zip"));
-            Assert.That(CloudObjectKeys.ProductPrefix("用心云备份"), Is.EqualTo("用心云备份/"));
+            Assert.That(CloudObjectKeys.ProductPrefix("用心云循备"), Is.EqualTo("用心云循备/"));
         }
 
         [Test]

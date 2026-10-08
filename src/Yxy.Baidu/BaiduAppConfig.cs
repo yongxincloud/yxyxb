@@ -8,7 +8,7 @@ namespace Yxy.Baidu
     public sealed class BaiduAppConfig
     {
         public const string DefaultRedirectUri = "http://127.0.0.1:17890/baidu/";
-        public const string DefaultAppFolderName = "用心云备份";
+        public const string DefaultAppFolderName = "用心云循备";
 
         public string AppKey { get; set; }
 

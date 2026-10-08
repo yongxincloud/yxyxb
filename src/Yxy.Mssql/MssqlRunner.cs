@@ -160,7 +160,7 @@ namespace Yxy.Mssql
         {
             var dirs = new[]
             {
-                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "用心云备份", "mssql-work"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "用心云循备", "mssql-work"),
                 Path.Combine(bakRoot, "_mssql_work")
             };
             Exception last = null;

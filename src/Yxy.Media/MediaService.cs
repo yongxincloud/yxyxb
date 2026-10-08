@@ -119,7 +119,7 @@ namespace Yxy.Media
                 return "解绑后本机不再管理该盘。确定解绑？";
             }
 
-            var data = Path.Combine(letter.TrimEnd('\\') + "\\", "用心云备份");
+            var data = Path.Combine(letter.TrimEnd('\\') + "\\", "用心云循备");
             if (Directory.Exists(data))
             {
                 return "盘上已有本产品数据。解绑后不再受管，盘内文件不会删除。确定解绑？";

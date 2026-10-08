@@ -51,11 +51,11 @@ namespace Yxy.Core.Tests
         public void Naming_SkipsUncheckedParts()
         {
             var parts = NameParts.FromFlags(NameParts.FileTask | NameParts.DirKind);
-            var folder = BackupNaming.FileFolder(@"D:\bak", "用心云备份", "日报", parts);
+            var folder = BackupNaming.FileFolder(@"D:\bak", "用心云循备", "日报", parts);
             Assert.That(folder, Is.EqualTo(@"D:\bak\文件备份"));
-            var zip = BackupNaming.FileZipName("用心云备份", "日报", new DateTime(2026, 9, 24, 2, 0, 0, DateTimeKind.Utc), parts);
+            var zip = BackupNaming.FileZipName("用心云循备", "日报", new DateTime(2026, 9, 24, 2, 0, 0, DateTimeKind.Utc), parts);
             Assert.That(zip, Is.EqualTo("日报.zip"));
-            var dbFolder = BackupNaming.MssqlFolder(@"D:\bak", "用心云备份", "日报", "实例A", parts);
+            var dbFolder = BackupNaming.MssqlFolder(@"D:\bak", "用心云循备", "日报", "实例A", parts);
             Assert.That(dbFolder, Is.EqualTo(@"D:\bak\库备份"));
         }
 

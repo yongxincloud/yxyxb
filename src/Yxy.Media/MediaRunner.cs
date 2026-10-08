@@ -389,7 +389,7 @@ namespace Yxy.Media
                 }
 
                 MediaStore.Touch(db, record.Id, live.VolumeGuid);
-                var destRoot = Path.Combine(root, string.IsNullOrEmpty(task.TargetFolder) ? "用心云备份" : task.TargetFolder);
+                var destRoot = Path.Combine(root, string.IsNullOrEmpty(task.TargetFolder) ? "用心云循备" : task.TargetFolder);
                 var filesRoot = Path.Combine(destRoot, "files");
                 var versionsRoot = Path.Combine(destRoot, "versions");
                 Directory.CreateDirectory(filesRoot);

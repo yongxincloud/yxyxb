@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using Yxy.Core;
 using Yxy.Core.Security;
 
 namespace Yxy.Media.Disks
@@ -23,10 +24,21 @@ namespace Yxy.Media.Disks
     {
         public static string MarkerPath(string root)
         {
-            return Path.Combine(root.TrimEnd('\\'), ".yxybackup", "volume.marker.json");
+            return Path.Combine(root.TrimEnd('\\'), ".yxyxb", "volume.marker.json");
         }
 
         public static string AltMarkerPath(string root)
+        {
+            return Path.Combine(root.TrimEnd('\\'), AppPaths.ProductPathName, ".yxyxb", "volume.marker.json");
+        }
+
+        // compat fixture: legacy brand marker paths (read/remove only)
+        public static string LegacyMarkerPath(string root)
+        {
+            return Path.Combine(root.TrimEnd('\\'), ".yxybackup", "volume.marker.json");
+        }
+
+        public static string LegacyAltMarkerPath(string root)
         {
             return Path.Combine(root.TrimEnd('\\'), "用心云备份", ".yxybackup", "volume.marker.json");
         }
@@ -38,7 +50,13 @@ namespace Yxy.Media.Disks
                 return null;
             }
 
-            var paths = new[] { MarkerPath(root), AltMarkerPath(root) };
+            var paths = new[]
+            {
+                MarkerPath(root),
+                AltMarkerPath(root),
+                LegacyMarkerPath(root),
+                LegacyAltMarkerPath(root)
+            };
             for (var i = 0; i < paths.Length; i++)
             {
                 try
@@ -89,6 +107,8 @@ namespace Yxy.Media.Disks
             var root = letter.TrimEnd('\\') + "\\";
             TryDelete(MarkerPath(root));
             TryDelete(AltMarkerPath(root));
+            TryDelete(LegacyMarkerPath(root));
+            TryDelete(LegacyAltMarkerPath(root));
         }
 
         public static string CheckForeign(VolumeMarker marker, string thisDeviceId)
