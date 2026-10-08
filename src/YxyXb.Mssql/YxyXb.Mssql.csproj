@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <RootNamespace>YxyXb.Mssql</RootNamespace>
+    <AssemblyName>YxyXb.Mssql</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\YxyXb.Core\YxyXb.Core.csproj" />
+    <ProjectReference Include="..\YxyXb.Contracts\YxyXb.Contracts.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="System.Data" />
+  </ItemGroup>
+</Project>

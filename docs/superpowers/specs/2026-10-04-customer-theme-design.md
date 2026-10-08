@@ -28,11 +28,11 @@
 | 边框 | `#E6E0DC` |
 | 错误文字 | `#7A1F1A` |
 
-Logo 用 `src/Yxy.img/logo.jpg`。图片是白底，深色区域用白卡片托住。
+Logo 用 `src/YxyXb.img/logo.jpg`。图片是白底，深色区域用白卡片托住。
 
 ## 架构
 
-`src/Yxy.Web/src/styles/tokens.css` 里的 `:root` 继续给厂商后台用，现有蓝色变量不改。
+`src/YxyXb.Web/src/styles/tokens.css` 里的 `:root` 继续给厂商后台用，现有蓝色变量不改。
 
 `App.vue` 根据当前路由给 `document.body` 添加或去掉 `theme-customer`。路径以 `/vendor` 开头时不加。类名加在 `body` 上，页面底色才能铺满整页，离开客户页时也不会把客户色留在厂商页上。
 
@@ -52,7 +52,7 @@ Logo 用 `src/Yxy.img/logo.jpg`。图片是白底，深色区域用白卡片托�
 
 ### Logo
 
-把 `src/Yxy.img/logo.jpg` 复制到 `src/Yxy.Web/public/logo.jpg`，页面用 `/logo.jpg`。替代文字为「用心云」。
+把 `src/YxyXb.img/logo.jpg` 复制到 `src/YxyXb.Web/public/logo.jpg`，页面用 `/logo.jpg`。替代文字为「用心云」。
 
 只在这三处放图，图片保持原比例：
 

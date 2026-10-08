@@ -24,9 +24,9 @@
 ### Task 1: ShouldSend 判定与 DTO
 
 **Files:**
-- Modify: `src/Yxy.Contracts/Dto/AppSettingsDto.cs`（`SmtpSettingsDto` 末尾）
-- Modify: `src/Yxy.Core/Transfer/MailUtil.cs`
-- Test: `tests/Yxy.Core.Tests/PhaseETests.cs`
+- Modify: `src/YxyXb.Contracts/Dto/AppSettingsDto.cs`（`SmtpSettingsDto` 末尾）
+- Modify: `src/YxyXb.Core/Transfer/MailUtil.cs`
+- Test: `tests/YxyXb.Core.Tests/PhaseETests.cs`
 
 **Interfaces:**
 - Consumes: 现有 `SmtpSettingsDto`
@@ -62,7 +62,7 @@ public void ShouldSend_RequiresReadySwitchWhenAndTask()
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `dotnet test tests/Yxy.Core.Tests/Yxy.Core.Tests.csproj --filter ShouldSend_RequiresReadySwitchWhenAndTask`
+Run: `dotnet test tests/YxyXb.Core.Tests/YxyXb.Core.Tests.csproj --filter ShouldSend_RequiresReadySwitchWhenAndTask`
 
 Expected: FAIL（无 `ShouldSend` 或属性不存在）
 
@@ -105,14 +105,14 @@ public static bool ShouldSend(SmtpSettingsDto settings, bool doEmail, bool succe
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `dotnet test tests/Yxy.Core.Tests/Yxy.Core.Tests.csproj --filter ShouldSend_RequiresReadySwitchWhenAndTask`
+Run: `dotnet test tests/YxyXb.Core.Tests/YxyXb.Core.Tests.csproj --filter ShouldSend_RequiresReadySwitchWhenAndTask`
 
 Expected: PASS
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/Yxy.Contracts/Dto/AppSettingsDto.cs src/Yxy.Core/Transfer/MailUtil.cs tests/Yxy.Core.Tests/PhaseETests.cs
+git add src/YxyXb.Contracts/Dto/AppSettingsDto.cs src/YxyXb.Core/Transfer/MailUtil.cs tests/YxyXb.Core.Tests/PhaseETests.cs
 git -c user.name=yxy -c user.email=yxy@local commit -m "feat: decide task result mail with smtp policy"
 ```
 
@@ -121,11 +121,11 @@ git -c user.name=yxy -c user.email=yxy@local commit -m "feat: decide task result
 ### Task 2: Finish 与各 Runner 失败分支
 
 **Files:**
-- Modify: `src/Yxy.Core/Backup/DistChannel.cs`（`Finish`）
-- Modify: `src/Yxy.Core/Backup/FileBackupRunner.cs`（catch 发信）
-- Modify: `src/Yxy.Mssql/MssqlRunner.cs`（catch 发信）
-- Modify: `src/Yxy.MySql/MysqlRunner.cs`（catch 发信）
-- Test: `tests/Yxy.Core.Tests/PhaseETests.cs`（可再加 roundtrip：SaveXfer/GetXfer 保留两字段；若已有 sqlite 测试夹具则用 `Yxy.Core.Tests` 现有 temp db 写法）
+- Modify: `src/YxyXb.Core/Backup/DistChannel.cs`（`Finish`）
+- Modify: `src/YxyXb.Core/Backup/FileBackupRunner.cs`（catch 发信）
+- Modify: `src/YxyXb.Mssql/MssqlRunner.cs`（catch 发信）
+- Modify: `src/YxyXb.MySql/MysqlRunner.cs`（catch 发信）
+- Test: `tests/YxyXb.Core.Tests/PhaseETests.cs`（可再加 roundtrip：SaveXfer/GetXfer 保留两字段；若已有 sqlite 测试夹具则用 `YxyXb.Core.Tests` 现有 temp db 写法）
 
 **Interfaces:**
 - Consumes: Task 1 `ShouldSend`
@@ -167,7 +167,7 @@ public void SmtpXfer_KeepsSendPolicy()
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `dotnet test tests/Yxy.Core.Tests/Yxy.Core.Tests.csproj --filter SmtpXfer_KeepsSendPolicy`
+Run: `dotnet test tests/YxyXb.Core.Tests/YxyXb.Core.Tests.csproj --filter SmtpXfer_KeepsSendPolicy`
 
 Expected: FAIL 或字段读回 false（若 DTO 已有字段但未 roundtrip 则应 PASS——若 PASS 则本步记下已绿，仍改 Runner）
 
@@ -208,18 +208,18 @@ if (MailUtil.ShouldSend(smtp, task.DoEmail, false))
 }
 ```
 
-MSSQL/MySQL 已有 `using Yxy.Core.Transfer` 则不必再加。
+MSSQL/MySQL 已有 `using YxyXb.Core.Transfer` 则不必再加。
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `dotnet test tests/Yxy.Core.Tests/Yxy.Core.Tests.csproj --filter "ShouldSend_RequiresReadySwitchWhenAndTask|SmtpXfer_KeepsSendPolicy"`
+Run: `dotnet test tests/YxyXb.Core.Tests/YxyXb.Core.Tests.csproj --filter "ShouldSend_RequiresReadySwitchWhenAndTask|SmtpXfer_KeepsSendPolicy"`
 
-Expected: PASS。再 `dotnet build src/Yxy.Engine/Yxy.Engine.csproj src/Yxy.Mssql/Yxy.Mssql.csproj src/Yxy.MySql/Yxy.MySql.csproj`
+Expected: PASS。再 `dotnet build src/YxyXb.Engine/YxyXb.Engine.csproj src/YxyXb.Mssql/YxyXb.Mssql.csproj src/YxyXb.MySql/YxyXb.MySql.csproj`
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/Yxy.Core/Backup/DistChannel.cs src/Yxy.Core/Backup/FileBackupRunner.cs src/Yxy.Mssql/MssqlRunner.cs src/Yxy.MySql/MysqlRunner.cs tests/Yxy.Core.Tests/PhaseETests.cs
+git add src/YxyXb.Core/Backup/DistChannel.cs src/YxyXb.Core/Backup/FileBackupRunner.cs src/YxyXb.Mssql/MssqlRunner.cs src/YxyXb.MySql/MysqlRunner.cs tests/YxyXb.Core.Tests/PhaseETests.cs
 git -c user.name=yxy -c user.email=yxy@local commit -m "feat: honor smtp send policy in backup mail"
 ```
 
@@ -228,7 +228,7 @@ git -c user.name=yxy -c user.email=yxy@local commit -m "feat: honor smtp send po
 ### Task 3: EMAIL 页签总开关与下拉
 
 **Files:**
-- Modify: `src/Yxy.Client/Pages/SettingsPage.cs`（字段、`MailTab`、`Load`、`ReadSmtp`）
+- Modify: `src/YxyXb.Client/Pages/SettingsPage.cs`（字段、`MailTab`、`Load`、`ReadSmtp`）
 - Test: 无 UI 自动化。编译覆盖。判定逻辑已在 Task 1。
 
 **Interfaces:**
@@ -312,8 +312,8 @@ private void SyncMailPolicyUi()
 Run:
 
 ```
-dotnet test tests/Yxy.Core.Tests/Yxy.Core.Tests.csproj --filter "ShouldSend|SmtpXfer"
-dotnet build src/Yxy.Client/Yxy.Client.csproj
+dotnet test tests/YxyXb.Core.Tests/YxyXb.Core.Tests.csproj --filter "ShouldSend|SmtpXfer"
+dotnet build src/YxyXb.Client/YxyXb.Client.csproj
 ```
 
 Expected: 测试 PASS，Client 0 错误。
@@ -321,7 +321,7 @@ Expected: 测试 PASS，Client 0 错误。
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/Yxy.Client/Pages/SettingsPage.cs
+git add src/YxyXb.Client/Pages/SettingsPage.cs
 git -c user.name=yxy -c user.email=yxy@local commit -m "feat: show task mail policy on the email settings tab"
 ```
 

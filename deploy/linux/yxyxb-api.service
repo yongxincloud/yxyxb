@@ -1,0 +1,14 @@
+[Unit]
+Description=用心云·循备网站接口
+After=network.target
+
+[Service]
+WorkingDirectory=/opt/yxyxb/api
+ExecStart=/usr/bin/dotnet /opt/yxyxb/api/YxyXb.Api.dll --urls http://127.0.0.1:5080
+Environment=ASPNETCORE_ENVIRONMENT=Production
+Restart=always
+RestartSec=5
+User=www-data
+
+[Install]
+WantedBy=multi-user.target

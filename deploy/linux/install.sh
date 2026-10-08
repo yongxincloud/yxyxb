@@ -3,24 +3,24 @@
 # 对应 Doc/用心云·循备-Linux部署手册.md 第 3–5 节。
 # 运行前须已安装 nginx 与 aspnetcore-runtime-8.0。不要只装 dotnet-runtime。
 #
-# 在已含 publish/api 与 src/Yxy.Web/dist 的仓库里：
+# 在已含 publish/api 与 src/YxyXb.Web/dist 的仓库里：
 #   sudo ADMIN_PASSWORD='强密码' bash deploy/linux/install.sh
 #
 # 发布目录不在默认位置时：
 #   sudo ADMIN_PASSWORD='强密码' bash install.sh --api /path/publish/api --web /path/dist
 set -euo pipefail
 
-API_DEST=/opt/yxy/api
-WEB_DEST=/opt/yxy/web
-DATA_DIR=/var/lib/yxy
-SERVICE_NAME=yxy-api
-NGINX_AVAILABLE=/etc/nginx/sites-available/yxy
-NGINX_ENABLED=/etc/nginx/sites-enabled/yxy
+API_DEST=/opt/yxyxb/api
+WEB_DEST=/opt/yxyxb/web
+DATA_DIR=/var/lib/yxyxb
+SERVICE_NAME=yxyxb-api
+NGINX_AVAILABLE=/etc/nginx/sites-available/yxyxb
+NGINX_ENABLED=/etc/nginx/sites-enabled/yxyxb
 
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 REPO_ROOT=$(cd "$SCRIPT_DIR/../.." && pwd)
 API_SRC="$REPO_ROOT/publish/api"
-WEB_SRC="$REPO_ROOT/src/Yxy.Web/dist"
+WEB_SRC="$REPO_ROOT/src/YxyXb.Web/dist"
 ADMIN_PASSWORD="${ADMIN_PASSWORD:-}"
 FIREWALL=auto
 
@@ -29,7 +29,7 @@ usage() {
 用法: sudo ADMIN_PASSWORD='强密码' bash install.sh [--api DIR] [--web DIR] [--firewall ufw|firewalld|none]
 
   --api DIR     接口发布目录，默认 <仓库>/publish/api
-  --web DIR     网页 dist 目录，默认 <仓库>/src/Yxy.Web/dist
+  --web DIR     网页 dist 目录，默认 <仓库>/src/YxyXb.Web/dist
   --password    管理员密码，也可用环境变量 ADMIN_PASSWORD。仅第一次建库时写入
   --firewall    放行 80。默认：防火墙已经启用才放行，否则跳过。不会放行 5080
 EOF
@@ -81,19 +81,19 @@ if [[ ! -d /etc/nginx/sites-available || ! -d /etc/nginx/sites-enabled ]]; then
   exit 1
 fi
 
-if [[ ! -f "$API_SRC/Yxy.Api.dll" ]]; then
-  echo "接口目录里没有 Yxy.Api.dll：$API_SRC"
-  echo "请先在开发机执行：dotnet publish src/Yxy.Api/Yxy.Api.csproj -c Release -o publish/api"
+if [[ ! -f "$API_SRC/YxyXb.Api.dll" ]]; then
+  echo "接口目录里没有 YxyXb.Api.dll：$API_SRC"
+  echo "请先在开发机执行：dotnet publish src/YxyXb.Api/YxyXb.Api.csproj -c Release -o publish/api"
   exit 1
 fi
 
 if [[ ! -f "$WEB_SRC/index.html" ]]; then
   echo "网页目录里没有 index.html：$WEB_SRC"
-  echo "请先在 src/Yxy.Web 执行 npm install 与 npm run build。"
+  echo "请先在 src/YxyXb.Web 执行 npm install 与 npm run build。"
   exit 1
 fi
 
-if [[ -f "$DATA_DIR/yxy-api.db" ]]; then
+if [[ -f "$DATA_DIR/yxyxb-api.db" ]] || [[ -f "$DATA_DIR/yxy-api.db" ]]; then
   db_exists=1
 else
   db_exists=0
@@ -120,7 +120,7 @@ if systemctl is-active --quiet "$SERVICE_NAME"; then
   systemctl stop "$SERVICE_NAME"
 fi
 
-install -d -m 755 /opt/yxy "$API_DEST" "$WEB_DEST" "$DATA_DIR"
+install -d -m 755 /opt/yxyxb "$API_DEST" "$WEB_DEST" "$DATA_DIR"
 
 saved_settings=""
 if [[ -f "$API_DEST/appsettings.json" ]]; then
@@ -146,7 +146,7 @@ admin = cfg.setdefault("Admin", {})
 admin["Username"] = "admin"
 if not db_exists:
     admin["Password"] = password
-cfg.setdefault("ConnectionStrings", {})["Web"] = "Data Source=/var/lib/yxy/yxy-api.db"
+cfg.setdefault("ConnectionStrings", {})["Web"] = "Data Source=/var/lib/yxyxb/yxyxb-api.db"
 with open(path, "w", encoding="utf-8") as f:
     json.dump(cfg, f, ensure_ascii=False, indent=2)
     f.write("\n")
@@ -155,11 +155,11 @@ PY
 chown -R www-data:www-data "$DATA_DIR" "$API_DEST"
 chmod 600 "$API_DEST/appsettings.json"
 
-install -m 644 "$SCRIPT_DIR/yxy-api.service" "/etc/systemd/system/${SERVICE_NAME}.service"
+install -m 644 "$SCRIPT_DIR/yxyxb-api.service" "/etc/systemd/system/${SERVICE_NAME}.service"
 systemctl daemon-reload
 systemctl enable --now "$SERVICE_NAME"
 
-install -m 644 "$SCRIPT_DIR/yxy.nginx.conf" "$NGINX_AVAILABLE"
+install -m 644 "$SCRIPT_DIR/yxyxb.nginx.conf" "$NGINX_AVAILABLE"
 ln -sf "$NGINX_AVAILABLE" "$NGINX_ENABLED"
 
 removed_default=0
@@ -215,7 +215,7 @@ for _ in 1 2 3 4 5 6 7 8 9 10; do
 done
 
 if [[ "$ok" -ne 1 ]]; then
-  echo "接口未响应。请查看：systemctl status yxy-api"
+  echo "接口未响应。请查看：systemctl status yxyxb-api"
   exit 1
 fi
 

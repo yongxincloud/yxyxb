@@ -6,7 +6,7 @@
 
 **Architecture:** 续传状态落 `data/baidu-upload/{hash}.json`。`BaiduStorage` 复用/创建 checkpoint，只传未完成片，齐片后才 `create`。设置项 `UploadParallel`、`LogRetainDays` 进 `settings` 表。日志清理挂在 `PurgeRunner` 每日时段（即使未勾选删云/本机，到点仍可只清日志）。
 
-**Tech Stack:** .NET Framework 4.8，NUnit，WPF，SQLite，现有 `Yxy.Baidu` / `SettingsStore` / `PurgeRunner`。
+**Tech Stack:** .NET Framework 4.8，NUnit，WPF，SQLite，现有 `YxyXb.Baidu` / `SettingsStore` / `PurgeRunner`。
 
 ## Global Constraints
 
@@ -23,34 +23,34 @@
 
 | 文件 | 职责 |
 | --- | --- |
-| `src/Yxy.Baidu/BaiduSlices.cs` | `BlockSize = 1MB` |
-| `src/Yxy.Baidu/BaiduUploadCheckpoint.cs` | 续传 JSON 读写、匹配、标记片成功 |
-| `src/Yxy.Baidu/BaiduUploadTimeout.cs` | 动态超时秒数 |
-| `src/Yxy.Baidu/BaiduHttp.cs` | 超时参数；写出时按 `BytePacer` 节流 |
-| `src/Yxy.Baidu/BaiduStorage.cs` | 续传流程、门闩、并行 |
-| `src/Yxy.Baidu/BytePacer.cs` | 保持；供写出节流调用 |
-| `src/Yxy.Contracts/Cloud/ICloudStorage.cs` | `SetParallel(int)` |
-| `src/Yxy.Qiniu|Tencent|Ctyun/*Storage.cs` | 空实现 `SetParallel` |
-| `src/Yxy.Contracts/Dto/AppSettingsDto.cs` | `UploadParallel`、`LogRetainDays` |
-| `src/Yxy.Core/Data/SchemaMigrate.cs` | 两列 migrate |
-| `src/Yxy.Core/Store/SettingsStore.cs` | Get/Save 两字段 |
-| `src/Yxy.Core/Store/LogStore.cs` | `DeleteOlderThan` |
-| `src/Yxy.Core/Backup/PurgeRunner.cs` | 到点清日志 |
-| `src/Yxy.Cloud/CloudRuntimeImpl.cs` | `SetParallel` |
-| `src/Yxy.Client/Pages/CloudPage.cs` | 并行数 UI |
-| `src/Yxy.Client/Pages/SettingsPage.cs` | 日志保留天数 UI |
-| `tests/Yxy.Baidu.Tests/*` | 续传/门闩/超时/片长 |
-| `tests/Yxy.Core.Tests/PhaseETests.cs` | 日志清理 |
+| `src/YxyXb.Baidu/BaiduSlices.cs` | `BlockSize = 1MB` |
+| `src/YxyXb.Baidu/BaiduUploadCheckpoint.cs` | 续传 JSON 读写、匹配、标记片成功 |
+| `src/YxyXb.Baidu/BaiduUploadTimeout.cs` | 动态超时秒数 |
+| `src/YxyXb.Baidu/BaiduHttp.cs` | 超时参数；写出时按 `BytePacer` 节流 |
+| `src/YxyXb.Baidu/BaiduStorage.cs` | 续传流程、门闩、并行 |
+| `src/YxyXb.Baidu/BytePacer.cs` | 保持；供写出节流调用 |
+| `src/YxyXb.Contracts/Cloud/ICloudStorage.cs` | `SetParallel(int)` |
+| `src/YxyXb.Qiniu|Tencent|Ctyun/*Storage.cs` | 空实现 `SetParallel` |
+| `src/YxyXb.Contracts/Dto/AppSettingsDto.cs` | `UploadParallel`、`LogRetainDays` |
+| `src/YxyXb.Core/Data/SchemaMigrate.cs` | 两列 migrate |
+| `src/YxyXb.Core/Store/SettingsStore.cs` | Get/Save 两字段 |
+| `src/YxyXb.Core/Store/LogStore.cs` | `DeleteOlderThan` |
+| `src/YxyXb.Core/Backup/PurgeRunner.cs` | 到点清日志 |
+| `src/YxyXb.Cloud/CloudRuntimeImpl.cs` | `SetParallel` |
+| `src/YxyXb.Client/Pages/CloudPage.cs` | 并行数 UI |
+| `src/YxyXb.Client/Pages/SettingsPage.cs` | 日志保留天数 UI |
+| `tests/YxyXb.Baidu.Tests/*` | 续传/门闩/超时/片长 |
+| `tests/YxyXb.Core.Tests/PhaseETests.cs` | 日志清理 |
 
 ---
 
 ### Task 1: 设置字段 UploadParallel / LogRetainDays
 
 **Files:**
-- Modify: `src/Yxy.Contracts/Dto/AppSettingsDto.cs`
-- Modify: `src/Yxy.Core/Data/SchemaMigrate.cs`
-- Modify: `src/Yxy.Core/Store/SettingsStore.cs`
-- Test: `tests/Yxy.Core.Tests/PhaseETests.cs`
+- Modify: `src/YxyXb.Contracts/Dto/AppSettingsDto.cs`
+- Modify: `src/YxyXb.Core/Data/SchemaMigrate.cs`
+- Modify: `src/YxyXb.Core/Store/SettingsStore.cs`
+- Test: `tests/YxyXb.Core.Tests/PhaseETests.cs`
 
 **Interfaces:**
 - Produces: `int UploadParallel`（默认 1）；`int LogRetainDays`（默认 30）；`SettingsStore` 读写；migrate 列 `upload_parallel` DEFAULT 1、`log_retain_days` DEFAULT 30
@@ -94,7 +94,7 @@ public void Settings_KeepsUploadParallelAndLogRetainDays()
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `dotnet test tests/Yxy.Core.Tests/Yxy.Core.Tests.csproj --filter Settings_KeepsUploadParallelAndLogRetainDays`
+Run: `dotnet test tests/YxyXb.Core.Tests/YxyXb.Core.Tests.csproj --filter Settings_KeepsUploadParallelAndLogRetainDays`
 
 Expected: FAIL（属性不存在）
 
@@ -141,14 +141,14 @@ private static int ClampLogDays(int v)
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `dotnet test tests/Yxy.Core.Tests/Yxy.Core.Tests.csproj --filter Settings_KeepsUploadParallelAndLogRetainDays`
+Run: `dotnet test tests/YxyXb.Core.Tests/YxyXb.Core.Tests.csproj --filter Settings_KeepsUploadParallelAndLogRetainDays`
 
 Expected: PASS
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/Yxy.Contracts/Dto/AppSettingsDto.cs src/Yxy.Core/Data/SchemaMigrate.cs src/Yxy.Core/Store/SettingsStore.cs tests/Yxy.Core.Tests/PhaseETests.cs
+git add src/YxyXb.Contracts/Dto/AppSettingsDto.cs src/YxyXb.Core/Data/SchemaMigrate.cs src/YxyXb.Core/Store/SettingsStore.cs tests/YxyXb.Core.Tests/PhaseETests.cs
 git -c user.name=yxy -c user.email=yxy@local commit -m "feat: store upload parallel and log retain days"
 ```
 
@@ -157,10 +157,10 @@ git -c user.name=yxy -c user.email=yxy@local commit -m "feat: store upload paral
 ### Task 2: 续传 Checkpoint 与超时计算
 
 **Files:**
-- Create: `src/Yxy.Baidu/BaiduUploadCheckpoint.cs`
-- Create: `src/Yxy.Baidu/BaiduUploadTimeout.cs`
-- Modify: `src/Yxy.Baidu/BaiduSlices.cs`（`BlockSize = 1 * 1024 * 1024`）
-- Test: `tests/Yxy.Baidu.Tests/BaiduUnitTests.cs`（或新建 `BaiduCheckpointTests.cs`）
+- Create: `src/YxyXb.Baidu/BaiduUploadCheckpoint.cs`
+- Create: `src/YxyXb.Baidu/BaiduUploadTimeout.cs`
+- Modify: `src/YxyXb.Baidu/BaiduSlices.cs`（`BlockSize = 1 * 1024 * 1024`）
+- Test: `tests/YxyXb.Baidu.Tests/BaiduUnitTests.cs`（或新建 `BaiduCheckpointTests.cs`）
 
 **Interfaces:**
 - Produces:
@@ -218,7 +218,7 @@ public void Checkpoint_MatchesAndGates()
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `dotnet test tests/Yxy.Baidu.Tests/Yxy.Baidu.Tests.csproj --filter Checkpoint_MatchesAndGates`
+Run: `dotnet test tests/YxyXb.Baidu.Tests/YxyXb.Baidu.Tests.csproj --filter Checkpoint_MatchesAndGates`
 
 Expected: FAIL
 
@@ -242,14 +242,14 @@ public static int Seconds(int maxKbps, int blockBytes)
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `dotnet test tests/Yxy.Baidu.Tests/Yxy.Baidu.Tests.csproj --filter Checkpoint_MatchesAndGates`
+Run: `dotnet test tests/YxyXb.Baidu.Tests/YxyXb.Baidu.Tests.csproj --filter Checkpoint_MatchesAndGates`
 
 Expected: PASS
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/Yxy.Baidu/BaiduSlices.cs src/Yxy.Baidu/BaiduUploadCheckpoint.cs src/Yxy.Baidu/BaiduUploadTimeout.cs tests/Yxy.Baidu.Tests/
+git add src/YxyXb.Baidu/BaiduSlices.cs src/YxyXb.Baidu/BaiduUploadCheckpoint.cs src/YxyXb.Baidu/BaiduUploadTimeout.cs tests/YxyXb.Baidu.Tests/
 git -c user.name=yxy -c user.email=yxy@local commit -m "feat: add baidu upload checkpoint and 1mb slices"
 ```
 
@@ -258,11 +258,11 @@ git -c user.name=yxy -c user.email=yxy@local commit -m "feat: add baidu upload c
 ### Task 3: Http 超时、写出节流、SetParallel
 
 **Files:**
-- Modify: `src/Yxy.Contracts/Cloud/ICloudStorage.cs`
-- Modify: `src/Yxy.Baidu/BaiduHttp.cs`、`BaiduStorage.cs`（先接字段）
-- Modify: `src/Yxy.Qiniu/QiniuStorage.cs`、`src/Yxy.TencentCloud/TencentCloudStorage.cs`、`src/Yxy.Ctyun/CtyunStorage.cs`
-- Modify: `src/Yxy.Cloud/CloudRuntimeImpl.cs`
-- Modify: `src/Yxy.Baidu/IBaiduTransport.cs`（若需传 timeout；否则在 BaiduHttp 上设实例属性）
+- Modify: `src/YxyXb.Contracts/Cloud/ICloudStorage.cs`
+- Modify: `src/YxyXb.Baidu/BaiduHttp.cs`、`BaiduStorage.cs`（先接字段）
+- Modify: `src/YxyXb.Qiniu/QiniuStorage.cs`、`src/YxyXb.TencentCloud/TencentCloudStorage.cs`、`src/YxyXb.Ctyun/CtyunStorage.cs`
+- Modify: `src/YxyXb.Cloud/CloudRuntimeImpl.cs`
+- Modify: `src/YxyXb.Baidu/IBaiduTransport.cs`（若需传 timeout；否则在 BaiduHttp 上设实例属性）
 
 **Interfaces:**
 - Produces: `void SetParallel(int parallel)`；`IBaiduTransport.Call(..., int timeoutMs)` 或 `BaiduHttp.TimeoutMs` / `Pacer` 属性；`CloudRuntimeImpl.Upload` 调用 `SetParallel(settings.UploadParallel)`
@@ -325,14 +325,14 @@ storage.Upload(localPath, remoteKey);
 
 - [ ] **Step 4: Build + existing Baidu tests**
 
-Run: `dotnet test tests/Yxy.Baidu.Tests/Yxy.Baidu.Tests.csproj --nologo`
+Run: `dotnet test tests/YxyXb.Baidu.Tests/YxyXb.Baidu.Tests.csproj --nologo`
 
 Expected: PASS
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/Yxy.Contracts/Cloud/ICloudStorage.cs src/Yxy.Baidu/ src/Yxy.Qiniu/QiniuStorage.cs src/Yxy.TencentCloud/TencentCloudStorage.cs src/Yxy.Ctyun/CtyunStorage.cs src/Yxy.Cloud/CloudRuntimeImpl.cs tests/Yxy.Baidu.Tests/
+git add src/YxyXb.Contracts/Cloud/ICloudStorage.cs src/YxyXb.Baidu/ src/YxyXb.Qiniu/QiniuStorage.cs src/YxyXb.TencentCloud/TencentCloudStorage.cs src/YxyXb.Ctyun/CtyunStorage.cs src/YxyXb.Cloud/CloudRuntimeImpl.cs tests/YxyXb.Baidu.Tests/
 git -c user.name=yxy -c user.email=yxy@local commit -m "feat: wire upload parallel and paced baidu http"
 ```
 
@@ -341,8 +341,8 @@ git -c user.name=yxy -c user.email=yxy@local commit -m "feat: wire upload parall
 ### Task 4: BaiduStorage 续传上传与齐片门闩
 
 **Files:**
-- Modify: `src/Yxy.Baidu/BaiduStorage.cs`
-- Test: `tests/Yxy.Baidu.Tests/BaiduStorageTests.cs`
+- Modify: `src/YxyXb.Baidu/BaiduStorage.cs`
+- Test: `tests/YxyXb.Baidu.Tests/BaiduStorageTests.cs`
 
 **Interfaces:**
 - Consumes: Task 2 checkpoint/timeout、Task 3 SetParallel/TimeoutMs/Pacer
@@ -437,14 +437,14 @@ BaiduUploadCheckpoint.Delete(dataDir, full);
 
 - [ ] **Step 4: Run Baidu tests**
 
-Run: `dotnet test tests/Yxy.Baidu.Tests/Yxy.Baidu.Tests.csproj --nologo`
+Run: `dotnet test tests/YxyXb.Baidu.Tests/YxyXb.Baidu.Tests.csproj --nologo`
 
 Expected: PASS
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/Yxy.Baidu/BaiduStorage.cs tests/Yxy.Baidu.Tests/
+git add src/YxyXb.Baidu/BaiduStorage.cs tests/YxyXb.Baidu.Tests/
 git -c user.name=yxy -c user.email=yxy@local commit -m "feat: resume baidu multipart upload with complete gate"
 ```
 
@@ -453,8 +453,8 @@ git -c user.name=yxy -c user.email=yxy@local commit -m "feat: resume baidu multi
 ### Task 5: 云备份页并行数 UI
 
 **Files:**
-- Modify: `src/Yxy.Client/Pages/CloudPage.cs`
-- Test: 无 UI 自动化；`dotnet build src/Yxy.Client/Yxy.Client.csproj`
+- Modify: `src/YxyXb.Client/Pages/CloudPage.cs`
+- Test: 无 UI 自动化；`dotnet build src/YxyXb.Client/YxyXb.Client.csproj`
 
 **Interfaces:**
 - Consumes: `UploadParallel`
@@ -470,16 +470,16 @@ git -c user.name=yxy -c user.email=yxy@local commit -m "feat: resume baidu multi
 
 - [ ] **Step 4: Build Client**
 
-Run: `dotnet build src/Yxy.Client/Yxy.Client.csproj --nologo`
+Run: `dotnet build src/YxyXb.Client/YxyXb.Client.csproj --nologo`
 
-若 dist 被锁：结束 `Yxy.Client`/`Yxy.Engine` 再编。
+若 dist 被锁：结束 `YxyXb.Client`/`YxyXb.Engine` 再编。
 
 Expected: 0 错误
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/Yxy.Client/Pages/CloudPage.cs
+git add src/YxyXb.Client/Pages/CloudPage.cs
 git -c user.name=yxy -c user.email=yxy@local commit -m "feat: expose baidu upload parallel on cloud page"
 ```
 
@@ -488,10 +488,10 @@ git -c user.name=yxy -c user.email=yxy@local commit -m "feat: expose baidu uploa
 ### Task 6: 日志保留清理 + 综合设置 UI
 
 **Files:**
-- Modify: `src/Yxy.Core/Store/LogStore.cs`
-- Modify: `src/Yxy.Core/Backup/PurgeRunner.cs`
-- Modify: `src/Yxy.Client/Pages/SettingsPage.cs`
-- Test: `tests/Yxy.Core.Tests/PhaseETests.cs`
+- Modify: `src/YxyXb.Core/Store/LogStore.cs`
+- Modify: `src/YxyXb.Core/Backup/PurgeRunner.cs`
+- Modify: `src/YxyXb.Client/Pages/SettingsPage.cs`
+- Test: `tests/YxyXb.Core.Tests/PhaseETests.cs`
 
 **Interfaces:**
 - Produces: `LogStore.DeleteOlderThan(SqliteDb db, DateTime cutoffUtc)` → int 删除行数
@@ -573,9 +573,9 @@ return true;
 Run:
 
 ```
-dotnet test tests/Yxy.Core.Tests/Yxy.Core.Tests.csproj --filter "LogStore_DeletesOlderThanRetainDays|Settings_KeepsUploadParallelAndLogRetainDays"
-dotnet build src/Yxy.Client/Yxy.Client.csproj --nologo
-dotnet build src/Yxy.Engine/Yxy.Engine.csproj --nologo
+dotnet test tests/YxyXb.Core.Tests/YxyXb.Core.Tests.csproj --filter "LogStore_DeletesOlderThanRetainDays|Settings_KeepsUploadParallelAndLogRetainDays"
+dotnet build src/YxyXb.Client/YxyXb.Client.csproj --nologo
+dotnet build src/YxyXb.Engine/YxyXb.Engine.csproj --nologo
 ```
 
 Expected: PASS / 0 错误
@@ -583,7 +583,7 @@ Expected: PASS / 0 错误
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/Yxy.Core/Store/LogStore.cs src/Yxy.Core/Backup/PurgeRunner.cs src/Yxy.Client/Pages/SettingsPage.cs tests/Yxy.Core.Tests/PhaseETests.cs
+git add src/YxyXb.Core/Store/LogStore.cs src/YxyXb.Core/Backup/PurgeRunner.cs src/YxyXb.Client/Pages/SettingsPage.cs tests/YxyXb.Core.Tests/PhaseETests.cs
 git -c user.name=yxy -c user.email=yxy@local commit -m "feat: purge old sqlite logs by retain days"
 ```
 

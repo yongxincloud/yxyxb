@@ -25,23 +25,23 @@
 
 | 文件 / 目录 | 职责 |
 | --- | --- |
-| `src/Yxy.Core/AppPaths.cs` → 波次 3 后 `YxyXb.Core` | 品牌与路径常量、`DatabaseFile` 兼容 |
-| `src/Yxy.Core/Runtime/StartupHelper.cs` | 开机启动注册表值名 + 清理旧值 |
-| `src/Yxy.Core/Service/WindowsServiceControl.cs` | 服务安装显示名/描述/内部名 |
-| `src/Yxy.Core/Data/SchemaSql.cs` / `MediaTaskStore.cs` | 介质默认目录名 |
-| `src/Yxy.Contracts/Cloud/CloudObjectKeys.cs` | 云对象前缀默认 |
-| `src/Yxy.Baidu/BaiduAppConfig.cs` | 百度应用文件夹默认 |
-| `src/Yxy.Media/Disks/VolumeMarkerStore.cs` | marker 新旧路径读写 |
-| `src/Yxy.Media/MediaRunner.cs` / `MediaService.cs` | 介质目标目录默认 |
-| `src/Yxy.Mssql/*` | 工作目录默认名 |
-| `src/Yxy.Client/**` | 窗口/托盘/文案 |
-| `src/Yxy.Engine/**` | 服务类与控制台文案 |
-| `src/Yxy.Api/**` | 邮件主题等 |
-| `src/Yxy.Web/src/brand.js`（新建） | Web 品牌字符串单源 |
-| `src/Yxy.Web/index.html` + `views/*` | 官网/门户文案 |
+| `src/YxyXb.Core/AppPaths.cs` → 波次 3 后 `YxyXb.Core` | 品牌与路径常量、`DatabaseFile` 兼容 |
+| `src/YxyXb.Core/Runtime/StartupHelper.cs` | 开机启动注册表值名 + 清理旧值 |
+| `src/YxyXb.Core/Service/WindowsServiceControl.cs` | 服务安装显示名/描述/内部名 |
+| `src/YxyXb.Core/Data/SchemaSql.cs` / `MediaTaskStore.cs` | 介质默认目录名 |
+| `src/YxyXb.Contracts/Cloud/CloudObjectKeys.cs` | 云对象前缀默认 |
+| `src/YxyXb.Baidu/BaiduAppConfig.cs` | 百度应用文件夹默认 |
+| `src/YxyXb.Media/Disks/VolumeMarkerStore.cs` | marker 新旧路径读写 |
+| `src/YxyXb.Media/MediaRunner.cs` / `MediaService.cs` | 介质目标目录默认 |
+| `src/YxyXb.Mssql/*` | 工作目录默认名 |
+| `src/YxyXb.Client/**` | 窗口/托盘/文案 |
+| `src/YxyXb.Engine/**` | 服务类与控制台文案 |
+| `src/YxyXb.Api/**` | 邮件主题等 |
+| `src/YxyXb.Web/src/brand.js`（新建） | Web 品牌字符串单源 |
+| `src/YxyXb.Web/index.html` + `views/*` | 官网/门户文案 |
 | `Doc/用心云·循备-*.md` → `Doc/用心云·循备-*.md` | 用户/运维文档 |
 | `deploy/linux/install.sh` | 部署路径与文案（波次 3） |
-| `Yxy.sln` → `YxyXb.sln` | 解决方案 |
+| `YxyXb.sln` → `YxyXb.sln` | 解决方案 |
 | `tests/**` | 常量与路径断言、兼容用例 |
 
 ---
@@ -99,14 +99,14 @@ Expected: 新 commit 存在；工作区干净（或仅剩维护者明确排除�
 ### Task 1: AppPaths 常量拆分（波次 1 核心）
 
 **Files:**
-- Modify: `src/Yxy.Core/AppPaths.cs`
-- Create: `tests/Yxy.Core.Tests/AppPathsBrandTests.cs`
-- Modify: `src/Yxy.Core/Store/SettingsStore.cs`（`SoftwareId` 默认改用 `ProductPathName`）
-- Modify: `src/Yxy.Core/Data/SqliteDb.cs`（`@sid` 用 `ProductPathName`）
+- Modify: `src/YxyXb.Core/AppPaths.cs`
+- Create: `tests/YxyXb.Core.Tests/AppPathsBrandTests.cs`
+- Modify: `src/YxyXb.Core/Store/SettingsStore.cs`（`SoftwareId` 默认改用 `ProductPathName`）
+- Modify: `src/YxyXb.Core/Data/SqliteDb.cs`（`@sid` 用 `ProductPathName`）
 
 **Interfaces:**
 - Consumes: 无
-- Produces（`Yxy.Core.AppPaths`）:
+- Produces（`YxyXb.Core.AppPaths`）:
   - `ProductDisplayName` = `"用心云·循备"`
   - `ProductPathName` = `"用心云循备"`
   - `ProductShortName` = `"循备"`
@@ -120,11 +120,11 @@ Expected: 新 commit 存在；工作区干净（或仅剩维护者明确排除�
 - [ ] **Step 1: Write the failing test**
 
 ```csharp
-// tests/Yxy.Core.Tests/AppPathsBrandTests.cs
+// tests/YxyXb.Core.Tests/AppPathsBrandTests.cs
 using NUnit.Framework;
-using Yxy.Core;
+using YxyXb.Core;
 
-namespace Yxy.Core.Tests
+namespace YxyXb.Core.Tests
 {
     [TestFixture]
     public class AppPathsBrandTests
@@ -184,7 +184,7 @@ namespace Yxy.Core.Tests
 Run:
 
 ```powershell
-dotnet test D:\AICode\Cursor\yongxinyunbak\tests\Yxy.Core.Tests\Yxy.Core.Tests.csproj --filter FullyQualifiedName~AppPathsBrandTests
+dotnet test D:\AICode\Cursor\yongxinyunbak\tests\YxyXb.Core.Tests\YxyXb.Core.Tests.csproj --filter FullyQualifiedName~AppPathsBrandTests
 ```
 
 Expected: FAIL（缺少新常量或旧值仍为「用心云循备」）。
@@ -222,7 +222,7 @@ public static string DatabaseFile
 - [ ] **Step 4: Run tests to verify they pass**
 
 ```powershell
-dotnet test D:\AICode\Cursor\yongxinyunbak\tests\Yxy.Core.Tests\Yxy.Core.Tests.csproj --filter FullyQualifiedName~AppPathsBrandTests
+dotnet test D:\AICode\Cursor\yongxinyunbak\tests\YxyXb.Core.Tests\YxyXb.Core.Tests.csproj --filter FullyQualifiedName~AppPathsBrandTests
 ```
 
 Expected: PASS。
@@ -230,7 +230,7 @@ Expected: PASS。
 - [ ] **Step 5: Commit**
 
 ```powershell
-git add src/Yxy.Core/AppPaths.cs src/Yxy.Core/Store/SettingsStore.cs src/Yxy.Core/Data/SqliteDb.cs tests/Yxy.Core.Tests/AppPathsBrandTests.cs
+git add src/YxyXb.Core/AppPaths.cs src/YxyXb.Core/Store/SettingsStore.cs src/YxyXb.Core/Data/SqliteDb.cs tests/YxyXb.Core.Tests/AppPathsBrandTests.cs
 git commit -m "refactor: split AppPaths brand display and path constants"
 ```
 
@@ -239,21 +239,21 @@ git commit -m "refactor: split AppPaths brand display and path constants"
 ### Task 2: Core / Contracts / Baidu / Media / Mssql 默认路径字符串
 
 **Files:**
-- Modify: `src/Yxy.Contracts/Cloud/CloudObjectKeys.cs`
-- Modify: `src/Yxy.Baidu/BaiduAppConfig.cs`
-- Modify: `src/Yxy.Baidu/BaiduApp.example.json`
-- Modify: `src/Yxy.Core/Data/SchemaSql.cs`
-- Modify: `src/Yxy.Core/Store/MediaTaskStore.cs`
-- Modify: `src/Yxy.Media/MediaRunner.cs`
-- Modify: `src/Yxy.Media/MediaService.cs`
-- Modify: `src/Yxy.Media/Disks/VolumeMarkerStore.cs`
-- Modify: `src/Yxy.Mssql/MssqlRunner.cs`
-- Modify: `src/Yxy.Mssql/MssqlRestore.cs`
-- Modify: `tests/Yxy.Core.Tests/PhaseETests.cs`
-- Modify: `tests/Yxy.Core.Tests/FileBackupTests.cs`
-- Modify: `tests/Yxy.Core.Tests/BaiduContractTests.cs`
-- Modify: `tests/Yxy.Baidu.Tests/BaiduStorageTests.cs`
-- Modify: `tests/Yxy.Baidu.Tests/BaiduUnitTests.cs`
+- Modify: `src/YxyXb.Contracts/Cloud/CloudObjectKeys.cs`
+- Modify: `src/YxyXb.Baidu/BaiduAppConfig.cs`
+- Modify: `src/YxyXb.Baidu/BaiduApp.example.json`
+- Modify: `src/YxyXb.Core/Data/SchemaSql.cs`
+- Modify: `src/YxyXb.Core/Store/MediaTaskStore.cs`
+- Modify: `src/YxyXb.Media/MediaRunner.cs`
+- Modify: `src/YxyXb.Media/MediaService.cs`
+- Modify: `src/YxyXb.Media/Disks/VolumeMarkerStore.cs`
+- Modify: `src/YxyXb.Mssql/MssqlRunner.cs`
+- Modify: `src/YxyXb.Mssql/MssqlRestore.cs`
+- Modify: `tests/YxyXb.Core.Tests/PhaseETests.cs`
+- Modify: `tests/YxyXb.Core.Tests/FileBackupTests.cs`
+- Modify: `tests/YxyXb.Core.Tests/BaiduContractTests.cs`
+- Modify: `tests/YxyXb.Baidu.Tests/BaiduStorageTests.cs`
+- Modify: `tests/YxyXb.Baidu.Tests/BaiduUnitTests.cs`
 
 **Interfaces:**
 - Consumes: `AppPaths.ProductPathName`
@@ -266,8 +266,8 @@ git commit -m "refactor: split AppPaths brand display and path constants"
 - [ ] **Step 2: Run filtered tests — expect fail if production constants still old**
 
 ```powershell
-dotnet test D:\AICode\Cursor\yongxinyunbak\tests\Yxy.Baidu.Tests\Yxy.Baidu.Tests.csproj --filter "FullyQualifiedName~Baidu"
-dotnet test D:\AICode\Cursor\yongxinyunbak\tests\Yxy.Core.Tests\Yxy.Core.Tests.csproj --filter "FullyQualifiedName~PhaseE|FullyQualifiedName~FileBackup|FullyQualifiedName~BaiduContract"
+dotnet test D:\AICode\Cursor\yongxinyunbak\tests\YxyXb.Baidu.Tests\YxyXb.Baidu.Tests.csproj --filter "FullyQualifiedName~Baidu"
+dotnet test D:\AICode\Cursor\yongxinyunbak\tests\YxyXb.Core.Tests\YxyXb.Core.Tests.csproj --filter "FullyQualifiedName~PhaseE|FullyQualifiedName~FileBackup|FullyQualifiedName~BaiduContract"
 ```
 
 - [ ] **Step 3: Implement production string updates**
@@ -313,7 +313,7 @@ public static string LegacyAltMarkerPath(string root)
 - [ ] **Step 5: Commit**
 
 ```powershell
-git add src/Yxy.Contracts src/Yxy.Baidu src/Yxy.Core src/Yxy.Media src/Yxy.Mssql tests
+git add src/YxyXb.Contracts src/YxyXb.Baidu src/YxyXb.Core src/YxyXb.Media src/YxyXb.Mssql tests
 git commit -m "refactor: use 用心云循备 for default path and cloud folder names"
 ```
 
@@ -322,17 +322,17 @@ git commit -m "refactor: use 用心云循备 for default path and cloud folder n
 ### Task 3: 客户端 / 引擎显示文案与开机启动（波次 1）
 
 **Files:**
-- Modify: `src/Yxy.Client/MainWindow.xaml`
-- Modify: `src/Yxy.Client/MainWindow.xaml.cs`
-- Modify: `src/Yxy.Client/App.xaml.cs`
-- Modify: `src/Yxy.Client/Dialogs/LockWindow.cs`
-- Modify: `src/Yxy.Client/Dialogs/MediaTaskDialog.xaml`
-- Modify: `src/Yxy.Client/Dialogs/MediaTaskDialog.xaml.cs`
-- Modify: `src/Yxy.Client/Pages/CloudPage.cs`
-- Modify: `src/Yxy.Core/Runtime/StartupHelper.cs`
-- Modify: `src/Yxy.Core/Service/WindowsServiceControl.cs`（仅 description / display name 字符串；`ServiceName` 仍旧）
-- Modify: `src/Yxy.Engine/Program.cs`
-- Modify: `src/Yxy.Engine/YxyXbService.cs`（若含显示文案）
+- Modify: `src/YxyXb.Client/MainWindow.xaml`
+- Modify: `src/YxyXb.Client/MainWindow.xaml.cs`
+- Modify: `src/YxyXb.Client/App.xaml.cs`
+- Modify: `src/YxyXb.Client/Dialogs/LockWindow.cs`
+- Modify: `src/YxyXb.Client/Dialogs/MediaTaskDialog.xaml`
+- Modify: `src/YxyXb.Client/Dialogs/MediaTaskDialog.xaml.cs`
+- Modify: `src/YxyXb.Client/Pages/CloudPage.cs`
+- Modify: `src/YxyXb.Core/Runtime/StartupHelper.cs`
+- Modify: `src/YxyXb.Core/Service/WindowsServiceControl.cs`（仅 description / display name 字符串；`ServiceName` 仍旧）
+- Modify: `src/YxyXb.Engine/Program.cs`
+- Modify: `src/YxyXb.Engine/YxyXbService.cs`（若含显示文案）
 
 **Interfaces:**
 - Consumes: `AppPaths.ProductDisplayName`、`ProductPathName`、`ServiceDisplayName`
@@ -341,14 +341,14 @@ git commit -m "refactor: use 用心云循备 for default path and cloud folder n
 - [ ] **Step 1: Write failing test for StartupHelper cleanup**
 
 ```csharp
-// tests/Yxy.Core.Tests/StartupHelperTests.cs
+// tests/YxyXb.Core.Tests/StartupHelperTests.cs
 [Test]
 public void Apply_Writes_New_Value_And_Removes_Legacy()
 {
     // 使用 CurrentUser Run key；测试后必须删除测试写入的值
     const string legacy = "用心云·循备";
     const string modern = "用心云·循备";
-    var exe = @"C:\Temp\Yxy.Client.exe";
+    var exe = @"C:\Temp\YxyXb.Client.exe";
     using (var key = Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Run", true))
     {
         key.SetValue(legacy, "\"old\"");
@@ -396,14 +396,14 @@ public static void Apply(bool enabled, string exePath)
 - `MainWindow.xaml` `Title` 与侧栏标题 → `用心云·循备`（XAML 可字面量；code-behind 托盘用 `AppPaths.ProductDisplayName`）。
 - `CloudPage` 提示中「我的应用数据 / …」→ `用心云循备`。
 - `MediaTaskDialog` 默认文件夹 → `AppPaths.ProductPathName`。
-- `WindowsServiceControl` description → `"用心云·循备本机任务引擎"`；create 时 binPath 仍指向现有 `Yxy.Engine.exe`；DisplayName 用 `AppPaths.ServiceDisplayName`。
+- `WindowsServiceControl` description → `"用心云·循备本机任务引擎"`；create 时 binPath 仍指向现有 `YxyXb.Engine.exe`；DisplayName 用 `AppPaths.ServiceDisplayName`。
 - `Program.cs` 控制台行 → `"用心云·循备引擎（控制台模式）。按 Enter 停止。"`。
 
 - [ ] **Step 4: Build client projects**
 
 ```powershell
-dotnet build D:\AICode\Cursor\yongxinyunbak\src\Yxy.Client\Yxy.Client.csproj
-dotnet build D:\AICode\Cursor\yongxinyunbak\src\Yxy.Engine\Yxy.Engine.csproj
+dotnet build D:\AICode\Cursor\yongxinyunbak\src\YxyXb.Client\YxyXb.Client.csproj
+dotnet build D:\AICode\Cursor\yongxinyunbak\src\YxyXb.Engine\YxyXb.Engine.csproj
 ```
 
 Expected: 0 Error。
@@ -421,19 +421,19 @@ git commit -am "feat: show 用心云·循备 in client UI and startup entry"
 ### Task 4: API 邮件主题 + Web brand 常量（波次 1）
 
 **Files:**
-- Create: `src/Yxy.Web/src/brand.js`
-- Modify: `src/Yxy.Web/index.html`
-- Modify: `src/Yxy.Web/src/views/HomeView.vue`
-- Modify: `src/Yxy.Web/src/views/RegisterView.vue`
-- Modify: `src/Yxy.Web/src/views/LoginView.vue`
-- Modify: `src/Yxy.Web/src/views/NotFoundView.vue`
-- Modify: `src/Yxy.Web/src/views/DownloadView.vue`（若含产品名）
-- Modify: `src/Yxy.Web/src/views/PortalLayout.vue` / `VendorLayout.vue` / `VendorLoginView.vue`（logo alt）
-- Modify: `src/Yxy.Api/Services/AccountService.cs`
-- Modify: `src/Yxy.Api/Controllers/OrderController.cs`
-- Modify: `src/Yxy.Api/Controllers/VendorController.cs`
-- Modify: `tests/Yxy.Api.Tests/AlipayPayTests.cs`
-- Create: `src/Yxy.Web/src/brand.test.js`
+- Create: `src/YxyXb.Web/src/brand.js`
+- Modify: `src/YxyXb.Web/index.html`
+- Modify: `src/YxyXb.Web/src/views/HomeView.vue`
+- Modify: `src/YxyXb.Web/src/views/RegisterView.vue`
+- Modify: `src/YxyXb.Web/src/views/LoginView.vue`
+- Modify: `src/YxyXb.Web/src/views/NotFoundView.vue`
+- Modify: `src/YxyXb.Web/src/views/DownloadView.vue`（若含产品名）
+- Modify: `src/YxyXb.Web/src/views/PortalLayout.vue` / `VendorLayout.vue` / `VendorLoginView.vue`（logo alt）
+- Modify: `src/YxyXb.Api/Services/AccountService.cs`
+- Modify: `src/YxyXb.Api/Controllers/OrderController.cs`
+- Modify: `src/YxyXb.Api/Controllers/VendorController.cs`
+- Modify: `tests/YxyXb.Api.Tests/AlipayPayTests.cs`
+- Create: `src/YxyXb.Web/src/brand.test.js`
 
 **Interfaces:**
 - Consumes: 无
@@ -448,7 +448,7 @@ export const PRODUCT_SHORT_NAME = '循备'
 - [ ] **Step 1: Write Vitest for brand.js**
 
 ```js
-// src/Yxy.Web/src/brand.test.js
+// src/YxyXb.Web/src/brand.test.js
 import { test, expect } from 'vitest'
 import { PRODUCT_DISPLAY_NAME, PRODUCT_PATH_NAME } from './brand.js'
 
@@ -462,7 +462,7 @@ test('brand display uses middle dot', () => {
 - [ ] **Step 2: Run test — fail before file exists**
 
 ```powershell
-cd D:\AICode\Cursor\yongxinyunbak\src\Yxy.Web
+cd D:\AICode\Cursor\yongxinyunbak\src\YxyXb.Web
 npm test -- brand.test.js
 ```
 
@@ -487,8 +487,8 @@ var subject = order.OrderType == 2 ? "用心云·循备试用" : "用心云·循
 - [ ] **Step 4: Run Web + API tests**
 
 ```powershell
-cd D:\AICode\Cursor\yongxinyunbak\src\Yxy.Web; npm test -- brand.test.js
-dotnet test D:\AICode\Cursor\yongxinyunbak\tests\Yxy.Api.Tests\Yxy.Api.Tests.csproj --filter FullyQualifiedName~Alipay
+cd D:\AICode\Cursor\yongxinyunbak\src\YxyXb.Web; npm test -- brand.test.js
+dotnet test D:\AICode\Cursor\yongxinyunbak\tests\YxyXb.Api.Tests\YxyXb.Api.Tests.csproj --filter FullyQualifiedName~Alipay
 ```
 
 Expected: PASS。
@@ -496,7 +496,7 @@ Expected: PASS。
 - [ ] **Step 5: Commit**
 
 ```powershell
-git add src/Yxy.Web src/Yxy.Api tests/Yxy.Api.Tests
+git add src/YxyXb.Web src/YxyXb.Api tests/YxyXb.Api.Tests
 git commit -m "feat: rebrand web and mail copy to 用心云·循备"
 ```
 
@@ -569,8 +569,8 @@ git commit -m "docs: rename manuals to 用心云·循备 and update brand copy"
 - [ ] **Step 1: Full test pass (desktop + api + web brand)**
 
 ```powershell
-dotnet test D:\AICode\Cursor\yongxinyunbak\Yxy.sln
-cd D:\AICode\Cursor\yongxinyunbak\src\Yxy.Web; npm test
+dotnet test D:\AICode\Cursor\yongxinyunbak\YxyXb.sln
+cd D:\AICode\Cursor\yongxinyunbak\src\YxyXb.Web; npm test
 ```
 
 Expected: 全绿（若个别 Registry 测试跳过，需注明）。
@@ -592,9 +592,9 @@ git tag wave1-brand-copy
 ### Task 7: 服务内部名 `YxyXbService`（波次 2）
 
 **Files:**
-- Modify: `src/Yxy.Core/AppPaths.cs`（`ServiceName`）
-- Modify: `src/Yxy.Engine/YxyXbService.cs`（类可暂不改名，或改名为 `YxyXbService`；若改类名同步 `Program.cs`）
-- Modify: `tests/Yxy.Core.Tests/AppPathsBrandTests.cs`
+- Modify: `src/YxyXb.Core/AppPaths.cs`（`ServiceName`）
+- Modify: `src/YxyXb.Engine/YxyXbService.cs`（类可暂不改名，或改名为 `YxyXbService`；若改类名同步 `Program.cs`）
+- Modify: `tests/YxyXb.Core.Tests/AppPathsBrandTests.cs`
 - Modify: `Doc/用心云·循备-操作手册.md`（卸载旧服务步骤）
 
 **Interfaces:**
@@ -609,7 +609,7 @@ Assert.That(AppPaths.ServiceName, Is.EqualTo("YxyXbService"));
 - [ ] **Step 2: Run test — expect FAIL**
 
 ```powershell
-dotnet test D:\AICode\Cursor\yongxinyunbak\tests\Yxy.Core.Tests\Yxy.Core.Tests.csproj --filter FullyQualifiedName~Display_And_Path
+dotnet test D:\AICode\Cursor\yongxinyunbak\tests\YxyXb.Core.Tests\YxyXb.Core.Tests.csproj --filter FullyQualifiedName~Display_And_Path
 ```
 
 - [ ] **Step 3: Change ServiceName and service class wiring**
@@ -631,8 +631,8 @@ sc delete YxyXbService
 - [ ] **Step 4: Build + test**
 
 ```powershell
-dotnet build D:\AICode\Cursor\yongxinyunbak\src\Yxy.Engine\Yxy.Engine.csproj
-dotnet test D:\AICode\Cursor\yongxinyunbak\tests\Yxy.Core.Tests\Yxy.Core.Tests.csproj --filter FullyQualifiedName~AppPathsBrandTests
+dotnet build D:\AICode\Cursor\yongxinyunbak\src\YxyXb.Engine\YxyXb.Engine.csproj
+dotnet test D:\AICode\Cursor\yongxinyunbak\tests\YxyXb.Core.Tests\YxyXb.Core.Tests.csproj --filter FullyQualifiedName~AppPathsBrandTests
 ```
 
 - [ ] **Step 5: Commit**
@@ -646,7 +646,7 @@ git commit -am "feat: rename Windows service to YxyXbService"
 ### Task 8: 命名空间与项目重命名为 `YxyXb.*`（波次 3）
 
 **Files:**
-- 几乎全部 `src/**`、`tests/**`、`Yxy.sln`
+- 几乎全部 `src/**`、`tests/**`、`YxyXb.sln`
 - Modify: 所有 `ProjectReference`、`using`、`namespace`、`RootNamespace`、`AssemblyName`
 
 **Interfaces:**
@@ -655,7 +655,7 @@ git commit -am "feat: rename Windows service to YxyXbService"
 - [ ] **Step 1: Freeze tree — ensure wave 2 green**
 
 ```powershell
-dotnet test D:\AICode\Cursor\yongxinyunbak\Yxy.sln
+dotnet test D:\AICode\Cursor\yongxinyunbak\YxyXb.sln
 ```
 
 - [ ] **Step 2: Mechanical rename (PowerShell)**
@@ -664,14 +664,14 @@ dotnet test D:\AICode\Cursor\yongxinyunbak\Yxy.sln
 
 ```powershell
 $root = "D:\AICode\Cursor\yongxinyunbak"
-# 1) 重命名项目目录 src/Yxy.* -> src/YxyXb.* ；tests 同理
-Get-ChildItem "$root\src","$root\tests" -Directory -Filter "Yxy.*" | ForEach-Object {
+# 1) 重命名项目目录 src/YxyXb.* -> src/YxyXb.* ；tests 同理
+Get-ChildItem "$root\src","$root\tests" -Directory -Filter "YxyXb.*" | ForEach-Object {
   $dest = Join-Path $_.Parent.FullName ($_.Name -replace '^Yxy','YxyXb')
   git mv -- $_.FullName $dest
 }
 # 2) 重命名 csproj / 关键服务文件
 Get-ChildItem "$root\src","$root\tests" -Recurse -Include *.csproj,*.cs,*.xaml,*.json,*.js,*.html,*.md,*.sln,*.sh |
-  Where-Object { $_.Name -like 'Yxy.*' -or $_.Name -eq 'YxyXbService.cs' } | ForEach-Object {
+  Where-Object { $_.Name -like 'YxyXb.*' -or $_.Name -eq 'YxyXbService.cs' } | ForEach-Object {
     $newName = $_.Name -replace '^Yxy\.','YxyXb.' -replace 'YxyXbService','YxyXbService'
     if ($newName -ne $_.Name) { git mv -- $_.FullName (Join-Path $_.DirectoryName $newName) }
   }
@@ -684,20 +684,20 @@ Get-ChildItem "$root\src","$root\tests" -Recurse -Include *.csproj,*.cs,*.xaml,*
 
 | 查找 | 替换 |
 | --- | --- |
-| `namespace Yxy.` | `namespace YxyXb.` |
-| `using Yxy.` | `using YxyXb.` |
-| `Yxy.Core`（路径/项目名） | `YxyXb.Core` |
-| `Yxy.Client.exe` | `YxyXb.Client.exe` |
-| `Yxy.Engine.exe` | `YxyXb.Engine.exe` |
-| `RootNamespace>Yxy.` | `RootNamespace>YxyXb.` |
-| `Yxy.sln` | `YxyXb.sln` |
+| `namespace YxyXb.` | `namespace YxyXb.` |
+| `using YxyXb.` | `using YxyXb.` |
+| `YxyXb.Core`（路径/项目名） | `YxyXb.Core` |
+| `YxyXb.Client.exe` | `YxyXb.Client.exe` |
+| `YxyXb.Engine.exe` | `YxyXb.Engine.exe` |
+| `RootNamespace>YxyXb.` | `RootNamespace>YxyXb.` |
+| `YxyXb.sln` | `YxyXb.sln` |
 
 `AppPaths.InstallDirectory` 内检测的 exe 文件名同步为 `YxyXb.Engine.exe`。
 
 - [ ] **Step 3: Rename solution**
 
 ```powershell
-git mv Yxy.sln YxyXb.sln
+git mv YxyXb.sln YxyXb.sln
 # 编辑 YxyXb.sln 内项目路径
 ```
 

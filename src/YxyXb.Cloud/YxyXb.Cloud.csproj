@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <RootNamespace>YxyXb.Cloud</RootNamespace>
+    <AssemblyName>YxyXb.Cloud</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\YxyXb.Core\YxyXb.Core.csproj" />
+    <ProjectReference Include="..\YxyXb.Contracts\YxyXb.Contracts.csproj" />
+    <ProjectReference Include="..\YxyXb.Qiniu\YxyXb.Qiniu.csproj" />
+    <ProjectReference Include="..\YxyXb.Baidu\YxyXb.Baidu.csproj" />
+    <ProjectReference Include="..\YxyXb.TencentCloud\YxyXb.TencentCloud.csproj" />
+    <ProjectReference Include="..\YxyXb.Ctyun\YxyXb.Ctyun.csproj" />
+  </ItemGroup>
+</Project>

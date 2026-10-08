@@ -1,0 +1,131 @@
+<Application x:Class="YxyXb.Client.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:po="http://schemas.microsoft.com/winfx/2006/xaml/presentation/options"
+             ShutdownMode="OnExplicitShutdown">
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <materialDesign:BundledTheme BaseTheme="Light" PrimaryColor="Cyan" SecondaryColor="Teal"/>
+                <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesignTheme.Defaults.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+
+            <FontFamily x:Key="MaterialDesignFont">Microsoft YaHei</FontFamily>
+            <FontFamily x:Key="YxyFont">Microsoft YaHei</FontFamily>
+
+            <SolidColorBrush x:Key="NavBg" Color="#F4F7FB" po:Freeze="False"/>
+            <SolidColorBrush x:Key="NavHover" Color="#E0F2FE" po:Freeze="False"/>
+            <SolidColorBrush x:Key="NavActive" Color="#CFFAFE" po:Freeze="False"/>
+            <SolidColorBrush x:Key="NavText" Color="#0F172A" po:Freeze="False"/>
+            <SolidColorBrush x:Key="TitleText" Color="#0F172A" po:Freeze="False"/>
+            <SolidColorBrush x:Key="PageBg" Color="#F7F9FC" po:Freeze="False"/>
+            <SolidColorBrush x:Key="CardBg" Color="#FFFFFF" po:Freeze="False"/>
+            <SolidColorBrush x:Key="CardLine" Color="#BAE6FD" po:Freeze="False"/>
+            <SolidColorBrush x:Key="Muted" Color="#64748B" po:Freeze="False"/>
+            <SolidColorBrush x:Key="Danger" Color="#E11D48" po:Freeze="False"/>
+            <SolidColorBrush x:Key="Ok" Color="#059669" po:Freeze="False"/>
+            <SolidColorBrush x:Key="Accent" Color="#0E7490" po:Freeze="False"/>
+            <SolidColorBrush x:Key="GridText" Color="#0F172A" po:Freeze="False"/>
+            <SolidColorBrush x:Key="GridAlt" Color="#F0F9FF" po:Freeze="False"/>
+            <SolidColorBrush x:Key="GridLine" Color="#E2E8F0" po:Freeze="False"/>
+            <SolidColorBrush x:Key="GridHeader" Color="#ECFEFF" po:Freeze="False"/>
+            <SolidColorBrush x:Key="GridSelect" Color="#CFFAFE" po:Freeze="False"/>
+
+            <Style x:Key="YxyXbDialog" TargetType="Window" BasedOn="{StaticResource MaterialDesignWindow}">
+                <Setter Property="FontFamily" Value="Microsoft YaHei"/>
+                <Setter Property="TextElement.FontFamily" Value="Microsoft YaHei"/>
+                <Setter Property="TextElement.Foreground" Value="{DynamicResource MaterialDesignBody}"/>
+            </Style>
+
+            <Style TargetType="TextBlock">
+                <Setter Property="FontFamily" Value="Microsoft YaHei"/>
+            </Style>
+
+            <Style TargetType="Button" x:Key="NavButton">
+                <Setter Property="Background" Value="Transparent"/>
+                <Setter Property="Foreground" Value="{DynamicResource NavText}"/>
+                <Setter Property="BorderThickness" Value="0"/>
+                <Setter Property="HorizontalContentAlignment" Value="Left"/>
+                <Setter Property="Padding" Value="16,11"/>
+                <Setter Property="Margin" Value="8,2"/>
+                <Setter Property="FontSize" Value="14"/>
+                <Setter Property="FontFamily" Value="Microsoft YaHei"/>
+                <Setter Property="Cursor" Value="Hand"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="bd" Background="{TemplateBinding Background}" CornerRadius="6" Padding="{TemplateBinding Padding}">
+                                <DockPanel>
+                                    <Border x:Name="bar" DockPanel.Dock="Left" Width="3" Margin="-8,2,10,2" CornerRadius="2" Background="Transparent"/>
+                                    <ContentPresenter VerticalAlignment="Center"/>
+                                </DockPanel>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="bd" Property="Background" Value="{DynamicResource NavHover}"/>
+                                </Trigger>
+                                <Trigger Property="IsEnabled" Value="False">
+                                    <Setter Property="Foreground" Value="{DynamicResource Muted}"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <Style TargetType="DataGrid">
+                <Setter Property="Background" Value="{DynamicResource CardBg}"/>
+                <Setter Property="Foreground" Value="{DynamicResource GridText}"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource CardLine}"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="RowBackground" Value="{DynamicResource CardBg}"/>
+                <Setter Property="AlternatingRowBackground" Value="{DynamicResource GridAlt}"/>
+                <Setter Property="HorizontalGridLinesBrush" Value="{DynamicResource GridLine}"/>
+                <Setter Property="VerticalGridLinesBrush" Value="{DynamicResource GridLine}"/>
+                <Setter Property="GridLinesVisibility" Value="Horizontal"/>
+                <Setter Property="HeadersVisibility" Value="Column"/>
+                <Setter Property="FontFamily" Value="Microsoft YaHei"/>
+                <Setter Property="FontSize" Value="13"/>
+                <Setter Property="RowHeight" Value="36"/>
+            </Style>
+            <Style TargetType="DataGridColumnHeader">
+                <Setter Property="Background" Value="{DynamicResource GridHeader}"/>
+                <Setter Property="Foreground" Value="{DynamicResource Accent}"/>
+                <Setter Property="Padding" Value="10,8"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource CardLine}"/>
+                <Setter Property="BorderThickness" Value="0,0,0,1"/>
+                <Setter Property="FontFamily" Value="Microsoft YaHei"/>
+                <Setter Property="FontWeight" Value="SemiBold"/>
+            </Style>
+            <Style TargetType="DataGridCell">
+                <Setter Property="BorderThickness" Value="0"/>
+                <Setter Property="Padding" Value="10,4"/>
+                <Setter Property="Foreground" Value="{DynamicResource GridText}"/>
+                <Setter Property="FontFamily" Value="Microsoft YaHei"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="DataGridCell">
+                            <Border Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}">
+                                <ContentPresenter VerticalAlignment="Center"/>
+                            </Border>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+                <Style.Triggers>
+                    <Trigger Property="IsSelected" Value="True">
+                        <Setter Property="Background" Value="{DynamicResource GridSelect}"/>
+                        <Setter Property="Foreground" Value="{DynamicResource GridText}"/>
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
+            <Style TargetType="DataGridRow">
+                <Style.Triggers>
+                    <Trigger Property="IsSelected" Value="True">
+                        <Setter Property="Background" Value="{DynamicResource GridSelect}"/>
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>

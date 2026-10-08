@@ -29,10 +29,10 @@
 
 ## 2. 架构
 
-采用 **扩展现有产品 + 客户端鉴权**（单体 `Yxy.Api`），不新增独立授权微服务。
+采用 **扩展现有产品 + 客户端鉴权**（单体 `YxyXb.Api`），不新增独立授权微服务。
 
 ```text
-Yxy.Web                         Yxy.Api
+YxyXb.Web                         YxyXb.Api
 ├── 首页定价三列                   ├── Products（三档 + 价/促销/MaxDevices）
 ├── 门户：订阅 / 升级 / 我的设备   ├── Orders（新购 / 续费 / 升级补差）
 ├── 厂商：产品定价与促销           ├── AccountDevices（占坑 / 踢出）

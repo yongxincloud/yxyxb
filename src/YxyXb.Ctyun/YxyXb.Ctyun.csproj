@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <RootNamespace>YxyXb.Ctyun</RootNamespace>
+    <AssemblyName>YxyXb.Ctyun</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\YxyXb.Contracts\YxyXb.Contracts.csproj" />
+  </ItemGroup>
+</Project>

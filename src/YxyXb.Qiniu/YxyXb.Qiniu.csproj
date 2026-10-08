@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <RootNamespace>YxyXb.Qiniu</RootNamespace>
+    <AssemblyName>YxyXb.Qiniu</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\YxyXb.Contracts\YxyXb.Contracts.csproj" />
+    <ProjectReference Include="..\YxyXb.Core\YxyXb.Core.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="System.Web.Extensions" />
+  </ItemGroup>
+</Project>

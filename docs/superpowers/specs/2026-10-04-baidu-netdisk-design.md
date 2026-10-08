@@ -14,7 +14,7 @@
 - 客户只做 OAuth：浏览器授权后跳回 `127.0.0.1`，token 加密存在本机 SQLite。
 - 任务「云上传」仍只选一个服务商（七牛或百度）。
 - 自动删除与七牛并列：独立勾选、独立保留天数（默认 7）、只删本产品前缀。
-- 实现放新项目 `Yxy.Baidu`，实现现有 `ICloudStorage`。
+- 实现放新项目 `YxyXb.Baidu`，实现现有 `ICloudStorage`。
 - 网盘应用文件夹名：`用心云循备`。完整路径见下文。
 - 云备份页沿用左侧服务商列表；选中百度后右侧换成授权区，不填 AK/SK。
 - 上传参数与七牛相同：4MB 分片、同时 2 路、共用云备份页的上下限（KB/s）。
@@ -25,7 +25,7 @@
 
 引擎继续只依赖 `ICloudStorage`（测试、限速、上传、按前缀/时间删除）。`DistChannel.Cloud` 已按 `CloudProvider` 调用，不写死七牛类名。
 
-新增 `src/Yxy.Baidu/`（net48，参照 `Yxy.Qiniu`）：
+新增 `src/YxyXb.Baidu/`（net48，参照 `YxyXb.Qiniu`）：
 
 | 单元 | 做什么 | 依赖 |
 | --- | --- | --- |
@@ -34,7 +34,7 @@
 | `BaiduHttp` | TLS 1.2、HTTPS、JSON、错误码 | 无 |
 | `BaiduStorage` | `ICloudStorage`：测试、限速、superfile2 上传、列目录删过期 | `BaiduHttp`、账号 DTO |
 
-`Yxy.Cloud` 引用 `Yxy.Baidu`。`CloudStorageFactory` 增加 `baidu`。`Yxy.sln` 加入该项目。客户端和引擎已引用 `Yxy.Cloud`，不必再直接引用 `Yxy.Baidu`。
+`YxyXb.Cloud` 引用 `YxyXb.Baidu`。`CloudStorageFactory` 增加 `baidu`。`YxyXb.sln` 加入该项目。客户端和引擎已引用 `YxyXb.Cloud`，不必再直接引用 `YxyXb.Baidu`。
 
 应用密钥不进 SQLite、不进日志。仓库只提交 `BaiduApp.example.json`，发布时复制为 `BaiduApp.json` 并填真实值。`BaiduApp.json` 加入 gitignore。
 
@@ -85,7 +85,7 @@
 2. 需要时续期。
 3. 按 4MB（最后一片可更短）切分，计算每片 MD5，组成 `block_list`。
 4. `precreate`（path、size、isdir=0、autoinit=1、block_list）。若接口判定秒传成功，跳过传片。
-5. 否则对 `https://d.pcs.baidu.com/rest/2.0/pcs/superfile2` 上传分片，`partseq` 从 0 计。`Parallel.For` 最大并行 2。限速逻辑放在 `Yxy.Baidu` 内（不引用 `Yxy.Qiniu`），读取设置里的 `UploadMaxKbps`（上限 0 不限速；下限规则与七牛相同：上限为 0 时下限不生效）。单片失败重试 3 次，间隔递增。
+5. 否则对 `https://d.pcs.baidu.com/rest/2.0/pcs/superfile2` 上传分片，`partseq` 从 0 计。`Parallel.For` 最大并行 2。限速逻辑放在 `YxyXb.Baidu` 内（不引用 `YxyXb.Qiniu`），读取设置里的 `UploadMaxKbps`（上限 0 不限速；下限规则与七牛相同：上限为 0 时下限不生效）。单片失败重试 3 次，间隔递增。
 6. `create` 成功才算上传成功。中途失败不把半成品当正式文件；不把 `uploadid` 存到跨进程状态。
 
 上传失败则任务失败，且不触发立即删本地。立即删从不删云端对象。日志只写路径与结果，不写 token / Secret。

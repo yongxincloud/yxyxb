@@ -6,7 +6,7 @@
 | **状态** | 已批准（头脑风暴 2026-10-08） |
 | **范围** | 用户可见品牌文案、默认路径、Doc 改名、服务内部名、命名空间/工程/仓库全面更名为 `YxyXb` |
 | **执行策略** | 备份提交 → 分三波次落地 |
-| **关联** | 现有 `Doc/用心云·循备-*.md`、`src/Yxy.*`、`Yxy.sln`（实施后将按本表更名） |
+| **关联** | 现有 `Doc/用心云·循备-*.md`、`src/YxyXb.*`、`YxyXb.sln`（实施后将按本表更名） |
 
 ---
 
@@ -42,10 +42,10 @@
 
 | 类别 | 旧 | 新 |
 | --- | --- | --- |
-| 命名空间 / 项目 / 程序集 | `Yxy.*` | `YxyXb.*` |
-| 解决方案 | `Yxy.sln` | `YxyXb.sln` |
+| 命名空间 / 项目 / 程序集 | `YxyXb.*` | `YxyXb.*` |
+| 解决方案 | `YxyXb.sln` | `YxyXb.sln` |
 | 仓库 / 工作目录名 | `yongxinyunbak` | `yxyxb` |
-| 可执行文件 | `Yxy.Client.exe` / `Yxy.Engine.exe` | `YxyXb.Client.exe` / `YxyXb.Engine.exe` |
+| 可执行文件 | `YxyXb.Client.exe` / `YxyXb.Engine.exe` | `YxyXb.Client.exe` / `YxyXb.Engine.exe` |
 | 服务内部名 | `YxyXbService` | `YxyXbService` |
 | 服务显示名 | 用心云·循备 Service | 用心云·循备 Service |
 | 产品显示名 | 用心云·循备 | 用心云·循备 |
@@ -54,7 +54,7 @@
 | 本地库文件名 | `yxy.db` | `yxyxb.db`（新安装；见 §5 兼容） |
 | 介质 marker 目录 | `.yxybackup` | `.yxyxb`（新写入；见 §5） |
 | 开机启动注册表值名 | 用心云·循备 | 用心云·循备 |
-| Web 前端目录 | `Yxy.Web` | `YxyXb.Web` |
+| Web 前端目录 | `YxyXb.Web` | `YxyXb.Web` |
 | Doc 文件名 | `用心云·循备-*.md` | `用心云·循备-*.md` |
 
 常量（迁入 `YxyXb.Core` 的 `AppPaths` 或等价处）至少包含：
@@ -85,7 +85,7 @@ Web（Vue）维护同义字符串常量，与 C# 保持一致，避免漂移。
 - 更新 `AppPaths`（及散落硬编码）中的显示名、路径名、服务显示名、默认 bak 根。
 - 客户端、引擎、API 邮件、Web 文案、测试中的「用心云循备」按 §2 / §3 替换。
 - `Doc/用心云·循备-*.md` 改名为 `用心云·循备-*.md`，并更新交叉链接与 `docs/superpowers` 引用。
-- 验收：仍以 `Yxy.*` 编译通过；相关测试通过。
+- 验收：仍以 `YxyXb.*` 编译通过；相关测试通过。
 
 ### 4.3 波次 2 — 服务内部名
 
@@ -96,7 +96,7 @@ Web（Vue）维护同义字符串常量，与 C# 保持一致，避免漂移。
 ### 4.4 波次 3 — 工程与命名空间
 
 - 项目文件夹、`.csproj`、`namespace`、`using`、程序集名 → `YxyXb.*`。
-- `Yxy.sln` → `YxyXb.sln`。
+- `YxyXb.sln` → `YxyXb.sln`。
 - 部署脚本、zip 名、exe 引用同步。
 - 工作目录 `yongxinyunbak` → `yxyxb`（含远端时按既有 remote 流程处理）。
 - 验收：全量编译与测试；客户端/网站冒烟（登录、标题、一处默认备份路径）。

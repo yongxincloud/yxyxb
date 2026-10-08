@@ -4,9 +4,9 @@
 
 **Goal:** 将用心云·循备授权改为个人/标准/专业三档（默认设备上限 3/10/50、原价 36/98/198），支持后台改价与限期促销、登录占坑与踢出、周期内补差升级，以及首页三列营销价。
 
-**Architecture:** 在现有 `Yxy.Api` 单体上扩展 `Products`、新增 `AccountDevices` 与 `ProductPricing` / `DeviceRegistryService`；`ClientAuthService` 正式授权时占坑；`OrderService` 支持现价下单与 `orderType=3` 升级补差；`Yxy.Web` 首页三列 + 门户设备/升级 + 厂商产品编辑；`Yxy.Client` 处理 `DEVICE_LIMIT` 并提供设备列表踢出。
+**Architecture:** 在现有 `YxyXb.Api` 单体上扩展 `Products`、新增 `AccountDevices` 与 `ProductPricing` / `DeviceRegistryService`；`ClientAuthService` 正式授权时占坑；`OrderService` 支持现价下单与 `orderType=3` 升级补差；`YxyXb.Web` 首页三列 + 门户设备/升级 + 厂商产品编辑；`YxyXb.Client` 处理 `DEVICE_LIMIT` 并提供设备列表踢出。
 
-**Tech Stack:** ASP.NET Core 8、EF Core SQLite、NUnit（`tests/Yxy.Api.Tests`）、Vue 3 + Vitest（`src/Yxy.Web`）、.NET Framework 4.8 客户端（`Yxy.Client`）。
+**Tech Stack:** ASP.NET Core 8、EF Core SQLite、NUnit（`tests/YxyXb.Api.Tests`）、Vue 3 + Vitest（`src/YxyXb.Web`）、.NET Framework 4.8 客户端（`YxyXb.Client`）。
 
 ## Global Constraints
 
@@ -25,35 +25,35 @@
 
 | 文件 | 职责 |
 | --- | --- |
-| `src/Yxy.Api/Data/Entities.cs` | `Product` 促销/MaxDevices；新实体 `AccountDevice` |
-| `src/Yxy.Api/Data/WebDb.cs` | `DbSet<AccountDevice>` |
-| `src/Yxy.Api/Program.cs` | SQLite 迁移 ALTER / CREATE `AccountDevices` |
-| `src/Yxy.Api/Services/ProductPricing.cs` | 现价与促销判定（纯函数优先） |
-| `src/Yxy.Api/Services/DeviceRegistryService.cs` | 占坑 / 列表 / 踢出 / 废 token |
-| `src/Yxy.Api/Services/OrderService.cs` | 三档种子、现价、升级单、支付改档 |
-| `src/Yxy.Api/Services/ClientAuthService.cs` | 空 deviceId 拒绝；正式限台；会话带回档信息 |
-| `src/Yxy.Api/Controllers/PortalController.cs` | `plans` 公开价；门户设备 API；订阅带回档 |
-| `src/Yxy.Api/Controllers/OrderController.cs` | 升级预览/下单；价目 |
-| `src/Yxy.Api/Controllers/VendorController.cs` | 产品改价/促销/MaxDevices |
-| `src/Yxy.Api/Controllers/ClientController.cs` | 客户端设备列表/踢出；登录错误码 |
-| `tests/Yxy.Api.Tests/*` | 定价、设备、升级、改价快照；`STD`→`STANDARD` |
-| `src/Yxy.Web/src/views/HomeView.vue` | 三列定价 |
-| `src/Yxy.Web/src/views/OrdersView.vue` | 选档购买/升级 |
-| `src/Yxy.Web/src/views/VendorProductsView.vue` | 促销与 MaxDevices |
-| `src/Yxy.Web/src/views/PortalDevicesView.vue`（或并入 Portal） | 我的设备 |
-| `src/Yxy.Client/SiteLogin.cs` + 设备页/对话框 | `DEVICE_LIMIT` 与踢设备 |
+| `src/YxyXb.Api/Data/Entities.cs` | `Product` 促销/MaxDevices；新实体 `AccountDevice` |
+| `src/YxyXb.Api/Data/WebDb.cs` | `DbSet<AccountDevice>` |
+| `src/YxyXb.Api/Program.cs` | SQLite 迁移 ALTER / CREATE `AccountDevices` |
+| `src/YxyXb.Api/Services/ProductPricing.cs` | 现价与促销判定（纯函数优先） |
+| `src/YxyXb.Api/Services/DeviceRegistryService.cs` | 占坑 / 列表 / 踢出 / 废 token |
+| `src/YxyXb.Api/Services/OrderService.cs` | 三档种子、现价、升级单、支付改档 |
+| `src/YxyXb.Api/Services/ClientAuthService.cs` | 空 deviceId 拒绝；正式限台；会话带回档信息 |
+| `src/YxyXb.Api/Controllers/PortalController.cs` | `plans` 公开价；门户设备 API；订阅带回档 |
+| `src/YxyXb.Api/Controllers/OrderController.cs` | 升级预览/下单；价目 |
+| `src/YxyXb.Api/Controllers/VendorController.cs` | 产品改价/促销/MaxDevices |
+| `src/YxyXb.Api/Controllers/ClientController.cs` | 客户端设备列表/踢出；登录错误码 |
+| `tests/YxyXb.Api.Tests/*` | 定价、设备、升级、改价快照；`STD`→`STANDARD` |
+| `src/YxyXb.Web/src/views/HomeView.vue` | 三列定价 |
+| `src/YxyXb.Web/src/views/OrdersView.vue` | 选档购买/升级 |
+| `src/YxyXb.Web/src/views/VendorProductsView.vue` | 促销与 MaxDevices |
+| `src/YxyXb.Web/src/views/PortalDevicesView.vue`（或并入 Portal） | 我的设备 |
+| `src/YxyXb.Client/SiteLogin.cs` + 设备页/对话框 | `DEVICE_LIMIT` 与踢设备 |
 
 ---
 
 ### Task 1: Product 字段、种子与 ProductPricing
 
 **Files:**
-- Create: `src/Yxy.Api/Services/ProductPricing.cs`
-- Create: `tests/Yxy.Api.Tests/ProductPricingTests.cs`
-- Modify: `src/Yxy.Api/Data/Entities.cs`（`Product`）
-- Modify: `src/Yxy.Api/Program.cs`（ALTER Products 列）
-- Modify: `src/Yxy.Api/Services/OrderService.cs`（`EnsureCatalogAsync`、常量）
-- Modify: `tests/Yxy.Api.Tests/OrderTests.cs`（及所有仍写 `STD` / `12m` 的 API 测试，本任务内全部改为 `STANDARD` / `98m`，避免红灯）
+- Create: `src/YxyXb.Api/Services/ProductPricing.cs`
+- Create: `tests/YxyXb.Api.Tests/ProductPricingTests.cs`
+- Modify: `src/YxyXb.Api/Data/Entities.cs`（`Product`）
+- Modify: `src/YxyXb.Api/Program.cs`（ALTER Products 列）
+- Modify: `src/YxyXb.Api/Services/OrderService.cs`（`EnsureCatalogAsync`、常量）
+- Modify: `tests/YxyXb.Api.Tests/OrderTests.cs`（及所有仍写 `STD` / `12m` 的 API 测试，本任务内全部改为 `STANDARD` / `98m`，避免红灯）
 
 **Interfaces:**
 - Consumes: `Product`、`DateTime utcNow`
@@ -66,7 +66,7 @@
 - [ ] **Step 1: Write the failing test**
 
 ```csharp
-// tests/Yxy.Api.Tests/ProductPricingTests.cs
+// tests/YxyXb.Api.Tests/ProductPricingTests.cs
 [Test]
 public void SalePrice_Uses_Promo_Inside_Window()
 {
@@ -99,7 +99,7 @@ public void SalePrice_Falls_Back_Outside_Window()
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `dotnet test tests/Yxy.Api.Tests/Yxy.Api.Tests.csproj --filter FullyQualifiedName~ProductPricingTests`  
+Run: `dotnet test tests/YxyXb.Api.Tests/YxyXb.Api.Tests.csproj --filter FullyQualifiedName~ProductPricingTests`  
 Working directory: repo root `yongxinyunbak`  
 Expected: FAIL（类型/方法不存在）
 
@@ -110,7 +110,7 @@ Expected: FAIL（类型/方法不存在）
 `ProductPricing.cs`：
 
 ```csharp
-namespace Yxy.Api.Services;
+namespace YxyXb.Api.Services;
 
 public static class ProductPricing
 {
@@ -143,13 +143,13 @@ ALTER TABLE "Products" ADD COLUMN "SortOrder" INTEGER NOT NULL DEFAULT 0;
 
 - [ ] **Step 4: Run tests**
 
-Run: `dotnet test tests/Yxy.Api.Tests/Yxy.Api.Tests.csproj`  
+Run: `dotnet test tests/YxyXb.Api.Tests/YxyXb.Api.Tests.csproj`  
 Expected: PASS（含 ProductPricing 与改写后的订单测试）
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/Yxy.Api/Services/ProductPricing.cs src/Yxy.Api/Data/Entities.cs src/Yxy.Api/Program.cs src/Yxy.Api/Services/OrderService.cs tests/Yxy.Api.Tests/
+git add src/YxyXb.Api/Services/ProductPricing.cs src/YxyXb.Api/Data/Entities.cs src/YxyXb.Api/Program.cs src/YxyXb.Api/Services/OrderService.cs tests/YxyXb.Api.Tests/
 git commit -m "feat: add three product tiers and promo sale price helper"
 ```
 
@@ -158,11 +158,11 @@ git commit -m "feat: add three product tiers and promo sale price helper"
 ### Task 2: 公开价目 `plans` 与正式单按现价
 
 **Files:**
-- Modify: `src/Yxy.Api/Controllers/PortalController.cs`（`Price`）
-- Modify: `src/Yxy.Api/Controllers/OrderController.cs`（catalog 响应）
-- Modify: `src/Yxy.Api/Services/OrderService.cs`（`CreateAsync` 正式单 `amount = ProductPricing.SalePrice`）
-- Create: `tests/Yxy.Api.Tests/PublicPriceTests.cs`
-- Modify: `tests/Yxy.Api.Tests/OrderTests.cs`（促销价下单断言）
+- Modify: `src/YxyXb.Api/Controllers/PortalController.cs`（`Price`）
+- Modify: `src/YxyXb.Api/Controllers/OrderController.cs`（catalog 响应）
+- Modify: `src/YxyXb.Api/Services/OrderService.cs`（`CreateAsync` 正式单 `amount = ProductPricing.SalePrice`）
+- Create: `tests/YxyXb.Api.Tests/PublicPriceTests.cs`
+- Modify: `tests/YxyXb.Api.Tests/OrderTests.cs`（促销价下单断言）
 
 **Interfaces:**
 - Consumes: `ProductPricing`、`EnsureCatalogAsync`
@@ -188,7 +188,7 @@ public async Task Public_Price_Returns_Three_Plans()
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `dotnet test tests/Yxy.Api.Tests --filter FullyQualifiedName~Public_Price_Returns_Three_Plans`  
+Run: `dotnet test tests/YxyXb.Api.Tests --filter FullyQualifiedName~Public_Price_Returns_Three_Plans`  
 Expected: FAIL（仍返回单字段 `price`）
 
 - [ ] **Step 3: Implement**
@@ -199,13 +199,13 @@ Expected: FAIL（仍返回单字段 `price`）
 
 - [ ] **Step 4: Run tests**
 
-Run: `dotnet test tests/Yxy.Api.Tests`  
+Run: `dotnet test tests/YxyXb.Api.Tests`  
 Expected: PASS
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/Yxy.Api/Controllers/PortalController.cs src/Yxy.Api/Controllers/OrderController.cs src/Yxy.Api/Services/OrderService.cs tests/Yxy.Api.Tests/
+git add src/YxyXb.Api/Controllers/PortalController.cs src/YxyXb.Api/Controllers/OrderController.cs src/YxyXb.Api/Services/OrderService.cs tests/YxyXb.Api.Tests/
 git commit -m "feat: expose plan list pricing and charge sale price"
 ```
 
@@ -214,9 +214,9 @@ git commit -m "feat: expose plan list pricing and charge sale price"
 ### Task 3: 厂商后台改价 / 促销 / MaxDevices
 
 **Files:**
-- Modify: `src/Yxy.Api/Controllers/VendorController.cs`
-- Modify: `src/Yxy.Web/src/views/VendorProductsView.vue`
-- Create: `tests/Yxy.Api.Tests/VendorProductTests.cs`
+- Modify: `src/YxyXb.Api/Controllers/VendorController.cs`
+- Modify: `src/YxyXb.Web/src/views/VendorProductsView.vue`
+- Create: `tests/YxyXb.Api.Tests/VendorProductTests.cs`
 
 **Interfaces:**
 - Consumes: `Product`、`OperationLog`
@@ -251,7 +251,7 @@ public async Task Vendor_Can_Set_Promo_And_MaxDevices()
 
 - [ ] **Step 3: Implement API + VendorProductsView 表单**（原价、促销价、起止、MaxDevices、保存）
 
-- [ ] **Step 4: `dotnet test tests/Yxy.Api.Tests` → PASS**
+- [ ] **Step 4: `dotnet test tests/YxyXb.Api.Tests` → PASS**
 
 - [ ] **Step 5: Commit**
 
@@ -264,12 +264,12 @@ git commit -m "feat: vendor can edit promo window and max devices"
 ### Task 4: AccountDevices + DeviceRegistryService
 
 **Files:**
-- Modify: `src/Yxy.Api/Data/Entities.cs`（`AccountDevice`）
-- Modify: `src/Yxy.Api/Data/WebDb.cs`
-- Modify: `src/Yxy.Api/Program.cs`（CREATE TABLE）
-- Create: `src/Yxy.Api/Services/DeviceRegistryService.cs`
-- Create: `tests/Yxy.Api.Tests/DeviceRegistryTests.cs`
-- Modify: `src/Yxy.Api/Program.cs` DI：`AddScoped<DeviceRegistryService>()`
+- Modify: `src/YxyXb.Api/Data/Entities.cs`（`AccountDevice`）
+- Modify: `src/YxyXb.Api/Data/WebDb.cs`
+- Modify: `src/YxyXb.Api/Program.cs`（CREATE TABLE）
+- Create: `src/YxyXb.Api/Services/DeviceRegistryService.cs`
+- Create: `tests/YxyXb.Api.Tests/DeviceRegistryTests.cs`
+- Modify: `src/YxyXb.Api/Program.cs` DI：`AddScoped<DeviceRegistryService>()`
 
 **Interfaces:**
 - Consumes: `WebDb`、`TimeProvider`
@@ -323,9 +323,9 @@ git commit -m "feat: add account device registry with kick revoke"
 ### Task 5: ClientAuth 接入限台
 
 **Files:**
-- Modify: `src/Yxy.Api/Services/ClientAuthService.cs`
-- Modify: `src/Yxy.Api/Controllers/ClientController.cs`（失败时返回 `errorCode`）
-- Create: `tests/Yxy.Api.Tests/DeviceLimitAuthTests.cs`
+- Modify: `src/YxyXb.Api/Services/ClientAuthService.cs`
+- Modify: `src/YxyXb.Api/Controllers/ClientController.cs`（失败时返回 `errorCode`）
+- Create: `tests/YxyXb.Api.Tests/DeviceLimitAuthTests.cs`
 - Modify: 现有 `ClientAuthTests`（登录须带 deviceId；Grant 需绑定带 MaxDevices 的产品）
 
 **Interfaces:**
@@ -369,7 +369,7 @@ if (session.ErrorCode == "DEVICE_LIMIT")
 
 - [ ] **Step 3: Implement**
 
-- [ ] **Step 4: `dotnet test tests/Yxy.Api.Tests` → PASS**
+- [ ] **Step 4: `dotnet test tests/YxyXb.Api.Tests` → PASS**
 
 - [ ] **Step 5: Commit**
 
@@ -382,9 +382,9 @@ git commit -m "feat: enforce device limits on client login"
 ### Task 6: 门户与客户端设备列表 / 踢出 API
 
 **Files:**
-- Modify: `src/Yxy.Api/Controllers/PortalController.cs`
-- Modify: `src/Yxy.Api/Controllers/ClientController.cs`
-- Create: `tests/Yxy.Api.Tests/DeviceApiTests.cs`
+- Modify: `src/YxyXb.Api/Controllers/PortalController.cs`
+- Modify: `src/YxyXb.Api/Controllers/ClientController.cs`
+- Create: `tests/YxyXb.Api.Tests/DeviceApiTests.cs`
 
 **Interfaces:**
 - `GET /api/portal/devices` → `{ ok, maxDevices, devices: DeviceRow[] }`
@@ -406,9 +406,9 @@ git commit -m "feat: portal and client device list and kick APIs"
 ### Task 7: 升级补差订单与续费降档校验
 
 **Files:**
-- Modify: `src/Yxy.Api/Services/OrderService.cs`
-- Modify: `src/Yxy.Api/Controllers/OrderController.cs`
-- Create: `tests/Yxy.Api.Tests/UpgradeOrderTests.cs`
+- Modify: `src/YxyXb.Api/Services/OrderService.cs`
+- Modify: `src/YxyXb.Api/Controllers/OrderController.cs`
+- Create: `tests/YxyXb.Api.Tests/UpgradeOrderTests.cs`
 
 **Interfaces:**
 - Consumes: `ProductPricing`、`DeviceRegistryService.ListActiveAsync`
@@ -443,11 +443,11 @@ git commit -m "feat: prorated upgrade orders and renew downgrade device check"
 ### Task 8: Web 首页三列、订单选档、门户设备、订阅展示
 
 **Files:**
-- Modify: `src/Yxy.Web/src/views/HomeView.vue`
-- Modify: `src/Yxy.Web/src/views/OrdersView.vue`
-- Modify: `src/Yxy.Web/src/views/PortalView.vue`（订阅显示当前档与设备数）
+- Modify: `src/YxyXb.Web/src/views/HomeView.vue`
+- Modify: `src/YxyXb.Web/src/views/OrdersView.vue`
+- Modify: `src/YxyXb.Web/src/views/PortalView.vue`（订阅显示当前档与设备数）
 - Create or Modify: 设备页 + `router.js`
-- Create: `src/Yxy.Web/src/plans.test.js`（断言 Home/Orders 源码含 `plans`、不含「不限台数」）
+- Create: `src/YxyXb.Web/src/plans.test.js`（断言 Home/Orders 源码含 `plans`、不含「不限台数」）
 
 **Interfaces:**
 - Consumes: `/api/public/price` 的 `plans`；门户 devices/kick；升级 preview API（Task 7 暴露的 `GET/POST`）
@@ -458,7 +458,7 @@ Orders：下拉/卡片选 `productNo`；有正式授权时显示「升级到…�
 
 - [ ] **Step 1: Vitest** 读 `HomeView.vue` 文本含 `plans` / `maxDevices`，不含 `不限台数`
 
-- [ ] **Step 2: `npm test` in `src/Yxy.Web` → FAIL**
+- [ ] **Step 2: `npm test` in `src/YxyXb.Web` → FAIL**
 
 - [ ] **Step 3: 实现 UI**
 
@@ -475,7 +475,7 @@ git commit -m "feat: marketing three-column plans and portal devices UI"
 ### Task 9: 客户端 DEVICE_LIMIT 与设备管理 UI
 
 **Files:**
-- Modify: `src/Yxy.Client/SiteLogin.cs`（解析 `errorCode`；满员提示升级或去设备管理）
+- Modify: `src/YxyXb.Client/SiteLogin.cs`（解析 `errorCode`；满员提示升级或去设备管理）
 - Modify: 设置页或新对话框列出设备并踢出（调用 `/api/client/devices`）
 - Modify: 登录成功缓存可存 `maxDevices`/`deviceCount`（若已有 license 存储则扩展字段）
 
@@ -483,7 +483,7 @@ git commit -m "feat: marketing three-column plans and portal devices UI"
 - Consumes: Task 5/6 JSON 形状
 - Produces: 满员时中文提示；设备列表可踢（含本机确认）
 
-客户端无 NUnit UI 测试时：用手动验收清单（见下）+ 尽量对 JSON 解析抽小函数并在 `Yxy.Core.Tests` 或 Api 契约测试覆盖。
+客户端无 NUnit UI 测试时：用手动验收清单（见下）+ 尽量对 JSON 解析抽小函数并在 `YxyXb.Core.Tests` 或 Api 契约测试覆盖。
 
 手动验收：
 1. 个人版 3 台满，第 4 台提示  

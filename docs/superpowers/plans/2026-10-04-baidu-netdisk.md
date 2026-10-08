@@ -4,7 +4,7 @@
 
 **Goal:** 客户授权自己的百度网盘后，任务可把 zip 分片上传到应用目录，并按天删除本产品前缀下的过期包。
 
-**Architecture:** 新增 `Yxy.Baidu` 实现 `ICloudStorage`。OAuth 只在客户端用固定 `127.0.0.1` 回调；token 加密进 `cloud_accounts`。引擎只读本机 token、走 superfile2。删除接入现有 `PurgeRunner`。不引用 `Yxy.Qiniu`。
+**Architecture:** 新增 `YxyXb.Baidu` 实现 `ICloudStorage`。OAuth 只在客户端用固定 `127.0.0.1` 回调；token 加密进 `cloud_accounts`。引擎只读本机 token、走 superfile2。删除接入现有 `PurgeRunner`。不引用 `YxyXb.Qiniu`。
 
 **Tech Stack:** .NET Framework 4.8、NUnit、HttpWebRequest、HttpListener、SQLite、WPF。
 
@@ -25,30 +25,30 @@
 
 | 文件 | 职责 |
 | --- | --- |
-| `src/Yxy.Contracts/Cloud/CloudProviders.cs` | 增加 `Baidu = "baidu"` |
-| `src/Yxy.Contracts/Cloud/CloudObjectKeys.cs` | `BaiduRemotePath` |
-| `src/Yxy.Contracts/Cloud/CloudChoice.cs` | 从就绪列表解析任务选中的 provider |
-| `src/Yxy.Contracts/Dto/CloudAccountDto.cs` | token 字段、`IsBaiduReady`；`IsReady` 仍表示七牛 |
-| `src/Yxy.Core/Store/CloudAccountStore.cs` | 按 provider 持久化字段；`EnabledProviders` |
-| `src/Yxy.Core/Data/SchemaSql.cs` + `SchemaMigrate.cs` + `SettingsStore` + `AppSettingsDto` | 百度删除列 |
-| `src/Yxy.Baidu/*` | 配置、OAuth、HTTP、分片、`BaiduStorage` |
-| `src/Yxy.Cloud/CloudStorageFactory.cs` | 创建百度适配器 |
-| `src/Yxy.Core/Backup/PurgeRunner.cs` | 百度删除分支 |
-| `src/Yxy.Client/Pages/CloudPage.cs` | 左侧列表 + 百度授权表单 |
-| `src/Yxy.Client/Pages/SettingsPage.cs` | 删百度勾选 |
+| `src/YxyXb.Contracts/Cloud/CloudProviders.cs` | 增加 `Baidu = "baidu"` |
+| `src/YxyXb.Contracts/Cloud/CloudObjectKeys.cs` | `BaiduRemotePath` |
+| `src/YxyXb.Contracts/Cloud/CloudChoice.cs` | 从就绪列表解析任务选中的 provider |
+| `src/YxyXb.Contracts/Dto/CloudAccountDto.cs` | token 字段、`IsBaiduReady`；`IsReady` 仍表示七牛 |
+| `src/YxyXb.Core/Store/CloudAccountStore.cs` | 按 provider 持久化字段；`EnabledProviders` |
+| `src/YxyXb.Core/Data/SchemaSql.cs` + `SchemaMigrate.cs` + `SettingsStore` + `AppSettingsDto` | 百度删除列 |
+| `src/YxyXb.Baidu/*` | 配置、OAuth、HTTP、分片、`BaiduStorage` |
+| `src/YxyXb.Cloud/CloudStorageFactory.cs` | 创建百度适配器 |
+| `src/YxyXb.Core/Backup/PurgeRunner.cs` | 百度删除分支 |
+| `src/YxyXb.Client/Pages/CloudPage.cs` | 左侧列表 + 百度授权表单 |
+| `src/YxyXb.Client/Pages/SettingsPage.cs` | 删百度勾选 |
 | 文件/MSSQL/MySQL 任务对话框 + `TasksPage.cs` | 按就绪列表选云 |
-| `tests/Yxy.Core.Tests/*`、`tests/Yxy.Baidu.Tests/*` | 契约、存储、分片、假 HTTP |
+| `tests/YxyXb.Core.Tests/*`、`tests/YxyXb.Baidu.Tests/*` | 契约、存储、分片、假 HTTP |
 
 ---
 
 ### Task 1: 契约（provider、路径、就绪、任务选择）
 
 **Files:**
-- Modify: `src/Yxy.Contracts/Cloud/CloudProviders.cs`
-- Modify: `src/Yxy.Contracts/Cloud/CloudObjectKeys.cs`
-- Modify: `src/Yxy.Contracts/Dto/CloudAccountDto.cs`
-- Create: `src/Yxy.Contracts/Cloud/CloudChoice.cs`
-- Test: `tests/Yxy.Core.Tests/BaiduContractTests.cs`
+- Modify: `src/YxyXb.Contracts/Cloud/CloudProviders.cs`
+- Modify: `src/YxyXb.Contracts/Cloud/CloudObjectKeys.cs`
+- Modify: `src/YxyXb.Contracts/Dto/CloudAccountDto.cs`
+- Create: `src/YxyXb.Contracts/Cloud/CloudChoice.cs`
+- Test: `tests/YxyXb.Core.Tests/BaiduContractTests.cs`
 
 **Interfaces:**
 - Consumes: 现有 `CloudObjectKeys.ForZip`
@@ -56,15 +56,15 @@
 
 - [ ] **Step 1: Write the failing test**
 
-Create `tests/Yxy.Core.Tests/BaiduContractTests.cs`:
+Create `tests/YxyXb.Core.Tests/BaiduContractTests.cs`:
 
 ```csharp
 using System.Collections.Generic;
 using NUnit.Framework;
-using Yxy.Contracts.Cloud;
-using Yxy.Contracts.Dto;
+using YxyXb.Contracts.Cloud;
+using YxyXb.Contracts.Dto;
 
-namespace Yxy.Core.Tests
+namespace YxyXb.Core.Tests
 {
     [TestFixture]
     public sealed class BaiduContractTests
@@ -111,7 +111,7 @@ Keep existing `PhaseETests.AccountReady_NeedsAllFields` unchanged.
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `dotnet test tests/Yxy.Core.Tests/Yxy.Core.Tests.csproj --filter BaiduContractTests`  
+Run: `dotnet test tests/YxyXb.Core.Tests/YxyXb.Core.Tests.csproj --filter BaiduContractTests`  
 Working directory: `d:\AICode\Cursor\yongxinyunbak`  
 Expected: FAIL（`Baidu` / `BaiduRemotePath` / `IsBaiduReady` / `CloudChoice` 不存在）
 
@@ -145,7 +145,7 @@ Create `CloudChoice.cs`:
 using System;
 using System.Collections.Generic;
 
-namespace Yxy.Contracts.Cloud
+namespace YxyXb.Contracts.Cloud
 {
     public static class CloudChoice
     {
@@ -190,13 +190,13 @@ namespace Yxy.Contracts.Cloud
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `dotnet test tests/Yxy.Core.Tests/Yxy.Core.Tests.csproj --filter "BaiduContractTests|AccountReady_NeedsAllFields"`  
+Run: `dotnet test tests/YxyXb.Core.Tests/YxyXb.Core.Tests.csproj --filter "BaiduContractTests|AccountReady_NeedsAllFields"`  
 Expected: PASS
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/Yxy.Contracts/Cloud/CloudProviders.cs src/Yxy.Contracts/Cloud/CloudObjectKeys.cs src/Yxy.Contracts/Cloud/CloudChoice.cs src/Yxy.Contracts/Dto/CloudAccountDto.cs tests/Yxy.Core.Tests/BaiduContractTests.cs
+git add src/YxyXb.Contracts/Cloud/CloudProviders.cs src/YxyXb.Contracts/Cloud/CloudObjectKeys.cs src/YxyXb.Contracts/Cloud/CloudChoice.cs src/YxyXb.Contracts/Dto/CloudAccountDto.cs tests/YxyXb.Core.Tests/BaiduContractTests.cs
 git commit -m "feat: add baidu cloud contract types"
 ```
 
@@ -205,12 +205,12 @@ git commit -m "feat: add baidu cloud contract types"
 ### Task 2: 本机账号与自动删除设置
 
 **Files:**
-- Modify: `src/Yxy.Core/Store/CloudAccountStore.cs`
-- Modify: `src/Yxy.Core/Data/SchemaSql.cs`
-- Modify: `src/Yxy.Core/Data/SchemaMigrate.cs`
-- Modify: `src/Yxy.Contracts/Dto/AppSettingsDto.cs`
-- Modify: `src/Yxy.Core/Store/SettingsStore.cs`
-- Test: `tests/Yxy.Core.Tests/BaiduStoreTests.cs`
+- Modify: `src/YxyXb.Core/Store/CloudAccountStore.cs`
+- Modify: `src/YxyXb.Core/Data/SchemaSql.cs`
+- Modify: `src/YxyXb.Core/Data/SchemaMigrate.cs`
+- Modify: `src/YxyXb.Contracts/Dto/AppSettingsDto.cs`
+- Modify: `src/YxyXb.Core/Store/SettingsStore.cs`
+- Test: `tests/YxyXb.Core.Tests/BaiduStoreTests.cs`
 
 **Interfaces:**
 - Consumes: Task 1 的 DTO 字段
@@ -218,18 +218,18 @@ git commit -m "feat: add baidu cloud contract types"
 
 - [ ] **Step 1: Write the failing test**
 
-Create `tests/Yxy.Core.Tests/BaiduStoreTests.cs`。用临时 sqlite：
+Create `tests/YxyXb.Core.Tests/BaiduStoreTests.cs`。用临时 sqlite：
 
 ```csharp
 using System;
 using System.IO;
 using NUnit.Framework;
-using Yxy.Contracts.Cloud;
-using Yxy.Contracts.Dto;
-using Yxy.Core.Data;
-using Yxy.Core.Store;
+using YxyXb.Contracts.Cloud;
+using YxyXb.Contracts.Dto;
+using YxyXb.Core.Data;
+using YxyXb.Core.Store;
 
-namespace Yxy.Core.Tests
+namespace YxyXb.Core.Tests
 {
     [TestFixture]
     public sealed class BaiduStoreTests
@@ -291,7 +291,7 @@ namespace Yxy.Core.Tests
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `dotnet test tests/Yxy.Core.Tests/Yxy.Core.Tests.csproj --filter BaiduStoreTests`  
+Run: `dotnet test tests/YxyXb.Core.Tests/YxyXb.Core.Tests.csproj --filter BaiduStoreTests`  
 Expected: FAIL（Save 丢掉 token；无 `IsBaiduReady`/`PurgeBaidu`）
 
 - [ ] **Step 3: Write minimal implementation**
@@ -321,30 +321,30 @@ public static IList<string> EnabledProviders(SqliteDb db)
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `dotnet test tests/Yxy.Core.Tests/Yxy.Core.Tests.csproj --filter "BaiduStoreTests|BaiduContractTests"`  
+Run: `dotnet test tests/YxyXb.Core.Tests/YxyXb.Core.Tests.csproj --filter "BaiduStoreTests|BaiduContractTests"`  
 Expected: PASS
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/Yxy.Core/Store/CloudAccountStore.cs src/Yxy.Core/Data/SchemaSql.cs src/Yxy.Core/Data/SchemaMigrate.cs src/Yxy.Contracts/Dto/AppSettingsDto.cs src/Yxy.Core/Store/SettingsStore.cs tests/Yxy.Core.Tests/BaiduStoreTests.cs
+git add src/YxyXb.Core/Store/CloudAccountStore.cs src/YxyXb.Core/Data/SchemaSql.cs src/YxyXb.Core/Data/SchemaMigrate.cs src/YxyXb.Contracts/Dto/AppSettingsDto.cs src/YxyXb.Core/Store/SettingsStore.cs tests/YxyXb.Core.Tests/BaiduStoreTests.cs
 git commit -m "feat: persist baidu tokens and purge settings"
 ```
 
 ---
 
-### Task 3: `Yxy.Baidu` 配置、分片、OAuth URL
+### Task 3: `YxyXb.Baidu` 配置、分片、OAuth URL
 
 **Files:**
-- Create: `src/Yxy.Baidu/Yxy.Baidu.csproj`
-- Create: `src/Yxy.Baidu/BaiduApp.example.json`
-- Create: `src/Yxy.Baidu/BaiduAppConfig.cs`
-- Create: `src/Yxy.Baidu/BaiduSlices.cs`
-- Create: `src/Yxy.Baidu/BaiduOAuth.cs`
-- Create: `src/Yxy.Baidu/BytePacer.cs`
-- Create: `tests/Yxy.Baidu.Tests/Yxy.Baidu.Tests.csproj`
-- Create: `tests/Yxy.Baidu.Tests/BaiduUnitTests.cs`
-- Modify: `Yxy.sln`
+- Create: `src/YxyXb.Baidu/YxyXb.Baidu.csproj`
+- Create: `src/YxyXb.Baidu/BaiduApp.example.json`
+- Create: `src/YxyXb.Baidu/BaiduAppConfig.cs`
+- Create: `src/YxyXb.Baidu/BaiduSlices.cs`
+- Create: `src/YxyXb.Baidu/BaiduOAuth.cs`
+- Create: `src/YxyXb.Baidu/BytePacer.cs`
+- Create: `tests/YxyXb.Baidu.Tests/YxyXb.Baidu.Tests.csproj`
+- Create: `tests/YxyXb.Baidu.Tests/BaiduUnitTests.cs`
+- Modify: `YxyXb.sln`
 - Modify: `.gitignore`（增加 `BaiduApp.json`）
 
 **Interfaces:**
@@ -353,9 +353,9 @@ git commit -m "feat: persist baidu tokens and purge settings"
 
 - [ ] **Step 1: Write the failing test**
 
-先加 `Yxy.Baidu` / `Yxy.Baidu.Tests` 工程（可先空类让测试编译失败在断言）。csproj 参照 `Yxy.Qiniu`（net48 + `Yxy.Contracts` + `System.Web.Extensions`）。测试工程参照 `Yxy.Core.Tests`，引用 `Yxy.Baidu`。
+先加 `YxyXb.Baidu` / `YxyXb.Baidu.Tests` 工程（可先空类让测试编译失败在断言）。csproj 参照 `YxyXb.Qiniu`（net48 + `YxyXb.Contracts` + `System.Web.Extensions`）。测试工程参照 `YxyXb.Core.Tests`，引用 `YxyXb.Baidu`。
 
-`Yxy.sln`：GUID `{B1000001-0000-4000-8000-00000000000B}` → `src\Yxy.Baidu\Yxy.Baidu.csproj`；`{C1000001-0000-4000-8000-000000000004}` → `tests\Yxy.Baidu.Tests\Yxy.Baidu.Tests.csproj`。补 Debug/Release 的 ActiveCfg/Build.0，NestedProjects 分别挂到 src/tests 文件夹。
+`YxyXb.sln`：GUID `{B1000001-0000-4000-8000-00000000000B}` → `src\YxyXb.Baidu\YxyXb.Baidu.csproj`；`{C1000001-0000-4000-8000-000000000004}` → `tests\YxyXb.Baidu.Tests\YxyXb.Baidu.Tests.csproj`。补 Debug/Release 的 ActiveCfg/Build.0，NestedProjects 分别挂到 src/tests 文件夹。
 
 `BaiduUnitTests.cs`：
 
@@ -363,9 +363,9 @@ git commit -m "feat: persist baidu tokens and purge settings"
 using System.IO;
 using System.Text;
 using NUnit.Framework;
-using Yxy.Baidu;
+using YxyXb.Baidu;
 
-namespace Yxy.Baidu.Tests
+namespace YxyXb.Baidu.Tests
 {
     [TestFixture]
     public sealed class BaiduUnitTests
@@ -431,7 +431,7 @@ namespace Yxy.Baidu.Tests
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `dotnet test tests/Yxy.Baidu.Tests/Yxy.Baidu.Tests.csproj`  
+Run: `dotnet test tests/YxyXb.Baidu.Tests/YxyXb.Baidu.Tests.csproj`  
 Expected: FAIL（类型不存在或方法未实现）
 
 - [ ] **Step 3: Write minimal implementation**
@@ -444,19 +444,19 @@ Expected: FAIL（类型不存在或方法未实现）
 
 `TryParseCallback`：解析 query 的 `code`/`state`/`error`；state 必须等于 `expectedState`；有 code 才成功。
 
-`BytePacer`：从 `Yxy.Qiniu/QiniuHttp.cs` 的 `BytePacer` 原样复制到 `Yxy.Baidu/BytePacer.cs`（internal）。
+`BytePacer`：从 `YxyXb.Qiniu/QiniuHttp.cs` 的 `BytePacer` 原样复制到 `YxyXb.Baidu/BytePacer.cs`（internal）。
 
 `.gitignore` 增加一行 `BaiduApp.json`。
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `dotnet test tests/Yxy.Baidu.Tests/Yxy.Baidu.Tests.csproj`  
+Run: `dotnet test tests/YxyXb.Baidu.Tests/YxyXb.Baidu.Tests.csproj`  
 Expected: PASS
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/Yxy.Baidu tests/Yxy.Baidu.Tests Yxy.sln .gitignore
+git add src/YxyXb.Baidu tests/YxyXb.Baidu.Tests YxyXb.sln .gitignore
 git commit -m "feat: add baidu config slices and oauth urls"
 ```
 
@@ -465,12 +465,12 @@ git commit -m "feat: add baidu config slices and oauth urls"
 ### Task 4: 工厂与 `BaiduStorage` 骨架
 
 **Files:**
-- Create: `src/Yxy.Baidu/BaiduStorage.cs`
-- Create: `src/Yxy.Baidu/IBaiduTransport.cs`
-- Modify: `src/Yxy.Cloud/Yxy.Cloud.csproj`
-- Modify: `src/Yxy.Cloud/CloudStorageFactory.cs`
-- Modify: `tests/Yxy.Baidu.Tests/Yxy.Baidu.Tests.csproj`（增加对 `Yxy.Cloud` 的 ProjectReference）
-- Modify: `tests/Yxy.Baidu.Tests/BaiduUnitTests.cs`
+- Create: `src/YxyXb.Baidu/BaiduStorage.cs`
+- Create: `src/YxyXb.Baidu/IBaiduTransport.cs`
+- Modify: `src/YxyXb.Cloud/YxyXb.Cloud.csproj`
+- Modify: `src/YxyXb.Cloud/CloudStorageFactory.cs`
+- Modify: `tests/YxyXb.Baidu.Tests/YxyXb.Baidu.Tests.csproj`（增加对 `YxyXb.Cloud` 的 ProjectReference）
+- Modify: `tests/YxyXb.Baidu.Tests/BaiduUnitTests.cs`
 
 **Interfaces:**
 - Consumes: Task 1 `CloudProviders.Baidu`；Task 3 配置
@@ -484,7 +484,7 @@ git commit -m "feat: add baidu config slices and oauth urls"
 [Test]
 public void Factory_CreatesImplementedBaidu()
 {
-    var storage = Yxy.Cloud.CloudStorageFactory.Create(Yxy.Contracts.Cloud.CloudProviders.Baidu);
+    var storage = YxyXb.Cloud.CloudStorageFactory.Create(YxyXb.Contracts.Cloud.CloudProviders.Baidu);
     Assert.That(storage.IsImplemented, Is.True);
     Assert.That(storage.ProviderKey, Is.EqualTo("baidu"));
     var ex = Assert.Throws<InvalidOperationException>(() => storage.TestConnection());
@@ -494,7 +494,7 @@ public void Factory_CreatesImplementedBaidu()
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `dotnet test tests/Yxy.Baidu.Tests/Yxy.Baidu.Tests.csproj --filter Factory_CreatesImplementedBaidu`  
+Run: `dotnet test tests/YxyXb.Baidu.Tests/YxyXb.Baidu.Tests.csproj --filter Factory_CreatesImplementedBaidu`  
 Expected: FAIL（未知云服务商或未实现）
 
 - [ ] **Step 3: Write minimal implementation**
@@ -510,19 +510,19 @@ if (string.Equals(providerKey, CloudProviders.Baidu, StringComparison.OrdinalIgn
 }
 ```
 
-`Yxy.Cloud.csproj` 增加 `<ProjectReference Include="..\Yxy.Baidu\Yxy.Baidu.csproj" />`。
+`YxyXb.Cloud.csproj` 增加 `<ProjectReference Include="..\YxyXb.Baidu\YxyXb.Baidu.csproj" />`。
 
 `BaiduStorage` 实现接口：未 `IsBaiduReady` 时三个操作都抛上述中文异常。`Upload`/`DeleteExpired`/`TestConnection` 本任务可先只做就绪检查（完整 HTTP 在 Task 5）。`SetSpeed` 保存 `_maxKbps`。
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `dotnet test tests/Yxy.Baidu.Tests/Yxy.Baidu.Tests.csproj`  
+Run: `dotnet test tests/YxyXb.Baidu.Tests/YxyXb.Baidu.Tests.csproj`  
 Expected: PASS
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/Yxy.Baidu src/Yxy.Cloud tests/Yxy.Baidu.Tests
+git add src/YxyXb.Baidu src/YxyXb.Cloud tests/YxyXb.Baidu.Tests
 git commit -m "feat: register baidu storage in the cloud factory"
 ```
 
@@ -531,12 +531,12 @@ git commit -m "feat: register baidu storage in the cloud factory"
 ### Task 5: 假传输上的分片上传、删除、续期
 
 **Files:**
-- Create: `src/Yxy.Baidu/BaiduHttp.cs`
-- Modify: `src/Yxy.Baidu/BaiduStorage.cs`
-- Modify: `src/Yxy.Baidu/BaiduOAuth.cs`（增加 `ApplyTokenJson` 解析）
-- Create: `tests/Yxy.Baidu.Tests/FakeBaiduTransport.cs`
-- Create: `tests/Yxy.Baidu.Tests/BaiduStorageTests.cs`
-- Modify: `src/Yxy.Cloud/CloudRuntimeImpl.cs`（给 `BaiduStorage.PersistAccount` 接到 `CloudAccountStore.Save`）
+- Create: `src/YxyXb.Baidu/BaiduHttp.cs`
+- Modify: `src/YxyXb.Baidu/BaiduStorage.cs`
+- Modify: `src/YxyXb.Baidu/BaiduOAuth.cs`（增加 `ApplyTokenJson` 解析）
+- Create: `tests/YxyXb.Baidu.Tests/FakeBaiduTransport.cs`
+- Create: `tests/YxyXb.Baidu.Tests/BaiduStorageTests.cs`
+- Modify: `src/YxyXb.Cloud/CloudRuntimeImpl.cs`（给 `BaiduStorage.PersistAccount` 接到 `CloudAccountStore.Save`）
 
 **Interfaces:**
 - Consumes: Task 3 分片；Task 2 Persist
@@ -572,7 +572,7 @@ git commit -m "feat: register baidu storage in the cloud factory"
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `dotnet test tests/Yxy.Baidu.Tests/Yxy.Baidu.Tests.csproj --filter BaiduStorageTests`  
+Run: `dotnet test tests/YxyXb.Baidu.Tests/YxyXb.Baidu.Tests.csproj --filter BaiduStorageTests`  
 Expected: FAIL
 
 - [ ] **Step 3: Write minimal implementation**
@@ -594,13 +594,13 @@ if (baidu != null)
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `dotnet test tests/Yxy.Baidu.Tests/Yxy.Baidu.Tests.csproj tests/Yxy.Core.Tests/Yxy.Core.Tests.csproj`  
+Run: `dotnet test tests/YxyXb.Baidu.Tests/YxyXb.Baidu.Tests.csproj tests/YxyXb.Core.Tests/YxyXb.Core.Tests.csproj`  
 Expected: PASS
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/Yxy.Baidu src/Yxy.Cloud/CloudRuntimeImpl.cs tests/Yxy.Baidu.Tests
+git add src/YxyXb.Baidu src/YxyXb.Cloud/CloudRuntimeImpl.cs tests/YxyXb.Baidu.Tests
 git commit -m "feat: upload and purge baidu objects over superfile2"
 ```
 
@@ -609,8 +609,8 @@ git commit -m "feat: upload and purge baidu objects over superfile2"
 ### Task 6: PurgeRunner 接百度
 
 **Files:**
-- Modify: `src/Yxy.Core/Backup/PurgeRunner.cs`
-- Test: `tests/Yxy.Core.Tests/BaiduStoreTests.cs`（增加 `PurgeDue_IncludesBaiduOnlyFlag` 只测入口条件需要抽方法，或测 `ExecuteDue` 在 `LastPurgeUtc` 今天时直接 false）
+- Modify: `src/YxyXb.Core/Backup/PurgeRunner.cs`
+- Test: `tests/YxyXb.Core.Tests/BaiduStoreTests.cs`（增加 `PurgeDue_IncludesBaiduOnlyFlag` 只测入口条件需要抽方法，或测 `ExecuteDue` 在 `LastPurgeUtc` 今天时直接 false）
 
 **Interfaces:**
 - Consumes: `settings.PurgeBaidu`、`BaiduRetainDays`、`CloudProviders.Baidu`、`CloudRuntime.DeleteExpired`
@@ -640,7 +640,7 @@ public void HasAnyPurge_TrueWhenOnlyBaidu()
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `dotnet test tests/Yxy.Core.Tests/Yxy.Core.Tests.csproj --filter HasAnyPurge`  
+Run: `dotnet test tests/YxyXb.Core.Tests/YxyXb.Core.Tests.csproj --filter HasAnyPurge`  
 Expected: FAIL
 
 - [ ] **Step 3: Write minimal implementation**
@@ -651,13 +651,13 @@ Expected: FAIL
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `dotnet test tests/Yxy.Core.Tests/Yxy.Core.Tests.csproj --filter "HasAnyPurge|PurgeDue"`  
+Run: `dotnet test tests/YxyXb.Core.Tests/YxyXb.Core.Tests.csproj --filter "HasAnyPurge|PurgeDue"`  
 Expected: PASS
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/Yxy.Core/Backup/PurgeRunner.cs tests/Yxy.Core.Tests/BaiduStoreTests.cs
+git add src/YxyXb.Core/Backup/PurgeRunner.cs tests/YxyXb.Core.Tests/BaiduStoreTests.cs
 git commit -m "feat: purge expired baidu backups on schedule"
 ```
 
@@ -666,18 +666,18 @@ git commit -m "feat: purge expired baidu backups on schedule"
 ### Task 7: 云备份页、设置页、任务选云
 
 **Files:**
-- Modify: `src/Yxy.Client/Pages/CloudPage.cs`
-- Modify: `src/Yxy.Client/Pages/SettingsPage.cs`
-- Modify: `src/Yxy.Client/Pages/TasksPage.cs`
-- Modify: `src/Yxy.Client/Dialogs/FileTaskDialog.xaml`
-- Modify: `src/Yxy.Client/Dialogs/FileTaskDialog.xaml.cs`
-- Modify: `src/Yxy.Client/Dialogs/MssqlTaskDialog.xaml`
-- Modify: `src/Yxy.Client/Dialogs/MssqlTaskDialog.xaml.cs`
-- Modify: `src/Yxy.Client/Dialogs/MysqlTaskDialog.cs`
-- Modify: `src/Yxy.Client/Yxy.Client.csproj`（复制 example json）
-- Modify: `src/Yxy.Engine/Yxy.Engine.csproj`（同上）
-- Create: `src/Yxy.Baidu/BaiduOAuth.Listen.cs` 或在 `BaiduOAuth.cs` 增加 `CompleteInBrowser(BaiduAppConfig cfg, int timeoutMs, Action<string> openUrl)`：监听 `cfg.RedirectUri`，`HttpListener.Prefixes.Add(RedirectUri)`，失败提示「端口被占用」；`Process.Start` 打开授权 URL；成功返回填好 token 的 `CloudAccountDto` 片段（AccessToken/RefreshToken/TokenExpiryUtc/DisplayName）。超时 180000 ms。
-- Test: `tests/Yxy.Baidu.Tests/BaiduUnitTests.cs` 增加 `TryParseCallback` 已有；再测端口占用无法在 CI 稳定测，跳过。增加 `CloudChoice` 已在 Task 1。本任务对对话框构造：把 `bool qiniuReady` 改为 `IList<string> readyProviders`，`DoCloud`/`CloudProvider` 走 `CloudChoice.Resolve`。
+- Modify: `src/YxyXb.Client/Pages/CloudPage.cs`
+- Modify: `src/YxyXb.Client/Pages/SettingsPage.cs`
+- Modify: `src/YxyXb.Client/Pages/TasksPage.cs`
+- Modify: `src/YxyXb.Client/Dialogs/FileTaskDialog.xaml`
+- Modify: `src/YxyXb.Client/Dialogs/FileTaskDialog.xaml.cs`
+- Modify: `src/YxyXb.Client/Dialogs/MssqlTaskDialog.xaml`
+- Modify: `src/YxyXb.Client/Dialogs/MssqlTaskDialog.xaml.cs`
+- Modify: `src/YxyXb.Client/Dialogs/MysqlTaskDialog.cs`
+- Modify: `src/YxyXb.Client/YxyXb.Client.csproj`（复制 example json）
+- Modify: `src/YxyXb.Engine/YxyXb.Engine.csproj`（同上）
+- Create: `src/YxyXb.Baidu/BaiduOAuth.Listen.cs` 或在 `BaiduOAuth.cs` 增加 `CompleteInBrowser(BaiduAppConfig cfg, int timeoutMs, Action<string> openUrl)`：监听 `cfg.RedirectUri`，`HttpListener.Prefixes.Add(RedirectUri)`，失败提示「端口被占用」；`Process.Start` 打开授权 URL；成功返回填好 token 的 `CloudAccountDto` 片段（AccessToken/RefreshToken/TokenExpiryUtc/DisplayName）。超时 180000 ms。
+- Test: `tests/YxyXb.Baidu.Tests/BaiduUnitTests.cs` 增加 `TryParseCallback` 已有；再测端口占用无法在 CI 稳定测，跳过。增加 `CloudChoice` 已在 Task 1。本任务对对话框构造：把 `bool qiniuReady` 改为 `IList<string> readyProviders`，`DoCloud`/`CloudProvider` 走 `CloudChoice.Resolve`。
 
 **Interfaces:**
 - Consumes: Task 2 `EnabledProviders`；Task 5 存储；Task 3 OAuth
@@ -722,7 +722,7 @@ public void Choice_MysqlAndFileUseSameResolve()
 Client/Engine csproj：
 
 ```xml
-<None Include="..\Yxy.Baidu\BaiduApp.example.json" Link="BaiduApp.example.json">
+<None Include="..\YxyXb.Baidu\BaiduApp.example.json" Link="BaiduApp.example.json">
   <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 </None>
 ```
@@ -734,9 +734,9 @@ Client/Engine csproj：
 Run:
 
 ```
-dotnet test tests/Yxy.Core.Tests/Yxy.Core.Tests.csproj
-dotnet test tests/Yxy.Baidu.Tests/Yxy.Baidu.Tests.csproj
-dotnet build src/Yxy.Client/Yxy.Client.csproj src/Yxy.Engine/Yxy.Engine.csproj
+dotnet test tests/YxyXb.Core.Tests/YxyXb.Core.Tests.csproj
+dotnet test tests/YxyXb.Baidu.Tests/YxyXb.Baidu.Tests.csproj
+dotnet build src/YxyXb.Client/YxyXb.Client.csproj src/YxyXb.Engine/YxyXb.Engine.csproj
 ```
 
 Expected: 测试 PASS，Client/Engine 编译成功。
@@ -744,7 +744,7 @@ Expected: 测试 PASS，Client/Engine 编译成功。
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/Yxy.Client src/Yxy.Engine src/Yxy.Baidu tests/Yxy.Core.Tests/BaiduContractTests.cs
+git add src/YxyXb.Client src/YxyXb.Engine src/YxyXb.Baidu tests/YxyXb.Core.Tests/BaiduContractTests.cs
 git commit -m "feat: authorize baidu in the cloud page and task picker"
 ```
 
@@ -766,7 +766,7 @@ git commit -m "feat: authorize baidu in the cloud page and task picker"
 
 - [ ] **Step 2: 全量测试**
 
-Run: `dotnet test tests/Yxy.Core.Tests/Yxy.Core.Tests.csproj tests/Yxy.Baidu.Tests/Yxy.Baidu.Tests.csproj`  
+Run: `dotnet test tests/YxyXb.Core.Tests/YxyXb.Core.Tests.csproj tests/YxyXb.Baidu.Tests/YxyXb.Baidu.Tests.csproj`  
 Expected: PASS
 
 - [ ] **Step 3: Commit** 仅当有漏补代码。否则跳过。

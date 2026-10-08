@@ -1,0 +1,42 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net48</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <RootNamespace>YxyXb.Client</RootNamespace>
+    <AssemblyName>YxyXb.Client</AssemblyName>
+    <OutputPath>$(SolutionDir)dist\</OutputPath>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <ApplicationIcon>..\YxyXb.img\logo.ico</ApplicationIcon>
+    <StartupObject>YxyXb.Client.App</StartupObject>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+  </PropertyGroup>
+  <ItemGroup>
+    <Resource Include="..\YxyXb.img\logo.ico">
+      <Link>Assets\logo.ico</Link>
+    </Resource>
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="System.Net.Http" />
+    <Reference Include="System.ServiceProcess" />
+    <Reference Include="System.Drawing" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\YxyXb.Contracts\YxyXb.Contracts.csproj" />
+    <ProjectReference Include="..\YxyXb.Core\YxyXb.Core.csproj" />
+    <ProjectReference Include="..\YxyXb.Media\YxyXb.Media.csproj" />
+    <ProjectReference Include="..\YxyXb.Mssql\YxyXb.Mssql.csproj" />
+    <ProjectReference Include="..\YxyXb.MySql\YxyXb.MySql.csproj" />
+    <ProjectReference Include="..\YxyXb.Cloud\YxyXb.Cloud.csproj" />
+    <ProjectReference Include="..\YxyXb.Baidu\YxyXb.Baidu.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\YxyXb.Baidu\BaiduApp.example.json" Link="BaiduApp.example.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="MaterialDesignThemes" Version="4.9.0" />
+  </ItemGroup>
+</Project>

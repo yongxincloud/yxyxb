@@ -1,0 +1,60 @@
+<Window x:Class="YxyXb.Client.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="用心云·循备"
+        Icon="pack://application:,,,/Assets/logo.ico"
+        WindowStyle="None"
+        ResizeMode="CanResize"
+        Width="1120"
+        Height="720"
+        MinWidth="960"
+        MinHeight="600"
+        WindowStartupLocation="CenterScreen"
+        Background="{DynamicResource PageBg}"
+        TextElement.Foreground="{DynamicResource MaterialDesignBody}"
+        TextElement.FontFamily="Microsoft YaHei"
+        FontFamily="Microsoft YaHei">
+    <Border BorderBrush="{DynamicResource CardLine}" BorderThickness="1">
+        <DockPanel>
+            <Border DockPanel.Dock="Left" Width="210" Background="{DynamicResource NavBg}">
+                <DockPanel>
+                    <StackPanel x:Name="Brand" DockPanel.Dock="Top" Margin="16,22,16,16" MouseLeftButtonDown="Drag_OnDown">
+                        <StackPanel Orientation="Horizontal">
+                            <Image Source="pack://application:,,,/Assets/logo.ico" Width="28" Height="28" Margin="0,0,10,0"/>
+                            <TextBlock Text="用心云·循备" Foreground="{DynamicResource NavText}" FontSize="16" FontWeight="Bold" VerticalAlignment="Center"/>
+                        </StackPanel>
+                        <TextBlock Text="本机加密备份" Foreground="{DynamicResource Accent}" FontSize="11" Margin="38,4,0,0"/>
+                    </StackPanel>
+                    <StackPanel DockPanel.Dock="Bottom" Margin="8,0,8,12">
+                        <Button x:Name="BtnSite" Content="官网" Style="{StaticResource NavButton}" Click="BtnSite_OnClick"/>
+                        <Grid Margin="8,2">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="72"/>
+                            </Grid.ColumnDefinitions>
+                            <Button x:Name="BtnLogin" Content="登录" Style="{StaticResource NavButton}" Margin="0" Click="BtnLogin_OnClick"/>
+                            <Button x:Name="BtnWindow" Grid.Column="1" Content="退出" Style="{StaticResource NavButton}" Margin="4,0,0,0" Click="BtnWindow_OnClick"/>
+                        </Grid>
+                    </StackPanel>
+                    <StackPanel Margin="0,4,0,0">
+                        <Button x:Name="NavHome" Content="首页" Style="{StaticResource NavButton}" Tag="home" Click="Nav_OnClick"/>
+                        <Button x:Name="NavTasks" Content="任务" Style="{StaticResource NavButton}" Tag="tasks" Click="Nav_OnClick"/>
+                        <Button x:Name="NavMedia" Content="离线介质" Style="{StaticResource NavButton}" Tag="media" Click="Nav_OnClick"/>
+                        <Button x:Name="NavCloud" Content="云备份" Style="{StaticResource NavButton}" Tag="cloud" Click="Nav_OnClick"/>
+                        <Button x:Name="NavInstances" Content="实例" Style="{StaticResource NavButton}" Tag="instances" Click="Nav_OnClick"/>
+                        <Button x:Name="NavLogs" Content="日志" Style="{StaticResource NavButton}" Tag="logs" Click="Nav_OnClick"/>
+                        <Button x:Name="NavRestore" Content="恢复" Style="{StaticResource NavButton}" Tag="restore" Click="Nav_OnClick"/>
+                        <Button x:Name="NavDevices" Content="我的设备" Style="{StaticResource NavButton}" Tag="devices" Click="Nav_OnClick"/>
+                        <Button x:Name="NavSettings" Content="设置" Style="{StaticResource NavButton}" Tag="settings" Click="Nav_OnClick"/>
+                    </StackPanel>
+                </DockPanel>
+            </Border>
+            <DockPanel Background="{DynamicResource PageBg}">
+                <Border x:Name="TitleBar" DockPanel.Dock="Top" BorderBrush="{DynamicResource CardLine}" BorderThickness="0,0,0,1" Margin="0,0,0,8" MouseLeftButtonDown="Drag_OnDown">
+                    <TextBlock x:Name="TxtTitle" Text="首页" FontSize="22" FontWeight="SemiBold" Foreground="{DynamicResource TitleText}" Margin="24,18,24,14"/>
+                </Border>
+                <ContentControl x:Name="PageHost" Margin="20,4,20,16"/>
+            </DockPanel>
+        </DockPanel>
+    </Border>
+</Window>
