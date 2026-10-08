@@ -5,11 +5,19 @@ namespace Yxy.Core
 {
     public static class AppPaths
     {
-        public const string ProductName = "用心云备份";
+        public const string ProductDisplayName = "用心云·循备";
+
+        public const string ProductPathName = "用心云循备";
+
+        public const string ProductShortName = "循备";
 
         public const string ServiceName = "YxyBackupService";
 
-        public const string ServiceDisplayName = "用心云备份 Service";
+        public const string ServiceDisplayName = "用心云·循备 Service";
+
+        public const string DatabaseFileNameLegacy = "yxy.db";
+
+        public const string DatabaseFileNameNew = "yxyxb.db";
 
         private static string _rootOverride;
 
@@ -53,7 +61,7 @@ namespace Yxy.Core
             get { return Path.Combine(DataDirectory, "baidu-upload"); }
         }
 
-        public const string DefaultBakDirectory = @"D:\yongxinyunbackup\bak";
+        public const string DefaultBakDirectory = @"D:\yxyxb\bak";
 
         public static string BakDirectory
         {
@@ -70,7 +78,16 @@ namespace Yxy.Core
 
         public static string DatabaseFile
         {
-            get { return Path.Combine(DataDirectory, "yxy.db"); }
+            get
+            {
+                var legacy = Path.Combine(DataDirectory, DatabaseFileNameLegacy);
+                if (File.Exists(legacy))
+                {
+                    return legacy;
+                }
+
+                return Path.Combine(DataDirectory, DatabaseFileNameNew);
+            }
         }
 
         public static string DeviceIdFile

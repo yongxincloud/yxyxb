@@ -506,7 +506,7 @@ namespace Yxy.Client.Pages
             }
 
             var s = SettingsStore.Get(_boot.Db);
-            s.SoftwareId = string.IsNullOrWhiteSpace(_softwareId.Text) ? AppPaths.ProductName : _softwareId.Text.Trim();
+            s.SoftwareId = string.IsNullOrWhiteSpace(_softwareId.Text) ? AppPaths.ProductPathName : _softwareId.Text.Trim();
             s.StartWithWindows = _startWin.IsChecked == true;
             s.CloseToTray = _tray.IsChecked == true;
             s.LockPassword = _lockPwd.Password;
@@ -668,7 +668,7 @@ namespace Yxy.Client.Pages
                 return;
             }
 
-            var sid = string.IsNullOrWhiteSpace(_softwareId.Text) ? AppPaths.ProductName : _softwareId.Text.Trim();
+            var sid = string.IsNullOrWhiteSpace(_softwareId.Text) ? AppPaths.ProductPathName : _softwareId.Text.Trim();
             var bak = string.IsNullOrWhiteSpace(_bak.Text) ? AppPaths.BakDirectory : _bak.Text.Trim();
             _preview.Text = "预览：\n" + BackupNaming.Preview(bak, sid, NameParts.FromFlags(ReadNameFlags()));
         }

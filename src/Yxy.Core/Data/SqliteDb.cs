@@ -127,7 +127,7 @@ namespace Yxy.Core.Data
             Execute(
                 "INSERT OR IGNORE INTO settings (id, bak_path, software_id, updated_utc) VALUES (1, @bak, @sid, @utc)",
                 new SQLiteParameter("@bak", AppPaths.BakDirectory),
-                new SQLiteParameter("@sid", AppPaths.ProductName),
+                new SQLiteParameter("@sid", AppPaths.ProductPathName),
                 new SQLiteParameter("@utc", now));
             var legacy = Path.Combine(AppPaths.InstallDirectory, "bak");
             Execute(

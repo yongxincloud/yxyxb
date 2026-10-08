@@ -16,7 +16,7 @@ namespace Yxy.Core.Store
                 return new AppSettingsDto
                 {
                     BakPath = AppPaths.BakDirectory,
-                    SoftwareId = AppPaths.ProductName,
+                    SoftwareId = AppPaths.ProductPathName,
                     NameFlags = NameParts.DefaultFlags,
                     ZipLevel = 5,
                     Theme = "light",
@@ -72,7 +72,7 @@ namespace Yxy.Core.Store
                   local_retain_days=@rd, network_retain_days=@nrd, ftp_retain_days=@frd, qiniu_retain_days=@qrd, baidu_retain_days=@brd,
                   purge_local=@pl, purge_network=@pn, purge_ftp=@pf, purge_qiniu=@pq, purge_baidu=@pb, purge_time=@pt, log_retain_days=@lrd, updated_utc=@utc WHERE id=1",
                 new SQLiteParameter("@bak", settings.BakPath ?? AppPaths.BakDirectory),
-                new SQLiteParameter("@sid", string.IsNullOrEmpty(settings.SoftwareId) ? AppPaths.ProductName : settings.SoftwareId),
+                new SQLiteParameter("@sid", string.IsNullOrEmpty(settings.SoftwareId) ? AppPaths.ProductPathName : settings.SoftwareId),
                 new SQLiteParameter("@nf", settings.NameFlags == 0 ? NameParts.DefaultFlags : settings.NameFlags),
                 new SQLiteParameter("@zl", settings.ZipLevel),
                 new SQLiteParameter("@umin", settings.UploadMinKbps < 0 ? 0 : settings.UploadMinKbps),
