@@ -49,4 +49,4 @@
 ### Task 3: 本地验收
 
 - [x] **Step 1:** `npm run build` 成功
-- [ ] **Step 2:** 开发服打开首页目视验收 checklist（spec §6）
+- [x] **Step 2:** 开发服打开首页目视验收 checklist（spec §6）
