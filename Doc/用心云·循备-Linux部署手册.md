@@ -50,7 +50,7 @@ npm run build
 
 ```bash
 sudo mkdir -p /opt/yxyxb/api /opt/yxyxb/web /var/lib/yxyxb
-sudo chown -R "$USER":"$USER" /opt/yxy /var/lib/yxyxb
+sudo chown -R "$USER":"$USER" /opt/yxyxb /var/lib/yxyxb
 ```
 
 把 `publish/api` 的内容放到 `/opt/yxyxb/api`，把网页 `dist` 的内容放到 `/opt/yxyxb/web`。
@@ -88,7 +88,7 @@ WantedBy=multi-user.target
 ```bash
 sudo chown -R www-data:www-data /var/lib/yxyxb /opt/yxyxb/api
 sudo systemctl daemon-reload
-sudo systemctl enable --now yxy-api
+sudo systemctl enable --now yxyxb-api
 ```
 
 确认本机接口：
@@ -196,7 +196,7 @@ http://download.yongxinyun.com/yxyxb/yxyxb.zip
 
 | 检查 | 期望 |
 | --- | --- |
-| `systemctl status yxy-api` | active (running) |
+| `systemctl status yxyxb-api` | active (running) |
 | `http://服务器IP` | 打开介绍首页 |
 | `http://服务器IP/login` | 打开登录页，刷新不出现 404 |
 | `http://服务器IP/api/public/price` | 返回价格 JSON |
