@@ -27,38 +27,38 @@ firewall-cmd --reload
 
 ## 2. 打包
 
-接口是 .NET 程序，可以在 Windows 开发机上发布，再把目录拷到 Linux。不要在 Linux 上运行里面的 `Yxy.Api.exe`。
+接口是 .NET 程序，可以在 Windows 开发机上发布，再把目录拷到 Linux。不要在 Linux 上运行里面的 `YxyXb.Api.exe`。
 
 在仓库根目录执行：
 
 ```powershell
-dotnet publish src/Yxy.Api/Yxy.Api.csproj -c Release -o publish/api
+dotnet publish src/YxyXb.Api/YxyXb.Api.csproj -c Release -o publish/api
 ```
 
-网页在 `src/Yxy.Web` 里执行（需要 Node.js 18 或更高版本）：
+网页在 `src/YxyXb.Web` 里执行（需要 Node.js 18 或更高版本）：
 
 ```powershell
 npm install
 npm run build
 ```
 
-产物在 `src/Yxy.Web/dist`。
+产物在 `src/YxyXb.Web/dist`。
 
-若 Linux 上启动接口时报找不到 SQLite 本机库，改在 Linux 上进入仓库再执行一次 `dotnet publish src/Yxy.Api/Yxy.Api.csproj -c Release -o /opt/yxy/api`。
+若 Linux 上启动接口时报找不到 SQLite 本机库，改在 Linux 上进入仓库再执行一次 `dotnet publish src/YxyXb.Api/YxyXb.Api.csproj -c Release -o /opt/yxyxb/api`。
 
 ## 3. 放到服务器
 
 ```bash
-sudo mkdir -p /opt/yxy/api /opt/yxy/web /var/lib/yxy
-sudo chown -R "$USER":"$USER" /opt/yxy /var/lib/yxy
+sudo mkdir -p /opt/yxyxb/api /opt/yxyxb/web /var/lib/yxyxb
+sudo chown -R "$USER":"$USER" /opt/yxy /var/lib/yxyxb
 ```
 
-把 `publish/api` 的内容放到 `/opt/yxy/api`，把网页 `dist` 的内容放到 `/opt/yxy/web`。
+把 `publish/api` 的内容放到 `/opt/yxyxb/api`，把网页 `dist` 的内容放到 `/opt/yxyxb/web`。
 
-编辑 `/opt/yxy/api/appsettings.json`：
+编辑 `/opt/yxyxb/api/appsettings.json`：
 
 1. 把 `Admin:Password` 改成强密码。这个密码只在第一次启动、库里还没有管理员时写入。启动后再改文件，不会改掉已经存在的管理员。
-2. 数据库使用绝对路径：`"Web": "Data Source=/var/lib/yxy/yxy-api.db"`。
+2. 数据库使用绝对路径：`"Web": "Data Source=/var/lib/yxyxb/yxy-api.db"`。
 
 账号名保持 `admin`。
 
@@ -72,8 +72,8 @@ Description=用心云网站接口
 After=network.target
 
 [Service]
-WorkingDirectory=/opt/yxy/api
-ExecStart=/usr/bin/dotnet /opt/yxy/api/Yxy.Api.dll --urls http://127.0.0.1:5080
+WorkingDirectory=/opt/yxyxb/api
+ExecStart=/usr/bin/dotnet /opt/yxyxb/api/YxyXb.Api.dll --urls http://127.0.0.1:5080
 Environment=ASPNETCORE_ENVIRONMENT=Production
 Restart=always
 RestartSec=5
@@ -86,7 +86,7 @@ WantedBy=multi-user.target
 `www-data` 必须能写数据库目录：
 
 ```bash
-sudo chown -R www-data:www-data /var/lib/yxy /opt/yxy/api
+sudo chown -R www-data:www-data /var/lib/yxyxb /opt/yxyxb/api
 sudo systemctl daemon-reload
 sudo systemctl enable --now yxy-api
 ```
@@ -99,7 +99,7 @@ curl -s http://127.0.0.1:5080/api/public/price
 
 能看到价格 JSON 即可。生产环境不会返回开发用的验证码，模拟支付接口也不存在。
 
-以后更新接口：`sudo systemctl stop yxy-api`，覆盖 `/opt/yxy/api` 里的程序文件，不要动 `/var/lib/yxy`，再 `sudo systemctl start yxy-api`。
+以后更新接口：`sudo systemctl stop yxyxb-api`，覆盖 `/opt/yxyxb/api` 里的程序文件，不要动 `/var/lib/yxyxb`，再 `sudo systemctl start yxyxb-api`。
 
 ## 5. Nginx
 
@@ -109,7 +109,7 @@ curl -s http://127.0.0.1:5080/api/public/price
 server {
     listen 80 default_server;
     server_name _;
-    root /opt/yxy/web;
+    root /opt/yxyxb/web;
     index index.html;
 
     location /api/ {
@@ -136,7 +136,7 @@ sudo nginx -t
 sudo systemctl reload nginx
 ```
 
-有域名和证书时，把 `server_name _` 改成域名，再用 certbot 或已有证书增加 443。证书配好后，客户端和浏览器都改用 `https://域名`。更新网页时覆盖 `/opt/yxy/web`，不要删掉 Nginx 配置。
+有域名和证书时，把 `server_name _` 改成域名，再用 certbot 或已有证书增加 443。证书配好后，客户端和浏览器都改用 `https://域名`。更新网页时覆盖 `/opt/yxyxb/web`，不要删掉 Nginx 配置。
 
 ### 正式官网注意项（backup.yongxincloud.cn）
 
@@ -160,7 +160,7 @@ ssl_ciphers ECDHE-RSA-AES256-GCM-SHA384:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-RSA-AE
 | 2012 R2 | `ECDHE-RSA-AES256-SHA384`（CBC） |
 | 2012 / 已补丁 Win7·2008 R2 | 后面的 SHA256 / SHA |
 
-不要开 TLS 1.0 / 1.1。证书链保持完整（含中间证）。客户端强制 TLS 1.2，拷到 2012 R2 时必须带 `Yxy.Client.exe.config`。
+不要开 TLS 1.0 / 1.1。证书链保持完整（含中间证）。客户端强制 TLS 1.2，拷到 2012 R2 时必须带 `YxyXb.Client.exe.config`。
 
 若 443 在云负载均衡上终结：到控制台 SSL 策略加入同等套件，不要只留 `ECDHE-RSA-AES*-GCM-*`。只改 Nginx、SLB 仍只开 GCM 时，2012 R2 照样登不上。
 
@@ -178,7 +178,7 @@ ssl_ciphers ECDHE-RSA-AES256-GCM-SHA384:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-RSA-AE
 http://download.yongxinyun.com/yxyxb/yxyxb.zip
 ```
 
-营销页的「下载」和登录后的「客户端下载」都指向这个地址。开发机重新打包时，客户端在 `publish\desktop\Yxy.Client.exe`，服务在同目录的 `Yxy.Engine.exe`。
+营销页的「下载」和登录后的「客户端下载」都指向这个地址。开发机重新打包时，客户端在 `publish\desktop\YxyXb.Client.exe`，服务在同目录的 `YxyXb.Engine.exe`。
 
 客户端左下角「官网」打开 https://backup.yongxincloud.cn 。
 
