@@ -58,13 +58,13 @@ sudo chown -R "$USER":"$USER" /opt/yxyxb /var/lib/yxyxb
 编辑 `/opt/yxyxb/api/appsettings.json`：
 
 1. 把 `Admin:Password` 改成强密码。这个密码只在第一次启动、库里还没有管理员时写入。启动后再改文件，不会改掉已经存在的管理员。
-2. 数据库使用绝对路径：`"Web": "Data Source=/var/lib/yxyxb/yxy-api.db"`。
+2. 数据库使用绝对路径：`"Web": "Data Source=/var/lib/yxyxb/yxyxb-api.db"`。
 
 账号名保持 `admin`。
 
 ## 4. 用 systemd 启动接口
 
-新建 `/etc/systemd/system/yxy-api.service`：
+新建 `/etc/systemd/system/yxyxb-api.service`：
 
 ```ini
 [Unit]
