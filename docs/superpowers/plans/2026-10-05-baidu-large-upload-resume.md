@@ -195,7 +195,7 @@ public void Checkpoint_MatchesAndGates()
             Size = 3L * BaiduSlices.BlockSize,
             BlockSize = BaiduSlices.BlockSize,
             BlockMd5 = md5,
-            RemotePath = "/apps/用心云备份/x.zip",
+            RemotePath = "/apps/用心云循备/x.zip",
             UploadId = "u1",
             DonePartSeq = new[] { 0, 1 }
         };
@@ -367,7 +367,7 @@ public void Upload_ResumesMissingPartsOnly()
         for (var i = 0; i < bytes.Length; i++) bytes[i] = 1;
         var file = WriteTemp(bytes);
         var md5s = BaiduSlices.Md5HexList(file);
-        var remote = CloudObjectKeys.BaiduRemotePath("用心云备份", "k.zip");
+        var remote = CloudObjectKeys.BaiduRemotePath("用心云·循备", "k.zip");
         var cp = new BaiduUploadCheckpoint
         {
             LocalPath = Path.GetFullPath(file),
@@ -592,7 +592,7 @@ git -c user.name=yxy -c user.email=yxy@local commit -m "feat: purge old sqlite l
 ### Task 7: 文档
 
 **Files:**
-- Modify: `Doc/用心云备份-操作手册.md`、`Doc/用心云备份-本期成果预览.md`
+- Modify: `Doc/用心云·循备-操作手册.md`、`Doc/用心云·循备-本期成果预览.md`
 - Modify: `docs/superpowers/specs/2026-10-05-baidu-large-upload-resume-design.md`（状态改为已落地）
 
 - [ ] **Step 1–2:** 无测

@@ -13,7 +13,7 @@
 - 产品统一百度应用；AppKey/Secret 只在客户端 `BaiduApp.json`，仓库只提交 `BaiduApp.example.json`。
 - token 只存本机 `cloud_accounts.fields_protected`；网站不参与。
 - 任务只选一个云（七牛或百度）。
-- 网盘路径：`/apps/{AppFolderName}/{CloudObjectKeys 对象名}`，默认 AppFolderName 为 `用心云备份`。
+- 网盘路径：`/apps/{AppFolderName}/{CloudObjectKeys 对象名}`，默认 AppFolderName 为 `用心云循备`。
 - 分片 4MB、同时 2 路；上传上下限与七牛共用；上限 0 不限速。
 - 同一次任务内分片重试 3 次；不跨进程续 `uploadid`。
 - 删除与七牛并列：`purge_baidu`、`baidu_retain_days` 默认 7；只删产品前缀。
@@ -78,9 +78,9 @@ namespace Yxy.Core.Tests
         [Test]
         public void RemotePath_UsesAppsFolderAndObjectKey()
         {
-            var key = CloudObjectKeys.ForZip("用心云备份", "file", "日报", @"D:\a\x.zip");
-            var path = CloudObjectKeys.BaiduRemotePath("用心云备份", key);
-            Assert.That(path, Is.EqualTo("/apps/用心云备份/" + key));
+            var key = CloudObjectKeys.ForZip("用心云·循备", "file", "日报", @"D:\a\x.zip");
+            var path = CloudObjectKeys.BaiduRemotePath("用心云·循备", key);
+            Assert.That(path, Is.EqualTo("/apps/用心云循备/" + key));
         }
 
         [Test]
@@ -124,7 +124,7 @@ Expected: FAIL（`Baidu` / `BaiduRemotePath` / `IsBaiduReady` / `CloudChoice` �
 ```csharp
 public static string BaiduRemotePath(string appFolder, string objectKey)
 {
-    var folder = Safe(string.IsNullOrWhiteSpace(appFolder) ? "用心云备份" : appFolder);
+    var folder = Safe(string.IsNullOrWhiteSpace(appFolder) ? "用心云·循备" : appFolder);
     var key = (objectKey ?? "").Replace('\\', '/').TrimStart('/');
     return "/apps/" + folder + "/" + key;
 }
@@ -349,7 +349,7 @@ git commit -m "feat: persist baidu tokens and purge settings"
 
 **Interfaces:**
 - Consumes: 无网络
-- Produces: `BaiduAppConfig` 属性 `AppKey, AppSecret, RedirectUri, AppFolderName`；`Load(string path)`；缺文件或 Key 空抛 `InvalidOperationException("未配置百度应用")`。默认 RedirectUri `http://127.0.0.1:17890/baidu/`，默认 AppFolderName `用心云备份`。`BaiduSlices.BlockSize = 4 * 1024 * 1024`；`Md5HexList(string localPath)` 返回小写 hex 列表。`BaiduOAuth.AuthorizeUrl(BaiduAppConfig, string state)`；`TryParseCallback(string url, string expectedState, out string code, out string error)`。`BytePacer` 与七牛相同算法，复制到本项目。
+- Produces: `BaiduAppConfig` 属性 `AppKey, AppSecret, RedirectUri, AppFolderName`；`Load(string path)`；缺文件或 Key 空抛 `InvalidOperationException("未配置百度应用")`。默认 RedirectUri `http://127.0.0.1:17890/baidu/`，默认 AppFolderName `用心云循备`。`BaiduSlices.BlockSize = 4 * 1024 * 1024`；`Md5HexList(string localPath)` 返回小写 hex 列表。`BaiduOAuth.AuthorizeUrl(BaiduAppConfig, string state)`；`TryParseCallback(string url, string expectedState, out string code, out string error)`。`BytePacer` 与七牛相同算法，复制到本项目。
 
 - [ ] **Step 1: Write the failing test**
 
@@ -402,7 +402,7 @@ namespace Yxy.Baidu.Tests
                 AppKey = "ak",
                 AppSecret = "sk",
                 RedirectUri = "http://127.0.0.1:17890/baidu/",
-                AppFolderName = "用心云备份"
+                AppFolderName = "用心云·循备"
             };
             var url = BaiduOAuth.AuthorizeUrl(cfg, "st-1");
             Assert.That(url, Does.Contain("client_id=ak"));
@@ -425,7 +425,7 @@ namespace Yxy.Baidu.Tests
   "AppKey": "",
   "AppSecret": "",
   "RedirectUri": "http://127.0.0.1:17890/baidu/",
-  "AppFolderName": "用心云备份"
+  "AppFolderName": "用心云·循备"
 }
 ```
 
@@ -436,7 +436,7 @@ Expected: FAIL（类型不存在或方法未实现）
 
 - [ ] **Step 3: Write minimal implementation**
 
-`BaiduAppConfig.Load`：文件不存在或 `AppKey`/`AppSecret` 空白 → `未配置百度应用`。`RedirectUri` 空则用默认并保证以 `/` 结尾。`AppFolderName` 空则 `用心云备份`。
+`BaiduAppConfig.Load`：文件不存在或 `AppKey`/`AppSecret` 空白 → `未配置百度应用`。`RedirectUri` 空则用默认并保证以 `/` 结尾。`AppFolderName` 空则 `用心云循备`。
 
 `BaiduSlices.Md5HexList`：按 4MB 读文件，每片 MD5 小写 hex。
 
@@ -562,13 +562,13 @@ git commit -m "feat: register baidu storage in the cloud factory"
 
 `BaiduStorageTests`：
 
-1. 本地 5 字节文件 Upload：至少各一次 precreate 与 create；Calls 里 superfile2 出现；`path` 以 `/apps/用心云备份/` 开头。
+1. 本地 5 字节文件 Upload：至少各一次 precreate 与 create；Calls 里 superfile2 出现；`path` 以 `/apps/用心云循备/` 开头。
 2. `return_type=2` 时不出现 superfile2。
-3. DeleteExpired：prefix `用心云备份/`，older 为昨天；只回调旧对象 key；新对象不删。
+3. DeleteExpired：prefix `用心云循备/`，older 为昨天；只回调旧对象 key；新对象不删。
 4. `TokenExpiryUtc = UtcNow.AddMinutes(-1)` 时 Upload 先出现 `grant_type=refresh_token`；PersistAccount 收到 `at-new`。
 5. 无 refresh：Upload 抛授权异常。
 
-用内部构造传入 Fake 与 `BaiduAppConfig { AppFolderName = "用心云备份", AppKey="k", AppSecret="s" }`。
+用内部构造传入 Fake 与 `BaiduAppConfig { AppFolderName = "用心云·循备", AppKey="k", AppSecret="s" }`。
 
 - [ ] **Step 2: Run test to verify it fails**
 
@@ -760,7 +760,7 @@ git commit -m "feat: authorize baidu in the cloud page and task picker"
 
 1. 云备份页能选百度；未配置 json 时授权提示「未配置百度应用」。
 2. 授权成功后显示脱敏用户名；任务下拉出现百度。
-3. 跑一个小文件任务，网盘出现 `/apps/用心云备份/...zip`。
+3. 跑一个小文件任务，网盘出现 `/apps/用心云循备/...zip`。
 4. 勾删百度、保留天数 7；日志格式符合规格。
 5. 七牛原路径仍可用。日志无 token。
 
@@ -780,6 +780,6 @@ git commit -m "fix: finish baidu connection test against uinfo"
 
 ## Self-review
 
-1. Spec coverage: 统一应用与本机 Secret → Task 3/7；localhost 固定端口 → Task 7；token 落库 → Task 2；单选云 → Task 1/7；路径 `/apps/用心云备份/` → Task 1/5；4MB 2 路限速 → Task 3/5；删除并列 → Task 2/6；工厂 ICloudStorage → Task 4；测试不连真网 → Task 1–6；网站不参与 → 无 API 任务。
+1. Spec coverage: 统一应用与本机 Secret → Task 3/7；localhost 固定端口 → Task 7；token 落库 → Task 2；单选云 → Task 1/7；路径 `/apps/用心云循备/` → Task 1/5；4MB 2 路限速 → Task 3/5；删除并列 → Task 2/6；工厂 ICloudStorage → Task 4；测试不连真网 → Task 1–6；网站不参与 → 无 API 任务。
 2. 无 TBD。`return_type=2` 秒传路径已写死。
 3. 名称一致：`IsBaiduReady`、`CloudProviders.Baidu`、`BaiduRemotePath`、`PersistAccount`、`HasAnyPurge`。

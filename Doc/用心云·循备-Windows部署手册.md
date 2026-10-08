@@ -1,4 +1,4 @@
-# 用心云备份 Windows 部署手册
+# 用心云·循备 Windows 部署手册
 
 本文说明如何把网站和接口部署到一台 Windows 服务器。桌面客户端不装在这台服务器上，它装在每台使用备份的 Windows 电脑上。
 
@@ -124,7 +124,7 @@ Invoke-WebRequest -UseBasicParsing http://127.0.0.1:5080/api/public/price
 客户端只安装在使用备份的 Windows 电脑上。安装包：
 
 ```text
-http://download.yongxinyun.com/yongxinyunbackup/yongxinyunbackup.zip
+http://download.yongxinyun.com/yxyxb/yxyxb.zip
 ```
 
 营销页的「下载」和登录后的「客户端下载」都指向这个地址。开发机重新打包时，客户端在 `publish\desktop\Yxy.Client.exe`，服务在同目录的 `Yxy.Engine.exe`。本机 `dist` 若被正在运行的备份服务锁住，用 `publish\desktop`。
@@ -141,7 +141,7 @@ http://download.yongxinyun.com/yongxinyunbackup/yongxinyunbackup.zip
 
 可以登录、注册、看订阅和订单，也可以在厂商后台配置发信。密码和登录令牌在网络上是明文，只适合内网试用。
 
-支付宝、百度应用的字段和开放平台对齐项见《用心云备份-配置手册》。没有 `appsettings.Local.json` 时购买页无法真实支付。购买页不提供微信支付。
+支付宝、百度应用的字段和开放平台对齐项见《用心云·循备-配置手册》。没有 `appsettings.Local.json` 时购买页无法真实支付。购买页不提供微信支付。
 
 ## 9. 检查
 

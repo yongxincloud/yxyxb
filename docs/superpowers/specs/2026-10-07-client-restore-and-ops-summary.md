@@ -31,7 +31,7 @@
 
 ## 本机测试
 
-- 程序目录：`D:\yongxinyunbackup\yongxinyunbackup\`（保留 `data` / `bak`）
+- 程序目录：`D:\yxyxb\`（保留 `data` / `bak`）
 - API `5080` + Web `5173`；`data\site.url` → `http://127.0.0.1:5080`
 - 仓库内 `bin` / `obj` / `dist` / `publish` 可删，以程序目录与按需重建为准
 

@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** 将产品从「用心云备份」全面更名为对外「用心云·循备」、路径「用心云循备」、工程与服务 `YxyXb.*` / `YxyXbService`，并按备份提交 → 三波次落地。
+**Goal:** 将产品从「用心云循备」全面更名为对外「用心云·循备」、路径「用心云循备」、工程与服务 `YxyXb.*` / `YxyXbService`，并按备份提交 → 三波次落地。
 
 **Architecture:** 先拆分并固化 `AppPaths` 品牌常量（显示名 / 路径名 / 服务名），清扫用户可见文案与 Doc；再改 Windows 服务内部名；最后批量重命名命名空间、项目、解决方案与仓库目录。旧用户路径与 `yxy.db` 不自动搬迁，仅做读兼容。
 
@@ -16,10 +16,10 @@
 - 「循备」不得单独作为窗口/页面主标题。
 - 客户端主题下拉项「用心云」（Tag `yongxin`）保留为公司皮肤名，不改为产品全称。
 - Logo `alt` 与页面 title 用「用心云·循备」。
-- 已装用户「用心云备份」目录、旧百度数据、旧服务名：**不自动迁移**；升级靠文档与读兼容。
+- 已装用户「用心云循备」目录、旧百度数据、旧服务名：**不自动迁移**；升级靠文档与读兼容。
 - 改名前必须先完成 Task 0 备份提交；未配置 git `user.name`/`user.email` 时先由维护者配置（代理不得擅自 `git config`）。
 - 工作区若已有无关改动（如百度模块），备份提交前与维护者确认是否一并纳入；本计划默认「纳入当前全部已跟踪修改 + 已暂存 design spec」，未跟踪大文件另议。
-- 历史 `docs/superpowers/plans/*` / 旧 spec 内「用心云备份」可随波次 1 链接更新一并替换；不必改写 git 历史。
+- 历史 `docs/superpowers/plans/*` / 旧 spec 内「用心云循备」可随波次 1 链接更新一并替换；不必改写 git 历史。
 
 ## File Structure
 
@@ -39,7 +39,7 @@
 | `src/Yxy.Api/**` | 邮件主题等 |
 | `src/Yxy.Web/src/brand.js`（新建） | Web 品牌字符串单源 |
 | `src/Yxy.Web/index.html` + `views/*` | 官网/门户文案 |
-| `Doc/用心云备份-*.md` → `Doc/用心云·循备-*.md` | 用户/运维文档 |
+| `Doc/用心云·循备-*.md` → `Doc/用心云·循备-*.md` | 用户/运维文档 |
 | `deploy/linux/install.sh` | 部署路径与文案（波次 3） |
 | `Yxy.sln` → `YxyXb.sln` | 解决方案 |
 | `tests/**` | 常量与路径断言、兼容用例 |
@@ -110,7 +110,7 @@ Expected: 新 commit 存在；工作区干净（或仅剩维护者明确排除�
   - `ProductDisplayName` = `"用心云·循备"`
   - `ProductPathName` = `"用心云循备"`
   - `ProductShortName` = `"循备"`
-  - `ServiceName` 暂仍 `"YxyBackupService"`（波次 2 再改）
+  - `ServiceName` 暂仍 `"YxyXbService"`（波次 2 再改）
   - `ServiceDisplayName` = `"用心云·循备 Service"`
   - `DefaultBakDirectory` = `@"D:\yxyxb\bak"`
   - `DatabaseFileNameNew` = `"yxyxb.db"`；`DatabaseFileNameLegacy` = `"yxy.db"`
@@ -137,7 +137,7 @@ namespace Yxy.Core.Tests
             Assert.That(AppPaths.ProductShortName, Is.EqualTo("循备"));
             Assert.That(AppPaths.ServiceDisplayName, Is.EqualTo("用心云·循备 Service"));
             Assert.That(AppPaths.DefaultBakDirectory, Is.EqualTo(@"D:\yxyxb\bak"));
-            Assert.That(AppPaths.ServiceName, Is.EqualTo("YxyBackupService"));
+            Assert.That(AppPaths.ServiceName, Is.EqualTo("YxyXbService"));
         }
 
         [Test]
@@ -187,7 +187,7 @@ Run:
 dotnet test D:\AICode\Cursor\yongxinyunbak\tests\Yxy.Core.Tests\Yxy.Core.Tests.csproj --filter FullyQualifiedName~AppPathsBrandTests
 ```
 
-Expected: FAIL（缺少新常量或旧值仍为「用心云备份」）。
+Expected: FAIL（缺少新常量或旧值仍为「用心云循备」）。
 
 - [ ] **Step 3: Write minimal implementation**
 
@@ -197,7 +197,7 @@ Expected: FAIL（缺少新常量或旧值仍为「用心云备份」）。
 public const string ProductDisplayName = "用心云·循备";
 public const string ProductPathName = "用心云循备";
 public const string ProductShortName = "循备";
-public const string ServiceName = "YxyBackupService";
+public const string ServiceName = "YxyXbService";
 public const string ServiceDisplayName = "用心云·循备 Service";
 public const string DefaultBakDirectory = @"D:\yxyxb\bak";
 public const string DatabaseFileNameLegacy = "yxy.db";
@@ -261,7 +261,7 @@ git commit -m "refactor: split AppPaths brand display and path constants"
 
 - [ ] **Step 1: Write / update failing assertions in Baidu + PhaseE tests**
 
-将测试中的 `"用心云备份"` 全部改为 `"用心云循备"`（路径语义）。`BaiduAppConfig.DefaultAppFolderName` 期望值改为 `"用心云循备"`。
+将测试中的 `"用心云·循备"` 全部改为 `"用心云循备"`（路径语义）。`BaiduAppConfig.DefaultAppFolderName` 期望值改为 `"用心云循备"`。
 
 - [ ] **Step 2: Run filtered tests — expect fail if production constants still old**
 
@@ -274,7 +274,7 @@ dotnet test D:\AICode\Cursor\yongxinyunbak\tests\Yxy.Core.Tests\Yxy.Core.Tests.c
 
 规则：
 
-1. 硬编码 `"用心云备份"` 且表示**路径/文件夹/客户标识默认** → `AppPaths.ProductPathName` 或字面 `"用心云循备"`（库默认 SQL 字面量用 `'用心云循备'`）。
+1. 硬编码 `"用心云·循备"` 且表示**路径/文件夹/客户标识默认** → `AppPaths.ProductPathName` 或字面 `"用心云循备"`（库默认 SQL 字面量用 `'用心云循备'`）。
 2. `CloudObjectKeys` / `BaiduAppConfig.DefaultAppFolderName` → `"用心云循备"`。
 3. `VolumeMarkerStore`：
 
@@ -297,7 +297,7 @@ public static string LegacyMarkerPath(string root)
 
 public static string LegacyAltMarkerPath(string root)
 {
-    return Path.Combine(root.TrimEnd('\\'), "用心云备份", ".yxybackup", "volume.marker.json");
+    return Path.Combine(root.TrimEnd('\\'), "用心云·循备", ".yxybackup", "volume.marker.json");
 }
 ```
 
@@ -332,11 +332,11 @@ git commit -m "refactor: use 用心云循备 for default path and cloud folder n
 - Modify: `src/Yxy.Core/Runtime/StartupHelper.cs`
 - Modify: `src/Yxy.Core/Service/WindowsServiceControl.cs`（仅 description / display name 字符串；`ServiceName` 仍旧）
 - Modify: `src/Yxy.Engine/Program.cs`
-- Modify: `src/Yxy.Engine/YxyBackupService.cs`（若含显示文案）
+- Modify: `src/Yxy.Engine/YxyXbService.cs`（若含显示文案）
 
 **Interfaces:**
 - Consumes: `AppPaths.ProductDisplayName`、`ProductPathName`、`ServiceDisplayName`
-- Produces: UI 全称「用心云·循备」；启动项新值名；启用启动时删除旧值名「用心云备份」
+- Produces: UI 全称「用心云·循备」；启动项新值名；启用启动时删除旧值名「用心云循备」
 
 - [ ] **Step 1: Write failing test for StartupHelper cleanup**
 
@@ -346,7 +346,7 @@ git commit -m "refactor: use 用心云循备 for default path and cloud folder n
 public void Apply_Writes_New_Value_And_Removes_Legacy()
 {
     // 使用 CurrentUser Run key；测试后必须删除测试写入的值
-    const string legacy = "用心云备份";
+    const string legacy = "用心云·循备";
     const string modern = "用心云·循备";
     var exe = @"C:\Temp\Yxy.Client.exe";
     using (var key = Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Run", true))
@@ -369,7 +369,7 @@ public void Apply_Writes_New_Value_And_Removes_Legacy()
 
 ```csharp
 private const string ValueName = "用心云·循备";
-private const string LegacyValueName = "用心云备份";
+private const string LegacyValueName = "用心云·循备";
 
 public static void Apply(bool enabled, string exePath)
 {
@@ -469,7 +469,7 @@ npm test -- brand.test.js
 - [ ] **Step 3: Add brand.js and wire views**
 
 `index.html`：`<title>`、`<h1>`、`meta description` 使用「用心云·循备」。  
-Vue 文案：把「用心云备份」改为「用心云·循备」；可 `import { PRODUCT_DISPLAY_NAME } from '../brand.js'` 或同目录相对路径。  
+Vue 文案：把「用心云循备」改为「用心云·循备」；可 `import { PRODUCT_DISPLAY_NAME } from '../brand.js'` 或同目录相对路径。  
 Logo `alt`：`用心云·循备`。  
 API：
 
@@ -505,30 +505,30 @@ git commit -m "feat: rebrand web and mail copy to 用心云·循备"
 ### Task 5: Doc 改名与链接更新（波次 1）
 
 **Files:**
-- Rename: `Doc/用心云备份-*.md` → `Doc/用心云·循备-*.md`
+- Rename: `Doc/用心云·循备-*.md` → `Doc/用心云·循备-*.md`
 - Modify: 所有指向旧文件名的链接（`Doc/*`、`docs/superpowers/**`、`deploy/linux/install.sh` 注释）
 
 **Interfaces:**
-- Produces: 仓库内无路径 `Doc/用心云备份-` 文件名残留
+- Produces: 仓库内无路径 `Doc/用心云·循备-` 文件名残留
 
 Doc 清单（改名前）：
 
-1. `用心云备份-PRD.md`
-2. `用心云备份-开发计划.md`
-3. `用心云备份-本期成果预览.md`
-4. `用心云备份-操作手册.md`
-5. `用心云备份-后台系统开发需求文档.md`
-6. `用心云备份-配置手册.md`
-7. `用心云备份-Linux部署手册.md`
-8. `用心云备份-Windows部署手册.md`
-9. `用心云备份-2026-10-07-服务器更新说明.md`
+1. `用心云·循备-PRD.md`
+2. `用心云·循备-开发计划.md`
+3. `用心云·循备-本期成果预览.md`
+4. `用心云·循备-操作手册.md`
+5. `用心云·循备-后台系统开发需求文档.md`
+6. `用心云·循备-配置手册.md`
+7. `用心云·循备-Linux部署手册.md`
+8. `用心云·循备-Windows部署手册.md`
+9. `用心云·循备-2026-10-07-服务器更新说明.md`
 
 - [ ] **Step 1: Rename files (git mv)**
 
 ```powershell
 cd D:\AICode\Cursor\yongxinyunbak\Doc
-Get-ChildItem -Filter "用心云备份-*.md" | ForEach-Object {
-  $new = $_.Name -replace '^用心云备份-','用心云·循备-'
+Get-ChildItem -Filter "用心云·循备-*.md" | ForEach-Object {
+  $new = $_.Name -replace '^用心云·循备-','用心云·循备-'
   git mv -- $_.Name $new
 }
 ```
@@ -537,18 +537,18 @@ Get-ChildItem -Filter "用心云备份-*.md" | ForEach-Object {
 
 对 `Doc/` 与 `docs/superpowers/`：
 
-- 链接文本/路径 `用心云备份-` → `用心云·循备-`
-- 叙述性产品全称「用心云备份」→「用心云·循备」
-- 路径示例「用心云备份」目录 →「用心云循备」
-- 默认 `D:\yongxinyunbackup\bak` → `D:\yxyxb\bak`
+- 链接文本/路径 `用心云·循备-` → `用心云·循备-`
+- 叙述性产品全称「用心云循备」→「用心云·循备」
+- 路径示例「用心云循备」目录 →「用心云循备」
+- 默认 `D:\yxyxb\bak` → `D:\yxyxb\bak`
 - 服务显示名 →「用心云·循备 Service」
-- **波次 1 文档中服务内部名仍可写 `YxyBackupService`**，并加一句「波次 2 将改为 `YxyXbService`」——或直接提前写成新名并注明「代码波次 2 对齐」。本计划选择：**文档在波次 1 已写 `YxyXbService`，并在操作手册增加「若仍为 YxyBackupService 请先卸载再安装」**。
+- **波次 1 文档中服务内部名仍可写 `YxyXbService`**，并加一句「波次 2 将改为 `YxyXbService`」——或直接提前写成新名并注明「代码波次 2 对齐」。本计划选择：**文档在波次 1 已写 `YxyXbService`，并在操作手册增加「若仍为 YxyXbService 请先卸载再安装」**。
 
 - [ ] **Step 3: Grep gate**
 
 ```powershell
-rg -n "用心云备份-" D:\AICode\Cursor\yongxinyunbak\Doc D:\AICode\Cursor\yongxinyunbak\docs
-rg -n "用心云备份" D:\AICode\Cursor\yongxinyunbak\src D:\AICode\Cursor\yongxinyunbak\tests
+rg -n "用心云·循备-" D:\AICode\Cursor\yongxinyunbak\Doc D:\AICode\Cursor\yongxinyunbak\docs
+rg -n "用心云·循备" D:\AICode\Cursor\yongxinyunbak\src D:\AICode\Cursor\yongxinyunbak\tests
 ```
 
 Expected: `Doc`/`docs` 无旧文件名前缀；`src`/`tests` 仅允许：`VolumeMarkerStore` legacy 常量、`StartupHelper` legacy 值名、测试注释标明的兼容夹具。
@@ -593,7 +593,7 @@ git tag wave1-brand-copy
 
 **Files:**
 - Modify: `src/Yxy.Core/AppPaths.cs`（`ServiceName`）
-- Modify: `src/Yxy.Engine/YxyBackupService.cs`（类可暂不改名，或改名为 `YxyXbService`；若改类名同步 `Program.cs`）
+- Modify: `src/Yxy.Engine/YxyXbService.cs`（类可暂不改名，或改名为 `YxyXbService`；若改类名同步 `Program.cs`）
 - Modify: `tests/Yxy.Core.Tests/AppPathsBrandTests.cs`
 - Modify: `Doc/用心云·循备-操作手册.md`（卸载旧服务步骤）
 
@@ -622,10 +622,10 @@ public const string ServiceName = "YxyXbService";
 操作手册增加：
 
 ```markdown
-升级服务名：若「服务」里仍有 YxyBackupService，在客户端首页先停止并卸载，再安装（新内部名 YxyXbService）。
+升级服务名：若「服务」里仍有 YxyXbService，在客户端首页先停止并卸载，再安装（新内部名 YxyXbService）。
 也可用管理员命令：
-sc stop YxyBackupService
-sc delete YxyBackupService
+sc stop YxyXbService
+sc delete YxyXbService
 ```
 
 - [ ] **Step 4: Build + test**
@@ -671,12 +671,12 @@ Get-ChildItem "$root\src","$root\tests" -Directory -Filter "Yxy.*" | ForEach-Obj
 }
 # 2) 重命名 csproj / 关键服务文件
 Get-ChildItem "$root\src","$root\tests" -Recurse -Include *.csproj,*.cs,*.xaml,*.json,*.js,*.html,*.md,*.sln,*.sh |
-  Where-Object { $_.Name -like 'Yxy.*' -or $_.Name -eq 'YxyBackupService.cs' } | ForEach-Object {
-    $newName = $_.Name -replace '^Yxy\.','YxyXb.' -replace 'YxyBackupService','YxyXbService'
+  Where-Object { $_.Name -like 'Yxy.*' -or $_.Name -eq 'YxyXbService.cs' } | ForEach-Object {
+    $newName = $_.Name -replace '^Yxy\.','YxyXb.' -replace 'YxyXbService','YxyXbService'
     if ($newName -ne $_.Name) { git mv -- $_.FullName (Join-Path $_.DirectoryName $newName) }
   }
 # 3) 内容替换（命名空间 / using / 项目引用 / exe 名）
-# 使用 rg + 编辑器或脚本将 \bYxy\. -> YxyXb. ；YxyBackupService 类名已在上步
+# 使用 rg + 编辑器或脚本将 \bYxy\. -> YxyXb. ；YxyXbService 类名已在上步
 # 注意：不要替换第三方或无关词；替换后检查 Baidu 等第三方 SDK 未被误伤
 ```
 
@@ -765,20 +765,20 @@ git commit -am "docs: point paths to yxyxb repository directory"
 - [ ] **Step 1: Grep gates**
 
 ```powershell
-rg -n "用心云备份" D:\AICode\Cursor\yxyxb\src D:\AICode\Cursor\yxyxb\tests D:\AICode\Cursor\yxyxb\Doc
-rg -n "YxyBackupService" D:\AICode\Cursor\yxyxb
+rg -n "用心云·循备" D:\AICode\Cursor\yxyxb\src D:\AICode\Cursor\yxyxb\tests D:\AICode\Cursor\yxyxb\Doc
+rg -n "YxyXbService" D:\AICode\Cursor\yxyxb
 rg -n "\bYxy\." D:\AICode\Cursor\yxyxb\src D:\AICode\Cursor\yxyxb\tests D:\AICode\Cursor\yxyxb\YxyXb.sln
 rg -n "yongxinyunbackup" D:\AICode\Cursor\yxyxb\src D:\AICode\Cursor\yxyxb\Doc
 ```
 
 Allowed leftovers only:
 
-- Legacy 字符串：`用心云备份` in `StartupHelper` / `VolumeMarkerStore` read paths
+- Legacy 字符串：`用心云循备` in `StartupHelper` / `VolumeMarkerStore` read paths
 - 测试夹具若保留旧名，文件头注释 `# compat fixture: legacy brand`
 
 - [ ] **Step 2: Spec checklist**
 
-1. 用户可见「用心云备份」清零（legacy 除外）  
+1. 用户可见「用心云循备」清零（legacy 除外）  
 2. 正式全称「用心云·循备」  
 3. 新默认「用心云循备」+ `D:\yxyxb\bak`  
 4. `YxyXbService` / 「用心云·循备 Service」  

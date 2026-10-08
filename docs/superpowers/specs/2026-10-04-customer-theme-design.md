@@ -56,7 +56,7 @@ Logo 用 `src/Yxy.img/logo.jpg`。图片是白底，深色区域用白卡片托�
 
 只在这三处放图，图片保持原比例：
 
-1. `HomeView.vue` 顶栏，高度 64px，替换文字「用心云备份」。
+1. `HomeView.vue` 顶栏，高度 64px，替换文字「用心云循备」。
 2. `LoginView.vue` 左侧深色区域，高度 64px，图片放在白底圆角卡片上。
 3. `PortalLayout.vue` 左侧栏，高度 72px，放在邮箱上方。
 

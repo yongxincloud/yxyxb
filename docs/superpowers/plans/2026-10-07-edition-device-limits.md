@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** 将用心云备份授权改为个人/标准/专业三档（默认设备上限 3/10/50、原价 36/98/198），支持后台改价与限期促销、登录占坑与踢出、周期内补差升级，以及首页三列营销价。
+**Goal:** 将用心云·循备授权改为个人/标准/专业三档（默认设备上限 3/10/50、原价 36/98/198），支持后台改价与限期促销、登录占坑与踢出、周期内补差升级，以及首页三列营销价。
 
 **Architecture:** 在现有 `Yxy.Api` 单体上扩展 `Products`、新增 `AccountDevices` 与 `ProductPricing` / `DeviceRegistryService`；`ClientAuthService` 正式授权时占坑；`OrderService` 支持现价下单与 `orderType=3` 升级补差；`Yxy.Web` 首页三列 + 门户设备/升级 + 厂商产品编辑；`Yxy.Client` 处理 `DEVICE_LIMIT` 并提供设备列表踢出。
 
@@ -503,8 +503,8 @@ git commit -m "feat: client handles device limit and device kick UI"
 ### Task 10: 文档口径修订
 
 **Files:**
-- Modify: `Doc/用心云备份-后台系统开发需求文档.md`（§2.1 授权形态、验收「不限台数」、介绍主页文案）
-- Modify: `Doc/用心云备份-PRD.md`（登录与授权「不限台数」句）
+- Modify: `Doc/用心云·循备-后台系统开发需求文档.md`（§2.1 授权形态、验收「不限台数」、介绍主页文案）
+- Modify: `Doc/用心云·循备-PRD.md`（登录与授权「不限台数」句）
 - 可选：部署手册里 `/api/public/price` 说明改为 `plans`
 
 将「不限台数」改为指向三档设备上限，并链到  

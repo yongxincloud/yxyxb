@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# 用心云备份 Linux 生产安装（Ubuntu / Debian）
-# 对应 Doc/用心云备份-Linux部署手册.md 第 3–5 节。
+# 用心云·循备 Linux 生产安装（Ubuntu / Debian）
+# 对应 Doc/用心云·循备-Linux部署手册.md 第 3–5 节。
 # 运行前须已安装 nginx 与 aspnetcore-runtime-8.0。不要只装 dotnet-runtime。
 #
 # 在已含 publish/api 与 src/Yxy.Web/dist 的仓库里：

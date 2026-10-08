@@ -23,7 +23,7 @@
 
 - API：`http://127.0.0.1:5080`
 - Web：`http://127.0.0.1:5173`（代理 `/api`）
-- 测试客户端以程序目录为准：`D:\yongxinyunbackup\yongxinyunbackup\`
+- 测试客户端以程序目录为准：`D:\yxyxb\`
 - `data/site.url` 必须指向本机 API，否则设备不会出现在本地门户
 - 设备名称需用**带新逻辑的客户端**重新登录后才会写入
 - 仓库内 `bin` / `obj` / `dist` / `publish` / `.worktrees` 为可删编译产物，勿当发布源
