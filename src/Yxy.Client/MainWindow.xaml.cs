@@ -31,7 +31,7 @@ namespace Yxy.Client
             InitializeComponent();
             _boot = boot ?? HostBootstrap.Start();
             _tray = new System.Windows.Forms.NotifyIcon();
-            _tray.Text = "用心云备份";
+            _tray.Text = AppPaths.ProductDisplayName;
             var exe = Process.GetCurrentProcess().MainModule.FileName;
             if (File.Exists(exe))
             {

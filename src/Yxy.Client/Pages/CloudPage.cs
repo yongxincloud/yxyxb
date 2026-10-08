@@ -177,7 +177,7 @@ namespace Yxy.Client.Pages
                 return;
             }
 
-            _hint.Text = "扫码或帐号密码二选一。点对应按钮后打开授权窗，成功会自动关闭。已授权时可点「注销」再换其它百度账号。文件进入「我的应用数据 / 用心云备份」。控制台回调须与本机一致；改完约 1 小时生效。";
+            _hint.Text = "扫码或帐号密码二选一。点对应按钮后打开授权窗，成功会自动关闭。已授权时可点「注销」再换其它百度账号。文件进入「我的应用数据 / 用心云循备」。控制台回调须与本机一致；改完约 1 小时生效。";
             ShowBaiduStatus(CloudAccountStore.Get(_boot.Db, CloudProviders.Baidu));
         }
 

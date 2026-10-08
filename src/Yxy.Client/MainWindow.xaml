@@ -1,7 +1,7 @@
 <Window x:Class="Yxy.Client.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="用心云备份"
+        Title="用心云·循备"
         Icon="pack://application:,,,/Assets/logo.ico"
         WindowStyle="None"
         ResizeMode="CanResize"
@@ -21,7 +21,7 @@
                     <StackPanel x:Name="Brand" DockPanel.Dock="Top" Margin="16,22,16,16" MouseLeftButtonDown="Drag_OnDown">
                         <StackPanel Orientation="Horizontal">
                             <Image Source="pack://application:,,,/Assets/logo.ico" Width="28" Height="28" Margin="0,0,10,0"/>
-                            <TextBlock Text="用心云备份" Foreground="{DynamicResource NavText}" FontSize="16" FontWeight="Bold" VerticalAlignment="Center"/>
+                            <TextBlock Text="用心云·循备" Foreground="{DynamicResource NavText}" FontSize="16" FontWeight="Bold" VerticalAlignment="Center"/>
                         </StackPanel>
                         <TextBlock Text="本机加密备份" Foreground="{DynamicResource Accent}" FontSize="11" Margin="38,4,0,0"/>
                     </StackPanel>

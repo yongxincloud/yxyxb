@@ -59,7 +59,7 @@ namespace Yxy.Core.Service
                 return Fail(result.Output);
             }
 
-            RunSc("description " + AppPaths.ServiceName + " \"用心云备份本机任务引擎\"", true);
+            RunSc("description " + AppPaths.ServiceName + " \"用心云·循备本机任务引擎\"", true);
             return WaitUntil(delegate(EngineStatusDto s) { return s.Installed; }, 8);
         }
 

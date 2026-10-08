@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Threading;
 using Yxy.Client.Dialogs;
 using Yxy.Cloud;
+using Yxy.Core;
 using Yxy.Core.Runtime;
 using Yxy.Core.Store;
 
@@ -42,7 +43,7 @@ namespace Yxy.Client
 
         private static void OnDispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
         {
-            MessageBox.Show(e.Exception.Message, "用心云备份");
+            MessageBox.Show(e.Exception.Message, AppPaths.ProductDisplayName);
             e.Handled = true;
         }
     }

@@ -40,7 +40,7 @@
                 <TextBlock Text="目标介质" Grid.Row="2" VerticalAlignment="Center"/>
                 <ComboBox x:Name="CmbMedia" Grid.Row="2" Grid.Column="1" Margin="0,4" DisplayMemberPath="IdentityText"/>
                 <TextBlock Text="盘内目录" Grid.Row="3" VerticalAlignment="Center"/>
-                <TextBox x:Name="TxtFolder" Grid.Row="3" Grid.Column="1" Text="用心云备份" Margin="0,4"/>
+                <TextBox x:Name="TxtFolder" Grid.Row="3" Grid.Column="1" Text="用心云循备" Margin="0,4"/>
                 <TextBlock Text="任务开始时间" Grid.Row="4" VerticalAlignment="Center"/>
                 <md:TimePicker x:Name="TmWinStart" Grid.Row="4" Grid.Column="1" Is24Hours="True" WithSeconds="False" Width="140" HorizontalAlignment="Left" Margin="0,4"/>
                 <TextBlock Text="介质离线时间" Grid.Row="5" VerticalAlignment="Center"/>

@@ -11,7 +11,7 @@ namespace Yxy.Engine
             if (console)
             {
                 var host = new EngineHost();
-                Console.WriteLine("用心云备份引擎（控制台模式）。按 Enter 停止。");
+                Console.WriteLine("用心云·循备引擎（控制台模式）。按 Enter 停止。");
                 host.Start();
                 Console.ReadLine();
                 host.Stop();

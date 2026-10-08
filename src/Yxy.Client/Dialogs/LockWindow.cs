@@ -4,6 +4,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using Yxy.Core;
 
 namespace Yxy.Client.Dialogs
 {
@@ -21,7 +22,7 @@ namespace Yxy.Client.Dialogs
         public LockWindow(string expected, string productName, string cancelText)
         {
             _expected = expected ?? "";
-            Title = string.IsNullOrWhiteSpace(productName) ? "用心云备份" : productName.Trim();
+            Title = string.IsNullOrWhiteSpace(productName) ? AppPaths.ProductDisplayName : productName.Trim();
             Width = 440;
             Height = 260;
             Style = (Style)Application.Current.FindResource("YxyDialog");

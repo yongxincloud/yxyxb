@@ -6,7 +6,8 @@ namespace Yxy.Core.Runtime
     public static class StartupHelper
     {
         private const string RunKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
-        private const string ValueName = "用心云备份";
+        private const string ValueName = "用心云·循备";
+        private const string LegacyValueName = "用心云备份";
 
         public static void Apply(bool enabled, string exePath)
         {
@@ -20,10 +21,22 @@ namespace Yxy.Core.Runtime
                 if (enabled)
                 {
                     key.SetValue(ValueName, "\"" + exePath + "\"");
+                    if (key.GetValue(LegacyValueName) != null)
+                    {
+                        key.DeleteValue(LegacyValueName, false);
+                    }
                 }
-                else if (key.GetValue(ValueName) != null)
+                else
                 {
-                    key.DeleteValue(ValueName, false);
+                    if (key.GetValue(ValueName) != null)
+                    {
+                        key.DeleteValue(ValueName, false);
+                    }
+
+                    if (key.GetValue(LegacyValueName) != null)
+                    {
+                        key.DeleteValue(LegacyValueName, false);
+                    }
                 }
             }
         }

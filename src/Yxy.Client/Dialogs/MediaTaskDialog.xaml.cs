@@ -4,6 +4,7 @@ using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
 using Yxy.Contracts.Dto;
+using Yxy.Core;
 using Yxy.Core.Schedule;
 using Yxy.Core.Store;
 
@@ -56,7 +57,7 @@ namespace Yxy.Client.Dialogs
                 TxtSource.Text = existing.SourcePath;
             }
 
-            TxtFolder.Text = string.IsNullOrEmpty(existing.TargetFolder) ? "用心云备份" : existing.TargetFolder;
+            TxtFolder.Text = string.IsNullOrEmpty(existing.TargetFolder) ? AppPaths.ProductPathName : existing.TargetFolder;
             DateTimePick.SetHmm(TmWinStart, existing.WindowStart);
             DateTimePick.SetHmm(TmWinEnd, existing.WindowEnd);
             TxtWait.Text = existing.WaitMinutes.ToString(CultureInfo.InvariantCulture);
