@@ -2,6 +2,7 @@
 import { onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { get, post } from '../api.js'
+import { PRODUCT_DISPLAY_NAME } from '../brand.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -55,9 +56,9 @@ onMounted(loadCaptcha)
 <template>
   <section class="login">
     <aside>
-      <div class="plate"><img class="logo" src="/logo.jpg" alt="用心云" /></div>
+      <div class="plate"><img class="logo" src="/logo.jpg" :alt="PRODUCT_DISPLAY_NAME" /></div>
       <h1>申请账号，开始本机离线备份</h1>
-      <p>用心云备份把文件和 SQL Server 打成 zip，再拷到已登记的移动硬盘并离线。个人版 / 标准版 / 专业版按可同时登录设备数区分，登录后可在门户选购或续费。</p>
+      <p>{{ PRODUCT_DISPLAY_NAME }}把文件和 SQL Server 打成 zip，再拷到已登记的移动硬盘并离线。个人版 / 标准版 / 专业版按可同时登录设备数区分，登录后可在门户选购或续费。</p>
       <ul>
         <li>本机加密打包，日志留在电脑上</li>
         <li>离线介质到点拷贝并按级别离线</li>

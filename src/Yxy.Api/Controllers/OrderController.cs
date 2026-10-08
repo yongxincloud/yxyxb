@@ -145,7 +145,7 @@ public sealed class OrderController : ControllerBase
         if (order.PayStatus == 1) return BadRequest(new { ok = false, error = "订单已支付" });
         if (order.PayStatus != 0) return BadRequest(new { ok = false, error = "订单已关闭" });
 
-        var subject = order.OrderType == 2 ? "用心云备份试用" : "用心云备份标准版";
+        var subject = order.OrderType == 2 ? "用心云·循备试用" : "用心云·循备标准版";
         string payUrl;
         try
         {

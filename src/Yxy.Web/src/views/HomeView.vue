@@ -2,6 +2,7 @@
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { get } from '../api.js'
+import { PRODUCT_DISPLAY_NAME } from '../brand.js'
 
 const router = useRouter()
 const plans = ref([])
@@ -20,7 +21,7 @@ async function buy(productNo) {
 <template>
   <div class="home">
     <header class="nav">
-      <img class="logo" src="/logo.jpg" alt="用心云" />
+      <img class="logo" src="/logo.jpg" :alt="PRODUCT_DISPLAY_NAME" />
       <span>
         <router-link to="/login">登录</router-link>
         <router-link to="/register">注册</router-link>
@@ -29,7 +30,7 @@ async function buy(productNo) {
     <section class="hero">
       <h1>文件被加密之后，靠的是事先离线的那一份</h1>
       <p>2026 年 8 月，国家计算机病毒应急处理中心通报，我国境内出现多起「Sorry」勒索事件。重要文件被加密后，官方说明：没有解密密钥时，暂时没有可靠的恢复办法。</p>
-      <p>用心云备份运行在 Windows 上。它不查杀病毒，也不能解密。它把文件和 SQL Server 打成 zip，再拷到已登记的移动硬盘并离线。</p>
+      <p>{{ PRODUCT_DISPLAY_NAME }}运行在 Windows 上。它不查杀病毒，也不能解密。它把文件和 SQL Server 打成 zip，再拷到已登记的移动硬盘并离线。</p>
       <p>三档版本按可同时登录设备数区分；续费按当时价格，在原到期日上顺延 365 天。价格由后台配置，促销期内显示促销价。</p>
       <div class="plans" v-if="plans.length">
         <article v-for="plan in plans" :key="plan.productNo" class="plan">

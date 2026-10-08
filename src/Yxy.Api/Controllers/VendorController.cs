@@ -432,7 +432,7 @@ public sealed class VendorController : ControllerBase
         if (!mail.Configured) return BadRequest(new { ok = false, error = "请先保存发信服务器" });
         try
         {
-            await MailSettingsService.SendAsync(mail, email, "用心云备份发信测试", "这是一封测试邮件。收到说明发信服务器可用。");
+            await MailSettingsService.SendAsync(mail, email, "用心云·循备发信测试", "这是一封测试邮件。收到说明发信服务器可用。");
         }
         catch (InvalidOperationException ex)
         {

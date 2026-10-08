@@ -69,7 +69,7 @@ public sealed class AlipayPayTests
             "https://pay.example.com/api/payments/alipay/notify",
             "https://pay.example.com/orders",
             "O202610040001",
-            "用心云备份标准版",
+            "用心云·循备标准版",
             12m,
             when);
 

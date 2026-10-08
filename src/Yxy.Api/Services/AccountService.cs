@@ -35,7 +35,7 @@ public sealed class AccountService
             return Fail(issued.Error == "too_soon" ? "发送过于频繁" : "今日发送次数已达上限");
         try
         {
-            await _mail.SendAsync(email, "用心云备份验证码", "验证码 " + issued.Code + " ，5 分钟内有效。");
+            await _mail.SendAsync(email, "用心云·循备验证码", "验证码 " + issued.Code + " ，5 分钟内有效。");
         }
         catch (InvalidOperationException)
         {
