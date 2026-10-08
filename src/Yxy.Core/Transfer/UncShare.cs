@@ -104,20 +104,49 @@ namespace Yxy.Core.Transfer
 
             var cutoff = utcNow.AddDays(-days);
             var n = 0;
-            var files = Directory.GetFiles(settings.Path, "*.zip", SearchOption.TopDirectoryOnly);
+            // 与本机一致：递归扫子目录，避免日后改成嵌套路径漏删
+            string[] files;
+            try
+            {
+                files = Directory.GetFiles(settings.Path, "*.zip", SearchOption.AllDirectories);
+            }
+            catch (IOException)
+            {
+                return 0;
+            }
+
             for (var i = 0; i < files.Length; i++)
             {
-                if (File.GetLastWriteTimeUtc(files[i]) >= cutoff)
+                var path = files[i];
+                if (path.IndexOf("_mssql_work", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    continue;
+                }
+
+                DateTime mtime;
+                try
+                {
+                    mtime = File.GetLastWriteTimeUtc(path);
+                }
+                catch (IOException)
+                {
+                    continue;
+                }
+
+                if (mtime >= cutoff)
                 {
                     continue;
                 }
 
                 try
                 {
-                    File.Delete(files[i]);
+                    File.Delete(path);
                     n++;
                 }
                 catch (IOException)
+                {
+                }
+                catch (UnauthorizedAccessException)
                 {
                 }
             }

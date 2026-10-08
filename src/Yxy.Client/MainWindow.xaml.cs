@@ -49,6 +49,31 @@ namespace Yxy.Client
             _tray.ContextMenuStrip = menu;
             RefreshLoginButton();
             ShowPage("home");
+            Loaded += MainWindow_OnLoaded;
+        }
+
+        private void MainWindow_OnLoaded(object sender, RoutedEventArgs e)
+        {
+            Loaded -= MainWindow_OnLoaded;
+            if (!SiteLogin.ReconcileDeviceSession(_boot.Db))
+            {
+                RefreshLoginButton();
+                return;
+            }
+
+            RefreshLoginButton();
+            ShowPage("home");
+            MessageBox.Show(
+                this,
+                "检测到本机设备与登录记录不一致（例如程序从其它电脑整包拷贝，或本机不在账号设备列表中）。请重新登录。",
+                "需要重新登录",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+            SiteLogin.Prompt(this, delegate
+            {
+                RefreshLoginButton();
+                ShowPage("home");
+            });
         }
 
         private void Nav_OnClick(object sender, RoutedEventArgs e)

@@ -62,17 +62,41 @@ namespace Yxy.Core.Transfer
             }
 
             var cutoff = utcNow.AddDays(-days);
-            var names = ListNames(settings, settings.RemoteDir);
+            return DeleteOldZipsUnder(settings, settings.RemoteDir, cutoff, 0);
+        }
+
+        /// <summary>
+        /// 递归删除过期 zip（与 DownloadTree 一致）；上传当前虽扁平，子目录内历史文件也能清掉。
+        /// </summary>
+        private static int DeleteOldZipsUnder(FtpSettingsDto settings, string remoteDir, DateTime cutoffUtc, int depth)
+        {
+            if (depth > 12)
+            {
+                return 0;
+            }
+
+            var names = ListNames(settings, remoteDir);
             var n = 0;
             for (var i = 0; i < names.Count; i++)
             {
                 var name = names[i];
-                if (name == "." || name == ".." || !name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
+                if (name == "." || name == "..")
                 {
                     continue;
                 }
 
-                var remote = CombineRemote(settings.RemoteDir, name);
+                var remote = CombineRemote(remoteDir, name);
+                if (IsDirectory(settings, remote))
+                {
+                    n += DeleteOldZipsUnder(settings, remote, cutoffUtc, depth + 1);
+                    continue;
+                }
+
+                if (!name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
                 DateTime stamp;
                 try
                 {
@@ -83,7 +107,7 @@ namespace Yxy.Core.Transfer
                     continue;
                 }
 
-                if (stamp.ToUniversalTime() >= cutoff)
+                if (stamp.ToUniversalTime() >= cutoffUtc)
                 {
                     continue;
                 }

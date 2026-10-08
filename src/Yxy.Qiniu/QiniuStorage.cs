@@ -104,6 +104,12 @@ namespace Yxy.Qiniu
                         continue;
                     }
 
+                    // 只删过期 zip；不以「目录前缀」为删除对象
+                    if (!item.key.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
+                    {
+                        continue;
+                    }
+
                     var time = QiniuHttp.FromPutTime(item.putTime);
                     if (time == DateTime.MinValue)
                     {

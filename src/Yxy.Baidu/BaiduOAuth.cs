@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Net;
 using System.Text;
 using System.Web;
@@ -23,11 +22,14 @@ namespace Yxy.Baidu
                 throw new ArgumentNullException("cfg");
             }
 
+            // force_login=1：不读浏览器里已登录的百度 Cookie，否则注销后扫码仍会回到原账号。
             var url = "https://openapi.baidu.com/oauth/2.0/authorize"
                 + "?response_type=code"
                 + "&client_id=" + Uri.EscapeDataString(cfg.AppKey ?? "")
                 + "&redirect_uri=" + Uri.EscapeDataString(cfg.RedirectUri ?? "")
-                + "&scope=basic,netdisk";
+                + "&scope=basic,netdisk"
+                + "&force_login=1"
+                + "&confirm_login=1";
             if (useQrcode)
             {
                 url += "&qrcode=1";
@@ -143,7 +145,7 @@ namespace Yxy.Baidu
             try
             {
                 var authUrl = AuthorizeUrl(cfg, state, useQrcode);
-                Process browser = null;
+                BaiduAuthSession browser = null;
                 if (openUrl != null)
                 {
                     openUrl(authUrl);

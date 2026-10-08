@@ -184,6 +184,19 @@ namespace Yxy.Baidu
                 dir = dir.TrimEnd('/');
             }
 
+            return DeleteExpiredUnder(dir, olderThanUtc, onDeleted, 0);
+        }
+
+        /// <summary>
+        /// 递归列出子目录，只按文件时间戳删除过期 zip；不按文件夹 mtime 整夹删除。
+        /// </summary>
+        private int DeleteExpiredUnder(string dir, DateTime olderThanUtc, Action<string> onDeleted, int depth)
+        {
+            if (depth > 12 || string.IsNullOrEmpty(dir))
+            {
+                return 0;
+            }
+
             var ser = new JavaScriptSerializer();
             var deleted = 0;
             var start = 0;
@@ -208,10 +221,23 @@ namespace Yxy.Baidu
                         continue;
                     }
 
-                    var time = FromUnix(item.server_mtime);
+                    // 目录：只递归进入，永远不调用 delete（禁止整夹删除）
+                    if (item.isdir != 0)
+                    {
+                        deleted += DeleteExpiredUnder(item.path, olderThanUtc, onDeleted, depth + 1);
+                        continue;
+                    }
+
+                    // 只删过期 zip 文件，其它文件类型一律保留
+                    if (!item.path.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
+                    {
+                        continue;
+                    }
+
+                    var time = ParseStampFromKey(item.path);
                     if (time == DateTime.MinValue)
                     {
-                        time = ParseStampFromKey(item.path);
+                        time = FromUnix(item.server_mtime);
                     }
 
                     if (time == DateTime.MinValue || time >= olderThanUtc)
@@ -551,5 +577,8 @@ namespace Yxy.Baidu
         public string server_filename { get; set; }
 
         public long server_mtime { get; set; }
+
+        /// <summary>百度 list：0=文件，1=目录。</summary>
+        public int isdir { get; set; }
     }
 }

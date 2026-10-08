@@ -33,6 +33,7 @@ namespace Yxy.Client.Pages
         private readonly TextBlock _baiduStatus;
         private readonly Button _authQrBtn;
         private readonly Button _authPwdBtn;
+        private readonly Button _authLogoutBtn;
         private string _provider = CloudProviders.Qiniu;
         private int _authBusy;
 
@@ -82,9 +83,11 @@ namespace Yxy.Client.Pages
             _masked = new TextBlock { Margin = new Thickness(0, 4, 0, 8) };
             _baiduStatus = new TextBlock { Margin = new Thickness(0, 0, 0, 8), TextWrapping = TextWrapping.Wrap };
             _authQrBtn = new Button { Content = "扫码授权", Width = 96, Height = 28, Margin = new Thickness(0, 0, 8, 0) };
-            _authPwdBtn = new Button { Content = "帐号密码", Width = 96, Height = 28 };
+            _authPwdBtn = new Button { Content = "帐号密码", Width = 96, Height = 28, Margin = new Thickness(0, 0, 8, 0) };
+            _authLogoutBtn = new Button { Content = "注销", Width = 72, Height = 28, Visibility = Visibility.Collapsed };
             _authQrBtn.Click += delegate { StartAuth(true); };
             _authPwdBtn.Click += delegate { StartAuth(false); };
+            _authLogoutBtn.Click += LogoutBaidu_OnClick;
             _qiniuPanel = new StackPanel();
             _qiniuPanel.Children.Add(Label("空间名"));
             _qiniuPanel.Children.Add(_bucket);
@@ -100,6 +103,7 @@ namespace Yxy.Client.Pages
             var authBar = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 8) };
             authBar.Children.Add(_authQrBtn);
             authBar.Children.Add(_authPwdBtn);
+            authBar.Children.Add(_authLogoutBtn);
             _baiduPanel.Children.Add(authBar);
             _form.Children.Add(_enabled);
             _form.Children.Add(_qiniuPanel);
@@ -173,21 +177,61 @@ namespace Yxy.Client.Pages
                 return;
             }
 
-            _hint.Text = "扫码或帐号密码二选一。点对应按钮后打开授权窗，成功会自动关闭。文件进入「我的应用数据 / 用心云备份」。控制台回调须与本机一致；改完约 1 小时生效。";
+            _hint.Text = "扫码或帐号密码二选一。点对应按钮后打开授权窗，成功会自动关闭。已授权时可点「注销」再换其它百度账号。文件进入「我的应用数据 / 用心云备份」。控制台回调须与本机一致；改完约 1 小时生效。";
             ShowBaiduStatus(CloudAccountStore.Get(_boot.Db, CloudProviders.Baidu));
         }
 
         private void ShowBaiduStatus(CloudAccountDto acc)
         {
             _enabled.IsChecked = acc.Enabled;
-            if (string.IsNullOrEmpty(acc.RefreshToken))
+            var authed = !string.IsNullOrEmpty(acc.RefreshToken);
+            _authLogoutBtn.Visibility = authed ? Visibility.Visible : Visibility.Collapsed;
+            if (!authed)
             {
                 _baiduStatus.Text = "未授权。可扫码或帐号密码。";
             }
             else
             {
                 var name = string.IsNullOrEmpty(acc.DisplayName) ? "已授权" : CloudMask.Mask(acc.DisplayName);
-                _baiduStatus.Text = "已授权账号 " + name + "。可再扫码或帐号密码重新授权。";
+                _baiduStatus.Text = "已授权账号 " + name + "。可注销后换号，或再扫码/帐号密码重新授权。";
+            }
+        }
+
+        private void LogoutBaidu_OnClick(object sender, RoutedEventArgs e)
+        {
+            if (Interlocked.CompareExchange(ref _authBusy, 1, 0) != 0)
+            {
+                MessageBox.Show(Window.GetWindow(this), "正在授权，请稍后再注销。", "云备份");
+                return;
+            }
+
+            try
+            {
+                var acc = CloudAccountStore.Get(_boot.Db, CloudProviders.Baidu);
+                if (string.IsNullOrEmpty(acc.RefreshToken))
+                {
+                    ShowBaiduStatus(acc);
+                    return;
+                }
+
+                if (MessageBox.Show(
+                    Window.GetWindow(this),
+                    "确定注销当前百度账号？注销后需重新扫码或帐号密码授权，才能再上传。",
+                    "注销百度账号",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Question) != MessageBoxResult.Yes)
+                {
+                    return;
+                }
+
+                CloudAccountStore.ClearBaidu(_boot.Db);
+                _enabled.IsChecked = false;
+                ShowBaiduStatus(CloudAccountStore.Get(_boot.Db, CloudProviders.Baidu));
+                MessageBox.Show(Window.GetWindow(this), "已注销。可重新扫码或帐号密码登录其它百度账号。", "云备份");
+            }
+            finally
+            {
+                Interlocked.Exchange(ref _authBusy, 0);
             }
         }
 
@@ -355,6 +399,7 @@ namespace Yxy.Client.Pages
         {
             _authQrBtn.IsEnabled = enabled;
             _authPwdBtn.IsEnabled = enabled;
+            _authLogoutBtn.IsEnabled = enabled;
             _authQrBtn.Content = enabled ? "扫码授权" : "等待授权…";
             _authPwdBtn.Content = enabled ? "帐号密码" : "等待授权…";
         }

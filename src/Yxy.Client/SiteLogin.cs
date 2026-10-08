@@ -13,6 +13,8 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using Yxy.Core;
+using Yxy.Core.Data;
+using Yxy.Core.Device;
 
 namespace Yxy.Client
 {
@@ -252,6 +254,67 @@ namespace Yxy.Client
         public static string LocalDeviceId()
         {
             return DeviceId();
+        }
+
+        /// <summary>
+        /// 启动时校验：本机设备身份是否被换机/拷贝打乱，以及当前设备是否仍在账号设备列表中。
+        /// 返回 true 表示已注销，须强制重新登录。
+        /// </summary>
+        public static bool ReconcileDeviceSession(SqliteDb db)
+        {
+            bool resetBecauseCopied;
+            DeviceIdStore.GetOrCreate(db, out resetBecauseCopied);
+            if (resetBecauseCopied)
+            {
+                SignOut();
+                return true;
+            }
+
+            var session = Load();
+            if (!session.LoggedIn)
+            {
+                return false;
+            }
+
+            try
+            {
+                var list = ListDevices();
+                var local = DeviceId();
+                for (var i = 0; i < list.Items.Count; i++)
+                {
+                    if (string.Equals(list.Items[i].DeviceId, local, StringComparison.OrdinalIgnoreCase))
+                    {
+                        SoftVerify(session.Email);
+                        return false;
+                    }
+                }
+
+                SignOut();
+                return true;
+            }
+            catch (Exception)
+            {
+                SignOut();
+                return true;
+            }
+        }
+
+        private static void SoftVerify(string email)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(email) || !File.Exists(TokenFile)) return;
+                var token = File.ReadAllText(TokenFile).Trim();
+                if (string.IsNullOrEmpty(token)) return;
+                var body = Post("/api/client/verify",
+                    "{\"token\":\"" + Escape(token)
+                    + "\",\"deviceId\":\"" + Escape(DeviceId())
+                    + "\",\"displayName\":\"" + Escape(DeviceDisplayName()) + "\"}");
+                Save(email, body);
+            }
+            catch (Exception)
+            {
+            }
         }
 
         public static SiteDeviceList ListDevices()

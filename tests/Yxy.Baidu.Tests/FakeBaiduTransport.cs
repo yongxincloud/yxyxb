@@ -10,6 +10,8 @@ namespace Yxy.Baidu.Tests
         public readonly List<string> Calls = new List<string>();
         public int RapidReturnType = 1;
         public string ListJson;
+        /// <summary>按 list 的 dir 查询参数返回不同 JSON；未命中时回退 ListJson。</summary>
+        public Dictionary<string, string> ListJsonByDir;
         public int? FailPartSeq;
 
         public string Call(string method, string url, string accessToken, byte[] body, string contentType)
@@ -43,6 +45,16 @@ namespace Yxy.Baidu.Tests
 
             if (url != null && url.IndexOf("method=list", StringComparison.Ordinal) >= 0)
             {
+                if (ListJsonByDir != null)
+                {
+                    var dir = ExtractQuery(url, "dir");
+                    string byDir;
+                    if (!string.IsNullOrEmpty(dir) && ListJsonByDir.TryGetValue(Uri.UnescapeDataString(dir), out byDir))
+                    {
+                        return byDir;
+                    }
+                }
+
                 return ListJson ?? "{\"errno\":0,\"list\":[]}";
             }
 
@@ -57,6 +69,20 @@ namespace Yxy.Baidu.Tests
             }
 
             return "{\"errno\":0}";
+        }
+
+        private static string ExtractQuery(string url, string key)
+        {
+            var marker = key + "=";
+            var i = url.IndexOf(marker, StringComparison.OrdinalIgnoreCase);
+            if (i < 0)
+            {
+                return null;
+            }
+
+            var start = i + marker.Length;
+            var end = url.IndexOf('&', start);
+            return end < 0 ? url.Substring(start) : url.Substring(start, end - start);
         }
     }
 }

@@ -125,6 +125,31 @@ namespace Yxy.Core.Tests
         }
 
         [Test]
+        public void LocalPurge_RecursesIntoSubdirs()
+        {
+            var root = Path.Combine(Path.GetTempPath(), "yxy-purge-nest-" + Guid.NewGuid().ToString("N"));
+            var nested = Path.Combine(root, "mssql", "task");
+            Directory.CreateDirectory(nested);
+            var oldZip = Path.Combine(nested, "old.zip");
+            var newZip = Path.Combine(nested, "new.zip");
+            File.WriteAllText(oldZip, "1");
+            File.WriteAllText(newZip, "2");
+            File.SetLastWriteTimeUtc(oldZip, DateTime.UtcNow.AddDays(-10));
+            File.SetLastWriteTimeUtc(newZip, DateTime.UtcNow);
+            try
+            {
+                var n = LocalPurge.DeleteOldZips(root, 7, DateTime.UtcNow);
+                Assert.That(n, Is.EqualTo(1));
+                Assert.That(File.Exists(oldZip), Is.False);
+                Assert.That(File.Exists(newZip), Is.True);
+            }
+            finally
+            {
+                Directory.Delete(root, true);
+            }
+        }
+
+        [Test]
         public void PurgeDue_OncePerDayAfterTime()
         {
             var now = new DateTime(2026, 9, 24, 1, 0, 0);

@@ -116,9 +116,11 @@ namespace Yxy.Baidu.Tests
             Assert.That(url, Does.Contain("response_type=code"));
             Assert.That(url, Does.Contain("scope=basic,netdisk"));
             Assert.That(url, Does.Contain("qrcode=1"));
+            Assert.That(url, Does.Contain("force_login=1"));
             var pwd = BaiduOAuth.AuthorizeUrl(cfg, "st-1", false);
             Assert.That(pwd, Does.Not.Contain("qrcode="));
             Assert.That(pwd, Does.Contain("client_id=ak"));
+            Assert.That(pwd, Does.Contain("force_login=1"));
             string code;
             string error;
             Assert.That(BaiduOAuth.TryParseCallback("http://127.0.0.1:17890/baidu/?code=abc&state=st-1", "st-1", out code, out error), Is.True);

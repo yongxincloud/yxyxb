@@ -90,6 +90,19 @@ namespace Yxy.Core.Store
             return Get(db, CloudProviders.Baidu).IsBaiduReady;
         }
 
+        /// <summary>清除百度授权令牌并关闭启用，便于换号重新授权。</summary>
+        public static void ClearBaidu(SqliteDb db)
+        {
+            var acc = Get(db, CloudProviders.Baidu);
+            acc.Provider = CloudProviders.Baidu;
+            acc.Enabled = false;
+            acc.AccessToken = null;
+            acc.RefreshToken = null;
+            acc.TokenExpiryUtc = null;
+            acc.DisplayName = null;
+            Save(db, acc);
+        }
+
         public static IList<string> EnabledProviders(SqliteDb db)
         {
             var list = new List<string>();

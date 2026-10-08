@@ -57,8 +57,8 @@ namespace Yxy.Baidu.Tests
             var fake = new FakeBaiduTransport
             {
                 ListJson = "{\"errno\":0,\"list\":["
-                    + "{\"path\":\"/apps/用心云备份/用心云备份/file/old.zip\",\"server_mtime\":" + oldUnix + "},"
-                    + "{\"path\":\"/apps/用心云备份/用心云备份/file/new.zip\",\"server_mtime\":" + newUnix + "}"
+                    + "{\"path\":\"/apps/用心云备份/用心云备份/file/old.zip\",\"isdir\":0,\"server_mtime\":" + oldUnix + "},"
+                    + "{\"path\":\"/apps/用心云备份/用心云备份/file/new.zip\",\"isdir\":0,\"server_mtime\":" + newUnix + "}"
                     + "]}"
             };
             var storage = Create(fake, now.AddHours(1));
@@ -68,6 +68,53 @@ namespace Yxy.Baidu.Tests
             Assert.That(deleted, Is.EqualTo(new[] { "/apps/用心云备份/用心云备份/file/old.zip" }));
             Assert.That(Joined(fake), Does.Contain("filemanager"));
             Assert.That(Joined(fake), Does.Not.Contain("new.zip"));
+        }
+
+        [Test]
+        public void DeleteExpired_RecursesIntoSubdirs_DoesNotDeleteFolderByMtime()
+        {
+            var now = DateTime.UtcNow;
+            var oldUnix = (long)(now.AddDays(-10) - new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalSeconds;
+            var newUnix = (long)(now - new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalSeconds;
+            var root = "/apps/用心云备份/用心云备份";
+            var mssql = root + "/mssql";
+            var task = mssql + "/服务站用户数据";
+            var fake = new FakeBaiduTransport
+            {
+                ListJsonByDir = new System.Collections.Generic.Dictionary<string, string>
+                {
+                    {
+                        root,
+                        "{\"errno\":0,\"list\":[{\"path\":\"" + mssql + "\",\"isdir\":1,\"server_mtime\":" + oldUnix + "}]}"
+                    },
+                    {
+                        mssql,
+                        "{\"errno\":0,\"list\":[{\"path\":\"" + task + "\",\"isdir\":1,\"server_mtime\":" + newUnix + "}]}"
+                    },
+                    {
+                        task,
+                        "{\"errno\":0,\"list\":["
+                            + "{\"path\":\"" + task + "/用心云备份_服务站_20260101-120000.zip\",\"isdir\":0,\"server_mtime\":" + oldUnix + "},"
+                            + "{\"path\":\"" + task + "/用心云备份_服务站_20261008-063204.zip\",\"isdir\":0,\"server_mtime\":" + newUnix + "}"
+                            + "]}"
+                    }
+                }
+            };
+            var storage = Create(fake, now.AddHours(1));
+            var deleted = new System.Collections.Generic.List<string>();
+            var n = storage.DeleteExpired("用心云备份/", now.AddDays(-2), delegate(string key) { deleted.Add(key); });
+            Assert.That(n, Is.EqualTo(1));
+            Assert.That(deleted.Count, Is.EqualTo(1));
+            Assert.That(deleted[0], Does.Contain("20260101-120000.zip"));
+            Assert.That(Joined(fake), Does.Contain("opera=delete"));
+            Assert.That(Joined(fake), Does.Not.Contain("20261008-063204.zip"));
+            var deleteBodies = string.Join("\n", fake.Calls.FindAll(delegate(string c)
+            {
+                return c.IndexOf("opera=delete", StringComparison.Ordinal) >= 0;
+            }).ToArray());
+            Assert.That(deleteBodies, Does.Contain(".zip"));
+            Assert.That(deleteBodies, Does.Not.Contain("\"path\":\"" + mssql + "\""));
+            Assert.That(deleteBodies, Does.Not.Contain("\"path\":\"" + task + "\""));
         }
 
         [Test]

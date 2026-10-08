@@ -4,31 +4,71 @@ using System.IO;
 
 namespace Yxy.Baidu
 {
+    public sealed class BaiduAuthSession
+    {
+        public Process Process { get; set; }
+        public string ProfileDir { get; set; }
+    }
+
     public static class BaiduAuthBrowser
     {
         public static string AppModeArguments(string url)
         {
-            return "--new-window --app=\"" + (url ?? "") + "\"";
+            return AppModeArguments(url, null);
         }
 
-        public static Process Open(string url)
+        public static string AppModeArguments(string url, string userDataDir)
+        {
+            var args = "--new-window --no-first-run --no-default-browser-check";
+            if (!string.IsNullOrEmpty(userDataDir))
+            {
+                args += " --user-data-dir=\"" + userDataDir + "\"";
+            }
+
+            return args + " --app=\"" + (url ?? "") + "\"";
+        }
+
+        public static BaiduAuthSession Open(string url)
         {
             var exe = Find();
+            var profile = Path.Combine(
+                Path.GetTempPath(),
+                "yxy-baidu-auth-" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(profile);
+            var session = new BaiduAuthSession { ProfileDir = profile };
             if (string.IsNullOrEmpty(exe))
             {
                 Process.Start(new ProcessStartInfo { FileName = url, UseShellExecute = true });
-                return null;
+                return session;
             }
 
-            return Process.Start(new ProcessStartInfo
+            session.Process = Process.Start(new ProcessStartInfo
             {
                 FileName = exe,
-                Arguments = AppModeArguments(url),
+                Arguments = AppModeArguments(url, profile),
                 UseShellExecute = false
             });
+            return session;
         }
 
+        public static void Close(BaiduAuthSession session)
+        {
+            if (session == null)
+            {
+                return;
+            }
+
+            CloseProcess(session.Process);
+            TryDeleteProfile(session.ProfileDir);
+        }
+
+        /// <summary>兼容旧调用：仅关进程，不清理配置目录。</summary>
         public static void Close(Process process)
+        {
+            CloseProcess(process);
+        }
+
+        private static void CloseProcess(Process process)
         {
             if (process == null)
             {
@@ -44,11 +84,34 @@ namespace Yxy.Baidu
 
                 process.CloseMainWindow();
                 process.WaitForExit(2000);
+                if (!process.HasExited)
+                {
+                    process.Kill();
+                }
             }
             catch (InvalidOperationException)
             {
             }
             catch (System.ComponentModel.Win32Exception)
+            {
+            }
+        }
+
+        private static void TryDeleteProfile(string dir)
+        {
+            if (string.IsNullOrEmpty(dir) || !Directory.Exists(dir))
+            {
+                return;
+            }
+
+            try
+            {
+                Directory.Delete(dir, true);
+            }
+            catch (IOException)
+            {
+            }
+            catch (UnauthorizedAccessException)
             {
             }
         }
