@@ -39,7 +39,7 @@ async function logout() {
 <template>
   <div class="shell">
     <aside>
-      <img class="logo" src="/logo.jpg" alt="用心云·循备" />
+      <img class="logo" src="/logo.png" alt="用心云·循备" />
       <p class="mail">{{ email || '未登录' }}</p>
       <nav>
         <router-link v-for="link in links" :key="link.to" :to="link.to" :class="{ on: active(link.to) }">

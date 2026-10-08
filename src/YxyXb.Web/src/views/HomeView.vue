@@ -6,6 +6,7 @@ import { PRODUCT_DISPLAY_NAME } from '../brand.js'
 
 const router = useRouter()
 const plans = ref([])
+const downloadUrl = 'http://download.yongxinyun.com/yxyxb/yxyxb.zip'
 
 onMounted(async () => {
   const data = await get('/api/public/price')
@@ -21,17 +22,42 @@ async function buy(productNo) {
 <template>
   <div class="home">
     <header class="nav">
-      <img class="logo" src="/logo.jpg" :alt="PRODUCT_DISPLAY_NAME" />
-      <span>
+      <router-link class="brand" to="/">
+        <img class="nav-logo" src="/logo.png" :alt="PRODUCT_DISPLAY_NAME" />
+      </router-link>
+      <nav>
+        <a href="#pricing">价格</a>
+        <a href="#media">离线介质</a>
+        <a href="#download">下载</a>
         <router-link to="/login">登录</router-link>
-        <router-link to="/register">注册</router-link>
-      </span>
+        <router-link class="nav-cta" to="/register">申请账号</router-link>
+      </nav>
     </header>
+
     <section class="hero">
-      <h1>文件被加密之后，靠的是事先离线的那一份</h1>
-      <p>2026 年 8 月，国家计算机病毒应急处理中心通报，我国境内出现多起「Sorry」勒索事件。重要文件被加密后，官方说明：没有解密密钥时，暂时没有可靠的恢复办法。</p>
-      <p>{{ PRODUCT_DISPLAY_NAME }}运行在 Windows 上。它不查杀病毒，也不能解密。它把文件和 SQL Server 打成 zip，再拷到已登记的移动硬盘并离线。</p>
-      <p>三档版本按可同时登录设备数区分；续费按当时价格，在原到期日上顺延 365 天。价格由后台配置，促销期内显示促销价。</p>
+      <div class="hero-copy">
+        <img class="hero-logo" src="/logo.png" :alt="PRODUCT_DISPLAY_NAME" />
+        <p class="product">{{ PRODUCT_DISPLAY_NAME }}</p>
+        <h1>本机加密备份，盘拷完还能离线</h1>
+        <p class="lead">
+          勒索加密往往连同在线备份一起带走。{{ PRODUCT_DISPLAY_NAME }}在 Windows 上把文件和数据库打成 zip，
+          再拷到已登记的移动盘，并按计划让介质离线——无网时离线任务仍可执行。
+        </p>
+        <div class="cta">
+          <a class="btn-yxy" :href="downloadUrl">下载客户端</a>
+          <router-link class="btn-ghost" to="/register">申请账号</router-link>
+        </div>
+      </div>
+      <div class="hero-visual" aria-hidden="true">
+        <img src="/product1.png" alt="" />
+      </div>
+    </section>
+
+    <section id="pricing" class="pricing">
+      <div class="section-head">
+        <h2>选择适合你的设备档位</h2>
+        <p>功能相同，差别在可同时登录的设备数。价格由后台配置，促销期内显示促销价。</p>
+      </div>
       <div class="plans" v-if="plans.length">
         <article v-for="plan in plans" :key="plan.productNo" class="plan">
           <h3>{{ plan.name }}</h3>
@@ -44,105 +70,388 @@ async function buy(productNo) {
           <button class="btn-yxy" type="button" @click="buy(plan.productNo)">立即购买</button>
         </article>
       </div>
-      <a class="btn-secondary" href="http://download.yongxinyun.com/yxyxb/yxyxb.zip">下载</a>
+      <p v-else class="plans-empty">价格加载中，或请确认接口已启动。</p>
     </section>
+
+    <section id="value" class="value">
+      <div class="section-head">
+        <h2>为管理软件与业务机准备的本机灾备</h2>
+        <p>结构上对标常见灾备方案页，能力上突出离线介质——这是与「只做云端备份」产品的主差异。</p>
+      </div>
+      <ul class="value-list">
+        <li>
+          <strong>离线介质</strong>
+          <span>登记 USB / 移动 SSD，到点把 zip 拷进盘，再按级别离线，降低同盘被一起加密的风险。</span>
+        </li>
+        <li>
+          <strong>本机加密打包</strong>
+          <span>文件、SQL Server、MySQL 打成 zip，日志留在本机，不依赖公网才能备份。</span>
+        </li>
+        <li>
+          <strong>恢复入口</strong>
+          <span>客户端侧栏提供库恢复操作，减少「只会备份不会还原」的断层。</span>
+        </li>
+        <li>
+          <strong>授权与设备</strong>
+          <span>个人 / 标准 / 专业按同时登录设备数分档，门户与客户端可踢出设备。</span>
+        </li>
+        <li>
+          <strong>云与传输（可选）</strong>
+          <span>授权有效时，可再上传七牛或送到共享目录、FTP，并按结果发邮件。</span>
+        </li>
+        <li>
+          <strong>无网仍跑离线任务</strong>
+          <span>已保存的离线介质任务到点仍会执行，适合断网机房与隔离网段。</span>
+        </li>
+      </ul>
+    </section>
+
+    <section id="media" class="shots">
+      <article class="shot">
+        <div class="shot-copy">
+          <p class="eyebrow">主差异 · 离线介质</p>
+          <h2>先登记盘，再谈拷贝</h2>
+          <p>按序列号、签名、容量识别 USB / 移动 SSD。双击登记后，任务只写到已登记的介质，降低拷错盘的概率。</p>
+        </div>
+        <img src="/product4.png" alt="离线介质登记界面" />
+      </article>
+      <article class="shot reverse">
+        <div class="shot-copy">
+          <p class="eyebrow">介质任务</p>
+          <h2>到点拷包，到点离线</h2>
+          <p>设置任务开始时间与介质离线时间、保留版本与天数。拷贝完成后按所选级别隔离介质，而不是一直挂在系统里。</p>
+        </div>
+        <img src="/product3.png" alt="添加离线介质任务" />
+      </article>
+      <article class="shot">
+        <div class="shot-copy">
+          <p class="eyebrow">备份任务</p>
+          <h2>文件与数据库同一套节奏</h2>
+          <p>文件、MSSQL、MySQL 任务统一调度。先打到本机备份目录，再由介质任务把包带走。</p>
+        </div>
+        <img src="/product2.png" alt="备份任务列表" />
+      </article>
+      <article class="shot reverse">
+        <div class="shot-copy">
+          <p class="eyebrow">云与清理（可选）</p>
+          <h2>授权期内再加一道去向</h2>
+          <p>需要时配置百度网盘或七牛等通道，并按保留策略清理过期对象。云不是唯一依赖，离线盘才是兜底。</p>
+        </div>
+        <img src="/product5.png" alt="云备份配置" />
+      </article>
+    </section>
+
     <section class="notice">
-      <h2>近期国内情况</h2>
-      <p>央广网 2026 年 8 月 18 日的报道援引专家意见：预防和检测之外，备份是兜底。数据量大、停不起工的单位更常被盯上，中小企业、制造、医疗、金融都在其中。</p>
-      <p>2026 年 7 月底到 8 月，安全机构公开的处置记录里，有企业服务器上的业务文件和数据库备份被一起加密。一直挂在本机、一直在线的备份，会和业务文件落在同一次加密里。</p>
-      <p class="limit">本软件不写入侵过程，也不提供解密。系统补丁、账号口令和杀毒仍要单独做。</p>
+      <div class="section-head">
+        <h2>为什么要强调离线</h2>
+        <p>
+          2026 年境内多起勒索事件中，业务文件与「一直在线的备份」常被一并加密。
+          {{ PRODUCT_DISPLAY_NAME }}不做查杀与解密；系统补丁、账号口令和杀毒仍需单独落实。
+          它补的是：事先有一份可以离开主机的拷贝。
+        </p>
+      </div>
     </section>
-    <section class="cards">
-      <article>
-        <h2>文件备份</h2>
-        <p>备份本机、共享目录或 FTP 上的文件夹。到点自动打成 zip，也可以选中后立即执行。可以为之后新打的包设置压缩密码。已经生成的旧包不会补上密码。</p>
-      </article>
-      <article>
-        <h2>SQL Server</h2>
-        <p>先登记实例并测试连接，再做库备份。zip 放在备份目录的「库备份」下。本期支持 SQL Server。</p>
-      </article>
-      <article>
-        <h2>离线介质</h2>
-        <p>登记 U 盘或移动硬盘。到开始时间把 zip 拷进盘，完成后按所选级别离线。默认去掉盘符并拒绝读写。这不是杀毒，也不会格式化磁盘。电脑没有网络时，已保存的离线任务到点仍会执行。</p>
-      </article>
-      <article>
-        <h2>云、传输和邮件</h2>
-        <p>授权有效时，zip 可以再上传七牛，或送到共享目录、FTP，并按结果发邮件。邮件标题和内容可以改。腾讯云、天翼云本期不能保存。</p>
-      </article>
-    </section>
-    <section class="scope">
-      <h2>授权停了以后还剩什么</h2>
-      <p>没有有效授权时，文件备份、数据库备份、云、共享目录、FTP 和邮件会停用。离线介质在无网时仍按计划执行。日志留在本机，不上传到网站。</p>
-    </section>
+
     <section id="download" class="download">
-      <h2>下载</h2>
-      <p>Windows 客户端可以直接下载。解压后安装，安装后必须登录。设备数按所购版本上限计入，可在门户或客户端踢出设备。</p>
-      <a class="btn-yxy dl" href="http://download.yongxinyun.com/yxyxb/yxyxb.zip">下载客户端</a>
+      <div class="section-head">
+        <h2>下载 Windows 客户端</h2>
+        <p>解压后运行。安装后须登录；设备数按所购版本上限计入，可在门户或客户端踢出设备。</p>
+      </div>
+      <a class="btn-yxy" :href="downloadUrl">下载客户端</a>
     </section>
+
     <footer>
       <p>常州用心软件有限公司</p>
       <p>联系电话 <a href="tel:4000519608">400-051-9608</a></p>
       <p>联系邮箱 market.yongxinyun.com</p>
-      <p><router-link to="/terms">用户协议</router-link> <router-link to="/privacy">隐私政策</router-link></p>
-      <p class="legal">Copyright ©2026 常州用心软件有限公司 <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener">苏ICP备19043516号-6</a> 公安备案号:<a href="https://beian.mps.gov.cn/#/query/webSearch?code=32041102001697" target="_blank" rel="noopener">苏公网安备32041102001697号</a></p>
+      <p><router-link to="/terms">用户协议</router-link> · <router-link to="/privacy">隐私政策</router-link></p>
+      <p class="legal">
+        Copyright ©2026 常州用心软件有限公司
+        <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener">苏ICP备19043516号-6</a>
+        公安备案号:
+        <a href="https://beian.mps.gov.cn/#/query/webSearch?code=32041102001697" target="_blank" rel="noopener">苏公网安备32041102001697号</a>
+      </p>
     </footer>
   </div>
 </template>
 
 <style scoped>
-.home { margin: -65px -16px; }
-.nav, .cards, .download { max-width: 1400px; margin: 0 auto; padding: 24px 16px; }
-.nav { display: flex; justify-content: space-between; align-items: center; }
-.logo { height: 64px; width: auto; display: block; }
-.nav a { margin-left: 16px; color: var(--brand-primary); }
-.hero {
-  background: linear-gradient(160deg, var(--c-hero-from), var(--c-hero-to));
-  color: #fff;
-  padding: 65px 16px;
-  text-align: center;
+.home {
+  margin: -65px -16px 0;
+  color: var(--c-text);
+  background:
+    radial-gradient(1200px 480px at 10% -10%, rgba(220, 6, 6, 0.08), transparent 55%),
+    linear-gradient(180deg, #F8F4F2 0%, var(--c-portal-bg) 28%, var(--c-portal-bg) 100%);
 }
-.hero h1 { font-size: 32px; margin: 0 auto 12px; max-width: 760px; line-height: 1.35; }
-.hero p { max-width: 760px; margin-left: auto; margin-right: auto; }
-.plans { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; max-width: 960px; margin: 20px auto; text-align: center; }
-.plan { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.35); padding: 16px; border-radius: 6px; }
-.plan h3 { margin: 0 0 8px; font-size: 18px; }
-.plan .devices { margin: 0 0 8px; opacity: 0.9; }
-.plan .price { margin: 0 0 12px; }
-.plan .price s { margin-right: 8px; opacity: 0.75; }
-.plan .price strong { font-size: 24px; }
-@media (max-width: 768px) { .plans { grid-template-columns: 1fr; } }
-.btn-secondary {
-  display: inline-block;
-  margin-left: 12px;
-  height: 43px;
-  line-height: 43px;
-  padding: 0 22px;
-  border-radius: 6px;
-  background: transparent;
-  color: #fff;
-  border: 1px solid #fff;
+
+.nav {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 18px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+.brand { display: flex; align-items: center; text-decoration: none; }
+.nav-logo { height: 48px; width: auto; display: block; }
+.nav nav { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 14px; }
+.nav a {
+  color: var(--c-title);
   text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
 }
-.notice, .scope, .download { max-width: 1400px; margin: 0 auto; padding: 8px 16px 24px; text-align: center; }
-.notice, .scope {
+.nav a:hover { color: #DC0606; }
+.nav-cta {
+  display: inline-flex;
+  align-items: center;
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 4px;
+  background: #DC0606;
+  color: #fff !important;
+}
+.nav-cta:hover { background: #B00404; }
+
+.hero {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 28px 24px 56px;
+  display: grid;
+  grid-template-columns: minmax(280px, 0.95fr) minmax(320px, 1.15fr);
+  gap: 36px;
+  align-items: center;
+  min-height: calc(100vh - 100px);
+}
+.hero-copy { text-align: left; }
+.hero-logo {
+  height: 88px;
+  width: auto;
+  display: block;
+  margin-bottom: 18px;
+}
+.product {
+  margin: 0 0 10px;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #DC0606;
+}
+.hero h1 {
+  margin: 0 0 16px;
+  font-family: var(--font-display);
+  font-size: clamp(28px, 4vw, 40px);
+  line-height: 1.28;
+  color: var(--c-title);
+  font-weight: 700;
+}
+.lead {
+  margin: 0 0 24px;
+  max-width: 34em;
+  line-height: 1.75;
+  font-size: 15px;
+  color: var(--c-text);
+}
+.cta { display: flex; flex-wrap: wrap; gap: 12px; }
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 43px;
+  padding: 0 22px;
+  border-radius: var(--radius-pill);
+  border: 1px solid #1C1214;
+  color: #1C1214;
+  text-decoration: none;
+  background: transparent;
+}
+.btn-ghost:hover { border-color: #DC0606; color: #DC0606; }
+
+.hero-visual {
+  position: relative;
+  animation: hero-in 0.8s ease both;
+}
+.hero-visual img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 4px;
+  box-shadow: 0 18px 50px rgba(28, 18, 20, 0.18);
+  border: 1px solid rgba(28, 18, 20, 0.08);
+}
+@keyframes hero-in {
+  from { opacity: 0; transform: translateY(18px); }
+  to { opacity: 1; transform: none; }
+}
+
+.section-head {
+  max-width: 1180px;
+  margin: 0 auto 28px;
+  padding: 0 24px;
+  text-align: left;
+}
+.section-head h2 {
+  margin: 0 0 10px;
+  font-family: var(--font-display);
+  font-size: 28px;
+  color: var(--c-title);
+  font-weight: 700;
+}
+.section-head p {
+  margin: 0;
+  max-width: 40em;
+  line-height: 1.7;
+  color: var(--c-text);
+}
+
+.pricing, .value, .notice, .download {
+  padding: 48px 0;
+}
+.pricing { background: #fff; }
+.plans {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 0 24px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+.plan {
+  border: 1px solid var(--c-border);
+  border-radius: 4px;
+  padding: 22px 20px;
+  text-align: left;
+  background: #FFFBFA;
+}
+.plan h3 { margin: 0 0 8px; font-size: 18px; color: var(--c-title); }
+.plan .devices { margin: 0 0 12px; color: var(--c-text-muted); }
+.plan .price { margin: 0 0 18px; }
+.plan .price s { margin-right: 8px; color: var(--c-text-muted); }
+.plan .price strong { font-size: 28px; color: #DC0606; }
+.plans-empty { max-width: 1180px; margin: 0 auto; padding: 0 24px; color: var(--c-text-muted); }
+
+.value-list {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 0 24px;
+  list-style: none;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px 28px;
+}
+.value-list li {
+  display: grid;
+  gap: 6px;
+  padding: 0 0 0 14px;
+  border-left: 3px solid #DC0606;
+  animation: fade-up 0.6s ease both;
+}
+.value-list strong {
+  font-size: 16px;
+  color: var(--c-title);
+}
+.value-list span {
+  line-height: 1.65;
+  color: var(--c-text);
+}
+.value-list li:nth-child(1) { animation-delay: 0.05s; }
+.value-list li:nth-child(2) { animation-delay: 0.1s; }
+.value-list li:nth-child(3) { animation-delay: 0.15s; }
+
+.shots {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 24px 24px 56px;
+  display: grid;
+  gap: 48px;
+}
+.shot {
+  display: grid;
+  grid-template-columns: 0.9fr 1.1fr;
+  gap: 28px;
+  align-items: center;
+}
+.shot.reverse { grid-template-columns: 1.1fr 0.9fr; }
+.shot.reverse .shot-copy { order: 2; }
+.shot.reverse img { order: 1; }
+.shot-copy { text-align: left; }
+.eyebrow {
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: #DC0606;
+}
+.shot h2 {
+  margin: 0 0 12px;
+  font-family: var(--font-display);
+  font-size: 24px;
+  color: var(--c-title);
+}
+.shot p { margin: 0; line-height: 1.7; }
+.shot img {
+  width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 4px;
+  border: 1px solid var(--c-border);
+  box-shadow: 0 12px 32px rgba(28, 18, 20, 0.1);
+}
+
+.notice { background: #1C1214; color: rgba(255, 255, 255, 0.86); }
+.notice .section-head h2 { color: #fff; }
+.notice .section-head p { color: rgba(255, 255, 255, 0.78); max-width: 46em; }
+
+.download {
+  text-align: left;
   background: #fff;
-  border-radius: 6px;
-  padding: 24px;
-  margin: 16px auto;
-  max-width: calc(1400px - 32px);
 }
-.notice h2, .scope h2, .download h2, .cards h2 { margin: 0 0 8px; color: var(--c-title); font-size: 18px; }
-.notice p, .scope p, .download p, .cards p { margin: 0 auto 10px; line-height: 1.7; max-width: 760px; }
-.limit { color: var(--c-text-muted); margin-bottom: 0; }
-.cards { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; text-align: center; }
-.cards article { background: #fff; border-radius: 6px; padding: 24px; }
-.download { background: var(--c-surface-alt); padding: 24px 16px; }
-.dl { display: inline-block; line-height: 43px; text-decoration: none; }
-footer { background: var(--c-footer); color: #fff; text-align: center; padding: 24px 16px; }
+.download .btn-yxy {
+  margin-left: 24px;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+}
+
+footer {
+  background: #1C1214;
+  color: rgba(255, 255, 255, 0.88);
+  text-align: left;
+  padding: 36px 24px 48px;
+}
+footer > * {
+  max-width: 1180px;
+  margin-left: auto;
+  margin-right: auto;
+}
+footer p { margin: 0 0 8px; }
 footer a { color: #fff; }
-.legal { font-size: 13px; line-height: 1.7; }
-@media (max-width: 768px) {
-  .cards { grid-template-columns: 1fr; }
-  .hero h1 { font-size: 24px; }
+.legal { font-size: 13px; line-height: 1.7; opacity: 0.85; }
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (max-width: 900px) {
+  .hero,
+  .shot,
+  .shot.reverse {
+    grid-template-columns: 1fr;
+    min-height: 0;
+  }
+  .shot.reverse .shot-copy,
+  .shot.reverse img { order: initial; }
+  .plans,
+  .value-list { grid-template-columns: 1fr; }
+  .hero { padding-top: 12px; }
+  .nav { padding-inline: 16px; }
+  .section-head,
+  .plans,
+  .value-list,
+  .shots,
+  .download .btn-yxy { padding-inline: 16px; }
+  .download .btn-yxy { margin-left: 16px; }
 }
 </style>
