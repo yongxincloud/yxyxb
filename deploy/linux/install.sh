@@ -93,7 +93,7 @@ if [[ ! -f "$WEB_SRC/index.html" ]]; then
   exit 1
 fi
 
-if [[ -f "$DATA_DIR/yxyxb-api.db" ]] || [[ -f "$DATA_DIR/yxy-api.db" ]]; then
+if [[ -f "$DATA_DIR/yxyxb-api.db" ]]; then
   db_exists=1
 else
   db_exists=0

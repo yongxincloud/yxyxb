@@ -17,32 +17,11 @@ namespace YxyXb.Core.Tests
             Assert.That(AppPaths.ServiceDisplayName, Is.EqualTo("用心云·循备 Service"));
             Assert.That(AppPaths.DefaultBakDirectory, Is.EqualTo(@"D:\yxyxb\bak"));
             Assert.That(AppPaths.ServiceName, Is.EqualTo("YxyXbService"));
+            Assert.That(AppPaths.DatabaseFileName, Is.EqualTo("yxyxb.db"));
         }
 
         [Test]
-        public void DatabaseFile_Prefers_Legacy_When_Present()
-        {
-            var root = Path.Combine(Path.GetTempPath(), "yxy-brand-" + Guid.NewGuid().ToString("N"));
-            try
-            {
-                AppPaths.SetRootForTests(root);
-                Directory.CreateDirectory(AppPaths.DataDirectory);
-                var legacy = Path.Combine(AppPaths.DataDirectory, "yxy.db");
-                File.WriteAllText(legacy, "x");
-                Assert.That(AppPaths.DatabaseFile, Is.EqualTo(legacy));
-            }
-            finally
-            {
-                AppPaths.SetRootForTests(null);
-                if (Directory.Exists(root))
-                {
-                    Directory.Delete(root, true);
-                }
-            }
-        }
-
-        [Test]
-        public void DatabaseFile_Uses_New_When_No_Legacy()
+        public void DatabaseFile_Uses_YxyxbDb()
         {
             var root = Path.Combine(Path.GetTempPath(), "yxy-brand-" + Guid.NewGuid().ToString("N"));
             try

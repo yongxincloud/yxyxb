@@ -125,7 +125,7 @@
 
 身份 = 磁盘序列号 + 磁盘签名 + 容量(GB)，禁止用盘符。卷用 GUID。只处理 `BusType ∈ {USB,1394,SD}` 且非系统/非启动盘。
 
-根目录写 `.yxybackup\volume.marker.json`（序列号、登记设备、时间、客户标识）。他机标记 → 拒绝登记。未登记 / 标记缺失 / 序列号不符 → 拒绝写入。解绑若盘上有本产品数据须提示不再受管。每任务绑 1 块盘。
+根目录写 `.yxyxb\volume.marker.json`（序列号、登记设备、时间、客户标识）。他机标记 → 拒绝登记。未登记 / 标记缺失 / 序列号不符 → 拒绝写入。解绑若盘上有本产品数据须提示不再受管。每任务绑 1 块盘。
 
 ### 6.2 任务配置
 
@@ -161,7 +161,7 @@
 <盘>\用心云循备\
   files\<相对 bak 路径>\*.zip
   versions\<yyyyMMdd-HHmmss>.json
-  .yxybackup\volume.marker.json
+  .yxyxb\volume.marker.json
 ```
 
 先算应保留版本（最近 M 个且未过 D 天），再删集合外版本及其独占包。仍被引用的包不删。空跑（bak 无 zip）复制数 0，不算失败。

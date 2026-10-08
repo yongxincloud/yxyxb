@@ -15,9 +15,7 @@ namespace YxyXb.Core
 
         public const string ServiceDisplayName = "用心云·循备 Service";
 
-        public const string DatabaseFileNameLegacy = "yxy.db";
-
-        public const string DatabaseFileNameNew = "yxyxb.db";
+        public const string DatabaseFileName = "yxyxb.db";
 
         private static string _rootOverride;
 
@@ -78,16 +76,7 @@ namespace YxyXb.Core
 
         public static string DatabaseFile
         {
-            get
-            {
-                var legacy = Path.Combine(DataDirectory, DatabaseFileNameLegacy);
-                if (File.Exists(legacy))
-                {
-                    return legacy;
-                }
-
-                return Path.Combine(DataDirectory, DatabaseFileNameNew);
-            }
+            get { return Path.Combine(DataDirectory, DatabaseFileName); }
         }
 
         public static string DeviceIdFile

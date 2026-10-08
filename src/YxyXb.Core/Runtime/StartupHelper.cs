@@ -7,7 +7,6 @@ namespace YxyXb.Core.Runtime
     {
         private const string RunKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
         private const string ValueName = "用心云·循备";
-        private const string LegacyValueName = "用心云备份";
 
         public static void Apply(bool enabled, string exePath)
         {
@@ -21,22 +20,10 @@ namespace YxyXb.Core.Runtime
                 if (enabled)
                 {
                     key.SetValue(ValueName, "\"" + exePath + "\"");
-                    if (key.GetValue(LegacyValueName) != null)
-                    {
-                        key.DeleteValue(LegacyValueName, false);
-                    }
                 }
-                else
+                else if (key.GetValue(ValueName) != null)
                 {
-                    if (key.GetValue(ValueName) != null)
-                    {
-                        key.DeleteValue(ValueName, false);
-                    }
-
-                    if (key.GetValue(LegacyValueName) != null)
-                    {
-                        key.DeleteValue(LegacyValueName, false);
-                    }
+                    key.DeleteValue(ValueName, false);
                 }
             }
         }
