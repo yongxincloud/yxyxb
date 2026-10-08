@@ -21,7 +21,7 @@ test('customer theme overrides ink and red without replacing vendor blue', () =>
   expect(css).toContain('#F6F3F1')
 })
 
-test('logo appears on home, login, and the portal sidebar only', () => {
+test('logo appears on home, login, register, and portal/vendor shells', () => {
   expect(read('views/HomeView.vue')).toContain('src="/logo.jpg"')
   expect(read('views/HomeView.vue')).toContain('height: 64px')
   expect(read('views/LoginView.vue')).toContain('src="/logo.jpg"')
@@ -29,7 +29,7 @@ test('logo appears on home, login, and the portal sidebar only', () => {
   expect(read('views/PortalLayout.vue')).toContain('src="/logo.jpg"')
   expect(read('views/PortalLayout.vue')).toContain('height: 72px')
   expect(read('views/PortalLayout.vue')).toContain('#F8E8E8')
-  expect(read('views/RegisterView.vue')).not.toContain('/logo.jpg')
+  expect(read('views/RegisterView.vue')).toContain('src="/logo.jpg"')
   expect(read('views/VendorLayout.vue')).toContain('src="/logo.jpg"')
   expect(read('views/VendorLayout.vue')).toContain('#F8E8E8')
   expect(read('views/VendorLayout.vue')).not.toContain('#eef3ff')
