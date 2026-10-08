@@ -7,7 +7,7 @@ using Yxy.Core;
 
 namespace Yxy.Engine
 {
-    public sealed class YxyBackupService : ServiceBase
+    public sealed class YxyXbService : ServiceBase
     {
         private const int ServiceRunning = 4;
         private const int AcceptStop = 0x1;
@@ -19,7 +19,7 @@ namespace Yxy.Engine
         private System.Timers.Timer _timer;
         private DateTime _armUntilUtc = DateTime.MinValue;
 
-        public YxyBackupService()
+        public YxyXbService()
         {
             ServiceName = AppPaths.ServiceName;
             CanStop = true;

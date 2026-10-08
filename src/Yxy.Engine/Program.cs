@@ -18,7 +18,7 @@ namespace Yxy.Engine
                 return 0;
             }
 
-            ServiceBase.Run(new ServiceBase[] { new YxyBackupService() });
+            ServiceBase.Run(new ServiceBase[] { new YxyXbService() });
             return 0;
         }
 

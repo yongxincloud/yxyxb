@@ -16,7 +16,7 @@ namespace Yxy.Core.Tests
             Assert.That(AppPaths.ProductShortName, Is.EqualTo("循备"));
             Assert.That(AppPaths.ServiceDisplayName, Is.EqualTo("用心云·循备 Service"));
             Assert.That(AppPaths.DefaultBakDirectory, Is.EqualTo(@"D:\yxyxb\bak"));
-            Assert.That(AppPaths.ServiceName, Is.EqualTo("YxyBackupService"));
+            Assert.That(AppPaths.ServiceName, Is.EqualTo("YxyXbService"));
         }
 
         [Test]

@@ -11,7 +11,7 @@ namespace Yxy.Core
 
         public const string ProductShortName = "循备";
 
-        public const string ServiceName = "YxyBackupService";
+        public const string ServiceName = "YxyXbService";
 
         public const string ServiceDisplayName = "用心云·循备 Service";
 
