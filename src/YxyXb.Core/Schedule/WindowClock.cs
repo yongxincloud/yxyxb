@@ -83,5 +83,43 @@ namespace YxyXb.Core.Schedule
 
             return today.AddDays(1);
         }
+
+        public static DateTime AlignNextRunLocal(DateTime nextLocal, DateTime nowLocal, string startText, string endText)
+        {
+            TimeSpan start;
+            TimeSpan end;
+            if (!TryParseHm(startText, out start) || !TryParseHm(endText, out end) || start == end)
+            {
+                return nextLocal;
+            }
+
+            if (IsInWindow(nextLocal, startText, endText))
+            {
+                return nextLocal;
+            }
+
+            var candidate = SlotStart(nextLocal, start, end);
+            if (candidate >= nowLocal)
+            {
+                return candidate;
+            }
+
+            return NextWindowStartLocal(nowLocal, startText, endText);
+        }
+
+        private static DateTime SlotStart(DateTime nextLocal, TimeSpan start, TimeSpan end)
+        {
+            if (start < end)
+            {
+                return nextLocal.Date + start;
+            }
+
+            if (nextLocal.TimeOfDay < end)
+            {
+                return nextLocal.Date.AddDays(-1) + start;
+            }
+
+            return nextLocal.Date + start;
+        }
     }
 }

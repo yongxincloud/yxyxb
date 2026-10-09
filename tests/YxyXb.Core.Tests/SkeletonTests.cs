@@ -103,6 +103,44 @@ namespace YxyXb.Core.Tests
         }
 
         [Test]
+        public void MediaUpdate_ClearsWaitAndKeepsEditedWindow()
+        {
+            using (var db = SqliteDb.OpenDefault())
+            {
+                var nextLocal = DateTime.Today.AddDays(1).AddHours(22).AddMinutes(10);
+                var id = MediaTaskStore.Insert(db, new MediaTaskDto
+                {
+                    Name = "media",
+                    MediaId = 1,
+                    Enabled = true,
+                    SourcePath = AppPaths.BakDirectory,
+                    WindowStart = "22:00",
+                    WindowEnd = "23:00",
+                    WaitMinutes = 30,
+                    RetainVersions = 7,
+                    RetainDays = 7,
+                    CycleKind = "day",
+                    CycleInterval = 1,
+                    NextRunUtc = nextLocal.ToUniversalTime()
+                });
+                Directory.CreateDirectory(AppPaths.BakDirectory);
+                MediaTaskStore.SetWaiting(db, id, DateTime.UtcNow);
+                var edited = MediaTaskStore.GetById(db, id);
+                edited.WindowStart = "21:00";
+                edited.WindowEnd = "21:30";
+                edited.NextRunUtc = nextLocal.ToUniversalTime();
+                MediaTaskStore.Update(db, edited);
+                var saved = MediaTaskStore.GetById(db, id);
+                Assert.That(saved.WaitingSinceUtc.HasValue, Is.False);
+                Assert.That(saved.NextRunUtc.HasValue, Is.True);
+                var local = saved.NextRunUtc.Value.ToLocalTime();
+                Assert.That(local.Date, Is.EqualTo(nextLocal.Date));
+                Assert.That(local.Hour, Is.EqualTo(22));
+                Assert.That(local.Minute, Is.EqualTo(10));
+            }
+        }
+
+        [Test]
         public void TrialClock_ShowsRemainingDays()
         {
             using (var db = SqliteDb.OpenDefault())

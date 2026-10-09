@@ -20,6 +20,42 @@ namespace YxyXb.Media.Tests
         }
 
         [Test]
+        public void Align_KeepsTimeInsideWindow()
+        {
+            var now = new DateTime(2026, 10, 9, 18, 0, 0);
+            var next = new DateTime(2026, 10, 10, 22, 10, 0);
+            var aligned = WindowClock.AlignNextRunLocal(next, now, "22:00", "23:00");
+            Assert.That(aligned, Is.EqualTo(next));
+        }
+
+        [Test]
+        public void Align_PullsMissedClockBackToSameDayWindowStart()
+        {
+            var now = new DateTime(2026, 10, 9, 18, 0, 0);
+            var next = new DateTime(2026, 10, 10, 22, 10, 0);
+            var aligned = WindowClock.AlignNextRunLocal(next, now, "21:00", "21:30");
+            Assert.That(aligned, Is.EqualTo(new DateTime(2026, 10, 10, 21, 0, 0)));
+        }
+
+        [Test]
+        public void Align_BeforeWindowUsesThatDaysStart()
+        {
+            var now = new DateTime(2026, 10, 9, 17, 0, 0);
+            var next = new DateTime(2026, 10, 9, 17, 2, 0);
+            var aligned = WindowClock.AlignNextRunLocal(next, now, "22:00", "23:00");
+            Assert.That(aligned, Is.EqualTo(new DateTime(2026, 10, 9, 22, 0, 0)));
+        }
+
+        [Test]
+        public void Align_AfterWindowClosedMovesToNextStart()
+        {
+            var now = new DateTime(2026, 10, 9, 23, 10, 0);
+            var next = new DateTime(2026, 10, 9, 23, 30, 0);
+            var aligned = WindowClock.AlignNextRunLocal(next, now, "22:00", "23:00");
+            Assert.That(aligned, Is.EqualTo(new DateTime(2026, 10, 10, 22, 0, 0)));
+        }
+
+        [Test]
         public void Window_CrossMidnight()
         {
             var late = new DateTime(2026, 1, 1, 23, 0, 0);

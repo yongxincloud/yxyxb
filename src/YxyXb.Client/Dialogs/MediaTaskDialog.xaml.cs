@@ -30,7 +30,7 @@ namespace YxyXb.Client.Dialogs
             Title = existing == null ? "添加离线介质任务" : "修改离线介质任务";
             TxtSource.Text = existing != null && !string.IsNullOrWhiteSpace(existing.SourcePath)
                 ? existing.SourcePath
-                : bakPath;
+                : "";
             CmbMedia.ItemsSource = media;
             if (existing != null)
             {
@@ -161,7 +161,7 @@ namespace YxyXb.Client.Dialogs
         {
             using (var dialog = new System.Windows.Forms.FolderBrowserDialog())
             {
-                dialog.Description = "选择要拷到离线盘的扫描源（默认是 bak 目录）";
+                dialog.Description = "选择要打包的文件夹。里面的全部文件会打成一个 zip，先写入本地备份目录，再拷到离线盘。";
                 if (!string.IsNullOrWhiteSpace(TxtSource.Text) && System.IO.Directory.Exists(TxtSource.Text))
                 {
                     dialog.SelectedPath = TxtSource.Text.Trim();

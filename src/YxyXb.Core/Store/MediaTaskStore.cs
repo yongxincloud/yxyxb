@@ -91,7 +91,7 @@ namespace YxyXb.Core.Store
             db.Execute(
                 @"UPDATE media_tasks SET name=@n, media_id=@m, enabled=@e, source_path=@sp, target_folder=@tf, window_start=@ws, window_end=@we,
                   wait_minutes=@w, retain_versions=@rv, retain_days=@rd, conflict_mode=@cm, isolate_after=@ia, isolate_level=@il,
-                  use_sha256=@sh, cycle_kind=@ck, cycle_interval=@ci, next_run_utc=@nr
+                  use_sha256=@sh, cycle_kind=@ck, cycle_interval=@ci, next_run_utc=@nr, waiting_since_utc=NULL
                   WHERE id=@id",
                 new SQLiteParameter("@n", task.Name),
                 new SQLiteParameter("@m", task.MediaId),
@@ -167,12 +167,12 @@ namespace YxyXb.Core.Store
 
             if (string.IsNullOrWhiteSpace(task.SourcePath))
             {
-                return "请填写扫描源。";
+                return "请填写要打包的文件夹。";
             }
 
             if (!System.IO.Directory.Exists(task.SourcePath))
             {
-                return "扫描源文件夹不存在。";
+                return "要打包的文件夹不存在。";
             }
 
             var win = WindowClock.Validate(task.WindowStart, task.WindowEnd);

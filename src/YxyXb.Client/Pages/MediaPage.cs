@@ -101,7 +101,7 @@ namespace YxyXb.Client.Pages
             panel.Children.Add(bar);
             var hint = new TextBlock
             {
-                Text = "立即执行后弹窗会写成功/失败。也可看「已执行」次数、「上次执行」，或左侧「日志 → 离线介质」。隔离不会格式化；重新插入或磁盘管理「联机」即可。若 Windows 提示格式化，点取消。",
+                Text = "到点会把「打包文件夹」里的全部文件打成一个 zip，写入本地备份目录，拷到离线盘后再删除这个本地 zip。保留版本 M、保留天数 D 只清理离线盘上的旧包：只留下最近 M 次，并且不超过 D 天，先到先删。打包文件夹不要选本地备份目录。",
                 TextWrapping = TextWrapping.Wrap,
                 Margin = new Thickness(0, 0, 0, 8)
             };
@@ -110,7 +110,7 @@ namespace YxyXb.Client.Pages
             _taskGrid = GridOf();
             _taskGrid.Columns.Add(Col("启用", "EnabledText", 50));
             _taskGrid.Columns.Add(Col("名称", "Name", 120));
-            _taskGrid.Columns.Add(Col("扫描源", "SourcePath", 180));
+            _taskGrid.Columns.Add(Col("打包文件夹", "SourcePath", 180));
             _taskGrid.Columns.Add(Col("开始/离线", "WindowText", 120));
             _taskGrid.Columns.Add(Col("周期", "CycleText", 90));
             _taskGrid.Columns.Add(Col("已执行", "RunCount", 70));
@@ -130,7 +130,7 @@ namespace YxyXb.Client.Pages
             var panel = new DockPanel { Margin = new Thickness(8) };
             panel.Children.Add(new TextBlock
             {
-                Text = "已登记 / 已挂载 / 已隔离 / 异常。界面不使用「物理断开」。",
+                Text = "已登记 / 已挂载 / 已隔离 / 异常。软件未承诺「物理断开」。",
                 Margin = new Thickness(0, 0, 0, 8)
             });
             _statusGrid = GridOf();

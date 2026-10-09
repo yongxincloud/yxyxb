@@ -28,7 +28,7 @@
                 </Grid.RowDefinitions>
                 <TextBlock Text="名称" VerticalAlignment="Center"/>
                 <TextBox x:Name="TxtName" Grid.Column="1" Margin="0,4"/>
-                <TextBlock Text="扫描源" Grid.Row="1" VerticalAlignment="Center"/>
+                <TextBlock Text="打包文件夹" Grid.Row="1" VerticalAlignment="Center"/>
                 <Grid Grid.Row="1" Grid.Column="1" Margin="0,4">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>

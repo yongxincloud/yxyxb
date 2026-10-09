@@ -54,14 +54,59 @@ namespace YxyXb.Client.Dialogs
 
         public static bool TryGetDateTime(DatePicker date, TimePicker time, out DateTime local)
         {
-            if (date == null || time == null || !date.SelectedDate.HasValue || !time.SelectedTime.HasValue)
+            DateTime day;
+            TimeSpan clock;
+            if (date == null || time == null || !TryReadDate(date, out day) || !TryReadClock(time, out clock))
             {
                 local = default(DateTime);
                 return false;
             }
 
-            local = date.SelectedDate.Value.Date.Add(time.SelectedTime.Value.TimeOfDay);
+            local = day.Date.Add(clock);
             return true;
+        }
+
+        private static bool TryReadDate(DatePicker date, out DateTime day)
+        {
+            DateTime parsed;
+            var text = date.Text == null ? string.Empty : date.Text.Trim();
+            if (text.Length > 0 && DateTime.TryParse(text, CultureInfo.CurrentCulture, DateTimeStyles.None, out parsed))
+            {
+                day = parsed.Date;
+                return true;
+            }
+
+            if (date.SelectedDate.HasValue)
+            {
+                day = date.SelectedDate.Value.Date;
+                return true;
+            }
+
+            day = default(DateTime);
+            return false;
+        }
+
+        private static bool TryReadClock(TimePicker time, out TimeSpan clock)
+        {
+            DateTime parsed;
+            var text = time.Text == null ? string.Empty : time.Text.Trim();
+            var formats = new[] { "H:mm", "HH:mm", "H:mm:ss", "HH:mm:ss" };
+            if (text.Length > 0
+                && (DateTime.TryParseExact(text, formats, CultureInfo.CurrentCulture, DateTimeStyles.None, out parsed)
+                    || DateTime.TryParse(text, CultureInfo.CurrentCulture, DateTimeStyles.NoCurrentDateDefault, out parsed)))
+            {
+                clock = parsed.TimeOfDay;
+                return true;
+            }
+
+            if (time.SelectedTime.HasValue)
+            {
+                clock = time.SelectedTime.Value.TimeOfDay;
+                return true;
+            }
+
+            clock = default(TimeSpan);
+            return false;
         }
 
         public static void SetHmm(TimePicker time, string hhmm)
@@ -79,12 +124,13 @@ namespace YxyXb.Client.Dialogs
 
         public static string GetHmm(TimePicker time, string fallback)
         {
-            if (time == null || !time.SelectedTime.HasValue)
+            TimeSpan clock;
+            if (time == null || !TryReadClock(time, out clock))
             {
                 return fallback;
             }
 
-            return time.SelectedTime.Value.ToString("HH:mm", CultureInfo.InvariantCulture);
+            return new DateTime(clock.Ticks).ToString("HH:mm", CultureInfo.InvariantCulture);
         }
     }
 }

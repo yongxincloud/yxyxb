@@ -70,6 +70,36 @@ namespace YxyXb.Media
             return head + " " + entry.Message + "\n\n也可在「日志 → 离线介质」查看。隔离只是摘盘符/离线，不会格式化。若 Windows 提示格式化，点取消。";
         }
 
+        private static DateTime NextOpenLocal(DateTime nowLocal, MediaTaskDto task)
+        {
+            var start = WindowClock.NextWindowStartLocal(nowLocal, task.WindowStart, task.WindowEnd);
+            if (!task.NextRunUtc.HasValue)
+            {
+                return start;
+            }
+
+            var chosen = task.NextRunUtc.Value.Kind == DateTimeKind.Utc
+                ? task.NextRunUtc.Value.ToLocalTime()
+                : task.NextRunUtc.Value;
+            if (!WindowClock.IsInWindow(chosen, task.WindowStart, task.WindowEnd))
+            {
+                return start;
+            }
+
+            var sameClock = start.Date.Add(chosen.TimeOfDay);
+            if (sameClock < nowLocal)
+            {
+                sameClock = sameClock.AddDays(1);
+            }
+
+            if (WindowClock.IsInWindow(sameClock, task.WindowStart, task.WindowEnd))
+            {
+                return sameClock;
+            }
+
+            return start;
+        }
+
         private static bool Process(SqliteDb db, MediaTaskDto task)
         {
             var nowUtc = DateTime.UtcNow;
@@ -95,8 +125,8 @@ namespace YxyXb.Media
                     return true;
                 }
 
-                var start = WindowClock.NextWindowStartLocal(nowLocal, task.WindowStart, task.WindowEnd);
-                MediaTaskStore.SetNextRun(db, task.Id, start.ToUniversalTime());
+                var start = NextOpenLocal(nowLocal, task);
+                MediaTaskStore.SetNextRun(db, task.Id, DateTime.SpecifyKind(start, DateTimeKind.Local).ToUniversalTime());
                 LogStore.Add(db, "media", "auto", "ok", task.Name, "未到任务开始时间，已改到 " + start.ToString("HH:mm", CultureInfo.InvariantCulture) + " 再检查介质。");
                 return true;
             }
@@ -131,6 +161,7 @@ namespace YxyXb.Media
                 return WaitOrSkip(db, task, nowUtc, nowLocal);
             }
 
+            MediaStore.SetAutoHeld(db, record.Id, true);
             RunCopy(db, task, record, live, nowUtc, "auto");
             return true;
         }
@@ -245,6 +276,48 @@ namespace YxyXb.Media
             }
         }
 
+        private static void ForceOffline(SqliteDb db, MediaRecordDto record, int level, string reason)
+        {
+            if (record == null)
+            {
+                return;
+            }
+
+            if (level < 1)
+            {
+                level = 2;
+            }
+
+            var live = DiskEnumerator.Find(record.SerialNumber, record.DiskSignature, record.CapacityGb);
+            if (!HasLetter(live))
+            {
+                MediaStore.SetAutoHeld(db, record.Id, false);
+                LogStore.Add(db, "media", "auto", "ok", "介质" + record.Id, reason + "介质已不在线。");
+                return;
+            }
+
+            try
+            {
+                DiskIsolate.Isolate(live, level);
+                MediaStore.SetAutoHeld(db, record.Id, false);
+                LogStore.Add(db, "media", "auto", "ok", "介质" + record.Id, reason + "已离线 L" + level + "。");
+            }
+            catch (Exception ex)
+            {
+                MediaService.HideLetter(record);
+                var again = DiskEnumerator.Find(record.SerialNumber, record.DiskSignature, record.CapacityGb);
+                if (!HasLetter(again))
+                {
+                    MediaStore.SetAutoHeld(db, record.Id, false);
+                    LogStore.Add(db, "media", "auto", "ok", "介质" + record.Id, reason + "隔离未完成，已去掉盘符。");
+                }
+                else
+                {
+                    LogStore.Add(db, "media", "auto", "error", "介质" + record.Id, reason + "离线失败：" + ex.Message);
+                }
+            }
+        }
+
         private static int OfflineLevelFor(IList<MediaTaskDto> tasks, long mediaId)
         {
             var level = 0;
@@ -355,12 +428,11 @@ namespace YxyXb.Media
 
             var log = new StringBuilder();
             var settings = SettingsStore.Get(db);
-            var bak = !string.IsNullOrWhiteSpace(task.SourcePath)
-                ? task.SourcePath.Trim()
-                : (string.IsNullOrEmpty(settings.BakPath) ? AppPaths.BakDirectory : settings.BakPath);
+            var source = (task.SourcePath ?? "").Trim();
+            var bakDir = string.IsNullOrEmpty(settings.BakPath) ? AppPaths.BakDirectory : settings.BakPath;
             try
             {
-                var refuse = MediaSafety.RefuseWrite(live, bak);
+                var refuse = MediaSafety.RefuseWrite(live, bakDir);
                 if (refuse != null)
                 {
                     LogStore.Add(db, "security", "auto", "error", task.Name, refuse);
@@ -374,9 +446,10 @@ namespace YxyXb.Media
                     throw new InvalidOperationException("没有可用盘符，本次不写入。");
                 }
 
+                MediaStore.SetAutoHeld(db, record.Id, true);
                 log.Append("任务开始 ").Append(task.WindowStart).Append("，介质离线 ").Append(task.WindowEnd);
                 log.Append("，序列号 ").Append(record.SerialNumber);
-                log.Append("，挂载 ").Append(letter).Append("，扫描源 ").Append(bak).Append("。");
+                log.Append("，挂载 ").Append(letter).Append("，打包文件夹 ").Append(source).Append("。");
                 var marker = VolumeMarkerStore.Read(root);
                 if (marker == null)
                 {
@@ -403,11 +476,16 @@ namespace YxyXb.Media
                 }
 
                 record = MediaStore.GetById(db, record.Id);
-                var zips = PackageSync.ListBakZips(bak);
+                var flags = settings.NameFlags == 0 ? NameParts.DefaultFlags : settings.NameFlags;
+                var zipPath = MediaPack.PackToBak(source, bakDir, settings.SoftwareId, task.Name, settings.ZipPassword, settings.ZipLevel, nowUtc, NameParts.FromFlags(flags));
+                log.Append(" 已打包 ").Append(zipPath).Append("。");
+                var zips = new List<string> { zipPath };
+                var bak = bakDir;
                 var copied = 0;
                 var skipped = 0;
                 long bytes = 0;
                 var stamps = new List<FileStamp>();
+                var landed = false;
                 for (var i = 0; i < zips.Count; i++)
                 {
                     var rel = PackageSync.RelFromBak(bak, zips[i]);
@@ -422,18 +500,29 @@ namespace YxyXb.Media
                     if (destStamp != null && PackageSync.Same(srcStamp, destStamp, task.UseSha256))
                     {
                         skipped++;
+                        landed = true;
                         stamps.Add(destStamp);
                         continue;
                     }
 
                     PackageSync.CopyPart(zips[i], dest, task.ConflictMode);
                     var after = PackageSync.Stamp(dest, rel, task.UseSha256);
+                    if (after.Size != srcStamp.Size)
+                    {
+                        throw new InvalidOperationException("离线盘上的压缩包大小与本地不一致，本地压缩包保留。");
+                    }
+
+                    landed = true;
                     stamps.Add(after);
                     copied++;
                     bytes += after.Size;
                 }
 
                 log.Append(" 复制 ").Append(copied).Append("，跳过 ").Append(skipped).Append("，字节 ").Append(bytes).Append("。");
+                if (MediaPack.RemoveLocalAfterCopy(zipPath, landed))
+                {
+                    log.Append(" 已删除本地压缩包。");
+                }
 
                 var stampName = nowUtc.ToLocalTime().ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture);
                 var manifest = new VersionManifest
@@ -474,7 +563,7 @@ namespace YxyXb.Media
                         log.Append(" 刷新未完成：").Append(flushEx.Message).Append("。");
                     }
 
-                    var isoRefuse = MediaSafety.RefuseIsolate(live, bak, true);
+                    var isoRefuse = MediaSafety.RefuseIsolate(live, bakDir, true);
                     if (isoRefuse != null)
                     {
                         LogStore.Add(db, "security", mode, "error", task.Name, isoRefuse);
@@ -500,6 +589,10 @@ namespace YxyXb.Media
                 log.Append(" 失败：").Append(ex.Message);
                 LogStore.Add(db, "media", mode, "error", task.Name, log.ToString());
                 MediaTaskStore.MarkResult(db, task, false, nowUtc);
+                if (!WindowClock.IsInWindow(DateTime.Now, task.WindowStart, task.WindowEnd))
+                {
+                    ForceOffline(db, record, task.IsolateLevel, "任务失败且已到介质离线时间，");
+                }
             }
             finally
             {
