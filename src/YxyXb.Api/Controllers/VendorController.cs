@@ -479,12 +479,89 @@ public sealed class VendorController : ControllerBase
     }
 
     [HttpGet("customers")]
-    public async Task<IActionResult> Customers()
+    public async Task<IActionResult> Customers([FromQuery] string? q)
     {
         if (!Vendor()) return NotFound();
-        var rows = await _db.Customers.OrderByDescending(x => x.Id).Take(100)
-            .Select(x => new { x.Id, x.CustomerNo, x.DirectProviderId }).ToListAsync();
-        return Ok(new { ok = true, rows });
+        var needle = (q ?? "").Trim().ToLowerInvariant();
+        var query = _db.Customers.Join(
+            _db.Accounts,
+            customer => customer.AccountId,
+            account => account.Id,
+            (customer, account) => new { Customer = customer, Account = account });
+        if (needle.Length > 0)
+        {
+            query = query.Where(x =>
+                (x.Customer.Name ?? "").ToLower().Contains(needle) ||
+                (x.Customer.Nickname ?? "").ToLower().Contains(needle) ||
+                (x.Customer.CompanyName ?? "").ToLower().Contains(needle) ||
+                x.Customer.CustomerNo.ToLower().Contains(needle) ||
+                (x.Customer.InvoiceTitle ?? "").ToLower().Contains(needle) ||
+                (x.Customer.InvoiceTaxNo ?? "").ToLower().Contains(needle) ||
+                (x.Customer.InvoiceEmail ?? "").ToLower().Contains(needle) ||
+                x.Account.Email.ToLower().Contains(needle) ||
+                (x.Account.Phone ?? "").ToLower().Contains(needle));
+        }
+
+        var take = needle.Length > 0 ? 100 : 50;
+        var rows = await query.OrderByDescending(x => x.Customer.Id).Take(take)
+            .Select(x => new
+            {
+                x.Customer.Id,
+                x.Customer.CustomerNo,
+                x.Customer.Name,
+                x.Customer.Nickname,
+                x.Customer.CompanyName,
+                x.Account.Phone,
+                Email = x.Account.Email,
+                x.Customer.InvoiceTitle,
+                x.Customer.InvoiceTaxNo,
+                x.Customer.InvoiceEmail,
+                x.Customer.InvoiceLicense,
+                x.Customer.DirectProviderId,
+                x.Customer.CreatedAt,
+                x.Customer.Status
+            }).ToListAsync();
+
+        var ids = rows.Select(x => x.Id).ToList();
+        var auths = await _db.SubscriptionAuths.Where(x => ids.Contains(x.CustomerId))
+            .Select(x => new { x.CustomerId, x.ProductId, x.AuthEndTime })
+            .ToListAsync();
+        var latest = auths.GroupBy(x => x.CustomerId)
+            .ToDictionary(g => g.Key, g => g.OrderByDescending(x => x.AuthEndTime).First());
+        var productIds = latest.Values.Select(x => x.ProductId).Distinct().ToList();
+        var products = await _db.Products.Where(x => productIds.Contains(x.Id))
+            .ToDictionaryAsync(x => x.Id);
+
+        return Ok(new
+        {
+            ok = true,
+            rows = rows.Select(x =>
+            {
+                latest.TryGetValue(x.Id, out var auth);
+                products.TryGetValue(auth?.ProductId ?? 0, out var product);
+                return new
+                {
+                    x.Id,
+                    x.CustomerNo,
+                    x.Name,
+                    x.Nickname,
+                    x.CompanyName,
+                    x.Phone,
+                    email = x.Email,
+                    x.InvoiceTitle,
+                    x.InvoiceTaxNo,
+                    x.InvoiceEmail,
+                    x.InvoiceLicense,
+                    x.DirectProviderId,
+                    x.CreatedAt,
+                    x.Status,
+                    authEndTime = auth == null ? (DateTime?)null : auth.AuthEndTime,
+                    productNo = product?.ProductNo,
+                    productName = product?.Name,
+                    maxDevices = product?.MaxDevices
+                };
+            })
+        });
     }
 
     [HttpPost("customers/{id:long}/edition")]

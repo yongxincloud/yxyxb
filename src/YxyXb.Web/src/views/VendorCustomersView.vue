@@ -1,6 +1,6 @@
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { post } from '../api.js'
+import { get, post } from '../api.js'
 import { day, periodText, useVendorBoard } from '../vendorBoard.js'
 
 const { board, loadError, load } = useVendorBoard()
@@ -10,22 +10,47 @@ const grantProductNo = ref('STANDARD')
 const message = ref('')
 const busyId = ref(0)
 const editionDraft = reactive({})
+const keyword = ref('')
+const rows = ref([])
+const listError = ref('')
 
 const editionOptions = computed(() =>
   (board.value?.products || []).filter((p) => p.status === 1)
 )
 
-onMounted(load)
+function text(value) {
+  const shown = String(value ?? '').trim()
+  return shown || '—'
+}
 
-watch(
-  () => board.value?.customers,
-  (rows) => {
-    for (const row of rows || []) {
-      editionDraft[row.id] = row.productNo || 'STANDARD'
+onMounted(async () => {
+  await load()
+  if (board.value) await loadCustomers()
+})
+
+watch(rows, (list) => {
+  for (const row of list || []) {
+    editionDraft[row.id] = row.productNo || 'STANDARD'
+  }
+})
+
+async function loadCustomers() {
+  listError.value = ''
+  const q = keyword.value.trim()
+  const path = q ? '/api/vendor/customers?q=' + encodeURIComponent(q) : '/api/vendor/customers'
+  try {
+    const data = await get(path)
+    if (!data.ok) {
+      listError.value = data.error || '暂时读不到客户'
+      rows.value = []
+      return
     }
-  },
-  { immediate: true }
-)
+    rows.value = data.rows || []
+  } catch {
+    listError.value = '暂时读不到客户'
+    rows.value = []
+  }
+}
 
 async function remove(row) {
   message.value = ''
@@ -34,7 +59,7 @@ async function remove(row) {
   const data = await post('/api/vendor/customers/' + row.id + '/delete', {})
   busyId.value = 0
   message.value = data.ok ? '已删除 ' + row.email : (data.error || '删除失败')
-  if (data.ok) await load()
+  if (data.ok) await loadCustomers()
 }
 
 async function extend(row) {
@@ -55,7 +80,7 @@ async function extend(row) {
   message.value = data.ok
     ? row.email + ' 可用至 ' + day(data.authEndTime)
     : (data.error || '增加失败')
-  if (data.ok) await load()
+  if (data.ok) await loadCustomers()
 }
 
 async function changeEdition(row) {
@@ -80,7 +105,7 @@ async function changeEdition(row) {
   message.value = data.ok
     ? row.email + ' 已改为 ' + (data.productName || productNo)
     : (data.error || '修改失败')
-  if (data.ok) await load()
+  if (data.ok) await loadCustomers()
 }
 </script>
 
@@ -101,11 +126,18 @@ async function changeEdition(row) {
       </label>
       <label>事由<input class="field-yxy reason" v-model="reason" /></label>
     </div>
+    <form class="row-form" @submit.prevent="loadCustomers">
+      <label>查询<input class="field-yxy" v-model="keyword" placeholder="姓名、邮箱、手机、公司、抬头" /></label>
+      <button class="btn-yxy" type="submit">查询</button>
+    </form>
+    <p class="err" v-if="listError">{{ listError }}</p>
     <table>
       <thead>
         <tr>
+          <th>个人信息</th>
           <th>邮箱</th>
           <th>客户号</th>
+          <th>开票信息</th>
           <th>账号类型</th>
           <th>归属</th>
           <th>注册日</th>
@@ -115,9 +147,21 @@ async function changeEdition(row) {
         </tr>
       </thead>
       <tbody>
-        <tr v-for="row in board.customers" :key="row.id">
+        <tr v-for="row in rows" :key="row.id">
+          <td class="stack">
+            <div>姓名 {{ text(row.name) }}</div>
+            <div>昵称 {{ text(row.nickname) }}</div>
+            <div>公司 {{ text(row.companyName) }}</div>
+            <div>手机 {{ text(row.phone) }}</div>
+          </td>
           <td>{{ row.email }}</td>
           <td>{{ row.customerNo }}</td>
+          <td class="stack">
+            <div>抬头 {{ text(row.invoiceTitle) }}</div>
+            <div>税号 {{ text(row.invoiceTaxNo) }}</div>
+            <div>收票邮箱 {{ text(row.invoiceEmail) }}</div>
+            <div>执照文件名 {{ text(row.invoiceLicense) }}</div>
+          </td>
           <td>
             <div class="edition">
               <select class="field-yxy" v-model="editionDraft[row.id]">
@@ -138,7 +182,7 @@ async function changeEdition(row) {
             <button class="btn-yxy mini" type="button" :disabled="busyId === row.id" @click="remove(row)">删除</button>
           </td>
         </tr>
-        <tr v-if="!board.customers.length"><td colspan="8">暂无客户。用户先在网站注册，再回到这里开通。</td></tr>
+        <tr v-if="!rows.length"><td colspan="10">{{ keyword.trim() ? '没有匹配的客户' : '暂无客户。用户先在网站注册，再回到这里开通。' }}</td></tr>
       </tbody>
     </table>
   </section>
@@ -148,7 +192,8 @@ async function changeEdition(row) {
 .edition { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .edition .field-yxy { min-width: 140px; }
 .muted { display: block; margin-top: 4px; color: var(--c-text-muted); font-size: 12px; }
-.row-form { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 12px; }
+.row-form { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 12px; align-items: end; }
 .row-form label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
 .reason { min-width: 180px; }
+.stack { font-size: 13px; line-height: 1.5; white-space: nowrap; }
 </style>
