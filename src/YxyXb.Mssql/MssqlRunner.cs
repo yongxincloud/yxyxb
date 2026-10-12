@@ -69,7 +69,7 @@ namespace YxyXb.Mssql
                 }
 
                 var settings = SettingsStore.Get(db);
-                var bakRoot = string.IsNullOrEmpty(settings.BakPath) ? AppPaths.BakDirectory : settings.BakPath;
+                var bakRoot = AppPaths.BackupDirectoryOrThrow(settings.BakPath);
                 Directory.CreateDirectory(bakRoot);
 
                 var dbs = ResolveDatabases(instance, task);
@@ -79,10 +79,65 @@ namespace YxyXb.Mssql
                 }
 
                 log.Append("库 ").Append(dbs.Count).Append(" 个。");
-                var work = PrepareWorkDir(bakRoot);
+                var names = new string[dbs.Count];
                 for (var i = 0; i < dbs.Count; i++)
                 {
-                    var dbName = dbs[i];
+                    names[i] = dbs[i];
+                }
+
+                Array.Sort(names, StringComparer.Ordinal);
+                var passwordHash = SourceFingerprint.PasswordHash(settings.ZipPassword);
+                var snapshot = new DatabaseSnapshot
+                {
+                    InstanceId = task.InstanceId,
+                    DbNames = names,
+                    ZipLevel = settings.ZipLevel,
+                    PasswordSha256 = passwordHash
+                };
+                var record = PendingBackup.Parse(task.PendingJson);
+                var decision = PendingBackup.DecideDatabase(record, snapshot, now, File.Exists);
+                var track = task.DoNetwork || task.DoFtp || task.DoCloud;
+                if (!decision.Reuse)
+                {
+                    if (!PendingFiles.DeleteReplacements(decision.Replace, log))
+                    {
+                        throw new InvalidOperationException("删除未传完的包失败，已中止。");
+                    }
+
+                    record = PendingBackup.RemoveItems(record, decision.Replace);
+                    if (decision.ResetCycle)
+                    {
+                        record = new PendingRecord
+                        {
+                            InstanceId = task.InstanceId,
+                            DbNames = names,
+                            CycleUntilUtc = PendingBackup.CycleUntil(task.CycleKind, task.CycleInterval, now),
+                            Items = new PendingItem[0]
+                        };
+                    }
+
+                    var removedJson = PendingBackup.ToJson(record);
+                    MssqlTaskStore.SavePending(db, task.Id, removedJson);
+                    task.PendingJson = removedJson;
+                }
+
+                string work = null;
+                for (var i = 0; i < names.Length; i++)
+                {
+                    var dbName = names[i];
+                    var existing = FindItem(record, dbName);
+                    if (existing != null && File.Exists(existing.ZipPath))
+                    {
+                        log.Append(" 沿用未传完的包 ").Append(Path.GetFileName(existing.ZipPath));
+                        zips.Add(existing.ZipPath);
+                        continue;
+                    }
+
+                    if (work == null)
+                    {
+                        work = PrepareWorkDir(bakRoot);
+                    }
+
                     var bakFile = Path.Combine(work, SafeFile(dbName) + ".bak");
                     if (File.Exists(bakFile))
                     {
@@ -98,24 +153,68 @@ namespace YxyXb.Mssql
                     {
                         new SourceFile { FullPath = bakFile, RelativePath = Path.GetFileName(bakFile) }
                     };
-                    ZipPacker.Pack(files, zipPath, settings.ZipPassword, settings.ZipLevel);
+                    try
+                    {
+                        ZipPacker.Pack(files, zipPath, settings.ZipPassword, settings.ZipLevel);
+                    }
+                    catch (Exception)
+                    {
+                        PendingFiles.TryDeleteZip(zipPath);
+                        throw;
+                    }
+
                     zips.Add(zipPath);
                     TryDelete(bakFile);
                     log.Append(" ").Append(dbName).Append("→").Append(Path.GetFileName(zipPath));
                     log.Append(string.IsNullOrEmpty(settings.ZipPassword) ? "。" : "，已用压缩密码。");
+                    var packed = new PendingItem
+                    {
+                        Key = dbName,
+                        ZipPath = zipPath,
+                        Fingerprint = "",
+                        ZipLevel = settings.ZipLevel,
+                        PasswordSha256 = passwordHash
+                    };
+                    PendingBackup.Upsert(record, packed);
+                    if (track)
+                    {
+                        var json = PendingBackup.ToJson(record);
+                        MssqlTaskStore.SavePending(db, task.Id, json);
+                        task.PendingJson = json;
+                    }
+                }
+
+                if (!track)
+                {
+                    MssqlTaskStore.SavePending(db, task.Id, null);
+                    task.PendingJson = null;
                 }
 
                 var distOk = true;
-                for (var i = 0; i < zips.Count; i++)
+                if (track)
                 {
-                    if (!DistChannel.UncAndFtp(db, task.DoNetwork, task.DoFtp, zips[i], log))
+                    var items = record.Items ?? new PendingItem[0];
+                    for (var i = 0; i < items.Length; i++)
                     {
-                        distOk = false;
-                    }
-
-                    if (!DistChannel.Cloud(db, task.DoCloud, task.CloudProvider, "mssql", task.Name, zips[i], log))
-                    {
-                        distOk = false;
+                        if (!PendingFiles.UploadItem(
+                            db,
+                            items[i],
+                            task.DoNetwork,
+                            task.DoFtp,
+                            task.DoCloud,
+                            task.CloudProvider,
+                            "mssql",
+                            task.Name,
+                            log,
+                            delegate
+                            {
+                                var json = PendingBackup.ToJson(record);
+                                MssqlTaskStore.SavePending(db, task.Id, json);
+                                task.PendingJson = json;
+                            }))
+                        {
+                            distOk = false;
+                        }
                     }
                 }
 
@@ -124,6 +223,8 @@ namespace YxyXb.Mssql
                     throw new InvalidOperationException(log.ToString());
                 }
 
+                MssqlTaskStore.SavePending(db, task.Id, null);
+                task.PendingJson = null;
                 ok = true;
             }
             catch (Exception ex)
@@ -145,6 +246,25 @@ namespace YxyXb.Mssql
                 MssqlTaskStore.MarkResult(db, task, ok, now);
                 LogStore.Add(db, "mssql", string.IsNullOrEmpty(mode) ? "auto" : mode, ok ? "ok" : "error", task.Name, log.ToString());
             }
+        }
+
+        private static PendingItem FindItem(PendingRecord record, string dbName)
+        {
+            if (record == null || record.Items == null)
+            {
+                return null;
+            }
+
+            for (var i = 0; i < record.Items.Length; i++)
+            {
+                var item = record.Items[i];
+                if (item != null && string.Equals(item.Key ?? "", dbName ?? "", StringComparison.OrdinalIgnoreCase))
+                {
+                    return item;
+                }
+            }
+
+            return null;
         }
 
         private static IList<string> ResolveDatabases(MssqlInstanceDto instance, MssqlTaskDto task)
