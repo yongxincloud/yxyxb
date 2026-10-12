@@ -1,7 +1,7 @@
 # 未传完备份包复用
 
 **日期：** 2026-10-12  
-**状态：** 待审阅。
+**状态：** 已实现，已合入 `main`。总结见 [2026-10-12-pending-backup-reuse-summary.md](./2026-10-12-pending-backup-reuse-summary.md)。
 
 ## 目标
 
