@@ -161,13 +161,13 @@ public sealed class AccountController : ControllerBase
 
     long AccountId() => long.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
-    protected IActionResult ToJson(AuthResult result)
+    IActionResult ToJson(AuthResult result)
     {
         var body = new ApiResult(result.Ok, result.Error, result.Ok ? result.Email : null);
         return result.Ok ? Ok(body) : BadRequest(body);
     }
 
-    protected string? ClientIp()
+    string? ClientIp()
     {
         var env = HttpContext.RequestServices.GetRequiredService<IHostEnvironment>();
         if (env.IsEnvironment("Testing") && Request.Headers.TryGetValue("X-Test-Ip", out var testIp))
