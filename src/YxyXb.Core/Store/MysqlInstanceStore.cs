@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.Data.SQLite;
 using YxyXb.Contracts.Dto;
+using YxyXb.Core.Backup;
 using YxyXb.Core.Data;
 using YxyXb.Core.Security;
 
@@ -63,10 +64,21 @@ namespace YxyXb.Core.Store
                 new SQLiteParameter("@id", item.Id));
         }
 
-        public static void Delete(SqliteDb db, long id)
+        public static string Delete(SqliteDb db, long id)
         {
+            var tasks = MysqlTaskStore.ListByInstance(db, id);
+            for (var i = 0; i < tasks.Count; i++)
+            {
+                var error = PendingFiles.DeleteUnpublished(tasks[i].PendingJson, tasks[i].DoNetwork, tasks[i].DoFtp, tasks[i].DoCloud);
+                if (error != null)
+                {
+                    return error;
+                }
+            }
+
             db.Execute("DELETE FROM mysql_tasks WHERE instance_id=@id", new SQLiteParameter("@id", id));
             db.Execute("DELETE FROM mysql_instances WHERE id=@id", new SQLiteParameter("@id", id));
+            return null;
         }
 
         public static string Validate(MysqlInstanceDto item)

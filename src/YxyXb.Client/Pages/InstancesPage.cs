@@ -152,12 +152,18 @@ namespace YxyXb.Client.Pages
                 return;
             }
 
-            if (MessageBox.Show(Window.GetWindow(this), "删除实例会同时删除其库任务。确定？", "删除", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
+            if (MessageBox.Show(Window.GetWindow(this), "还没传完的本地包会删除。已经传完的备份包和日志会保留。", "删除", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
             {
                 return;
             }
 
-            MssqlInstanceStore.Delete(_boot.Db, item.Id);
+            var error = MssqlInstanceStore.Delete(_boot.Db, item.Id);
+            if (error != null)
+            {
+                MessageBox.Show(Window.GetWindow(this), error, "删除");
+                return;
+            }
+
             Reload();
         }
 
@@ -202,12 +208,18 @@ namespace YxyXb.Client.Pages
                 return;
             }
 
-            if (MessageBox.Show(Window.GetWindow(this), "删除实例会同时删除其库任务。确定？", "删除", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
+            if (MessageBox.Show(Window.GetWindow(this), "还没传完的本地包会删除。已经传完的备份包和日志会保留。", "删除", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
             {
                 return;
             }
 
-            MysqlInstanceStore.Delete(_boot.Db, item.Id);
+            var error = MysqlInstanceStore.Delete(_boot.Db, item.Id);
+            if (error != null)
+            {
+                MessageBox.Show(Window.GetWindow(this), error, "删除");
+                return;
+            }
+
             ReloadMysql();
         }
 

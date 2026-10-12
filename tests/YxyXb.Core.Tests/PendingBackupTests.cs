@@ -106,6 +106,43 @@ namespace YxyXb.Core.Tests
         }
 
         [Test]
+        public void DeleteUnpublished_RemovesUnfinishedZip_KeepsReadonlyFile()
+        {
+            var dir = Path.Combine(Path.GetTempPath(), "yxy-unpub-" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(dir);
+            var zip = Path.Combine(dir, "open.zip");
+            var locked = Path.Combine(dir, "locked.zip");
+            File.WriteAllText(zip, "zip");
+            File.WriteAllText(locked, "locked");
+            File.SetAttributes(locked, FileAttributes.ReadOnly);
+            try
+            {
+                var open = new PendingItem { ZipPath = zip, CloudOk = false };
+                Assert.That(PendingBackup.NeedsUpload(open, false, false, true), Is.True);
+                var openJson = PendingBackup.ToJson(new PendingRecord { Items = new[] { open } });
+                Assert.That(PendingFiles.DeleteUnpublished(openJson, false, false, true), Is.Null);
+                Assert.That(File.Exists(zip), Is.False);
+
+                var held = new PendingItem { ZipPath = locked, CloudOk = false };
+                var heldJson = PendingBackup.ToJson(new PendingRecord { Items = new[] { held } });
+                Assert.That(PendingFiles.DeleteUnpublished(heldJson, false, false, true), Is.Not.Null);
+                Assert.That(File.Exists(locked), Is.True);
+            }
+            finally
+            {
+                if (File.Exists(locked))
+                {
+                    File.SetAttributes(locked, FileAttributes.Normal);
+                }
+
+                if (Directory.Exists(dir))
+                {
+                    Directory.Delete(dir, true);
+                }
+            }
+        }
+
+        [Test]
         public void TryDeleteZip_RemovesZipAndPart()
         {
             var dir = Path.Combine(Path.GetTempPath(), "yxy-zip-" + Guid.NewGuid().ToString("N"));

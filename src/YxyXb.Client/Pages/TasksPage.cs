@@ -153,12 +153,18 @@ namespace YxyXb.Client.Pages
                 return;
             }
 
-            if (MessageBox.Show(Window.GetWindow(this), "确定删除文件任务「" + existing.Name + "」？已产生的备份包和日志会保留。", "删除", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
+            if (MessageBox.Show(Window.GetWindow(this), "还没传完的本地包会删除。已经传完的备份包和日志会保留。", "删除", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
             {
                 return;
             }
 
-            FileTaskStore.Delete(_boot.Db, existing.Id);
+            var error = FileTaskStore.Delete(_boot.Db, existing.Id);
+            if (error != null)
+            {
+                MessageBox.Show(Window.GetWindow(this), error, "删除");
+                return;
+            }
+
             ReloadFile();
         }
 
@@ -268,12 +274,18 @@ namespace YxyXb.Client.Pages
                 return;
             }
 
-            if (MessageBox.Show(Window.GetWindow(this), "确定删除该任务？", "删除", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
+            if (MessageBox.Show(Window.GetWindow(this), "还没传完的本地包会删除。已经传完的备份包和日志会保留。", "删除", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
             {
                 return;
             }
 
-            MysqlTaskStore.Delete(_boot.Db, existing.Id);
+            var error = MysqlTaskStore.Delete(_boot.Db, existing.Id);
+            if (error != null)
+            {
+                MessageBox.Show(Window.GetWindow(this), error, "删除");
+                return;
+            }
+
             ReloadMysql();
         }
 
@@ -331,12 +343,18 @@ namespace YxyXb.Client.Pages
                 return;
             }
 
-            if (MessageBox.Show(Window.GetWindow(this), "确定删除库任务「" + existing.Name + "」？已产生的备份包和日志会保留。", "删除", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
+            if (MessageBox.Show(Window.GetWindow(this), "还没传完的本地包会删除。已经传完的备份包和日志会保留。", "删除", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
             {
                 return;
             }
 
-            MssqlTaskStore.Delete(_boot.Db, existing.Id);
+            var error = MssqlTaskStore.Delete(_boot.Db, existing.Id);
+            if (error != null)
+            {
+                MessageBox.Show(Window.GetWindow(this), error, "删除");
+                return;
+            }
+
             ReloadMssql();
         }
 

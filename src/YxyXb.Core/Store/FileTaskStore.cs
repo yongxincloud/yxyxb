@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.Data.SQLite;
 using YxyXb.Contracts.Dto;
+using YxyXb.Core.Backup;
 using YxyXb.Core.Data;
 
 namespace YxyXb.Core.Store
@@ -92,9 +93,22 @@ namespace YxyXb.Core.Store
                 new SQLiteParameter("@id", id));
         }
 
-        public static void Delete(SqliteDb db, long id)
+        public static string Delete(SqliteDb db, long id)
         {
+            var task = GetById(db, id);
+            if (task == null)
+            {
+                return null;
+            }
+
+            var error = PendingFiles.DeleteUnpublished(task.PendingJson, task.DoNetwork, task.DoFtp, task.DoCloud);
+            if (error != null)
+            {
+                return error;
+            }
+
             db.Execute("DELETE FROM file_tasks WHERE id=@id", new SQLiteParameter("@id", id));
+            return null;
         }
 
         public static bool TryClaim(SqliteDb db, long id, DateTime utcNow)

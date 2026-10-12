@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using YxyXb.Core.Cloud;
@@ -38,6 +39,32 @@ namespace YxyXb.Core.Backup
             {
                 return false;
             }
+        }
+
+        public static string DeleteUnpublished(string json, bool doNetwork, bool doFtp, bool doCloud)
+        {
+            var record = PendingBackup.Parse(json);
+            if (record == null || record.Items == null)
+            {
+                return null;
+            }
+
+            var doomed = new List<PendingItem>();
+            for (var i = 0; i < record.Items.Length; i++)
+            {
+                if (PendingBackup.NeedsUpload(record.Items[i], doNetwork, doFtp, doCloud))
+                {
+                    doomed.Add(record.Items[i]);
+                }
+            }
+
+            var log = new StringBuilder();
+            if (!DeleteReplacements(doomed.ToArray(), log))
+            {
+                return "未传完的本地包删不掉，任务未删除。" + log.ToString();
+            }
+
+            return null;
         }
 
         public static bool DeleteReplacements(PendingItem[] items, StringBuilder log)
