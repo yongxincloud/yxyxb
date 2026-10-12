@@ -59,6 +59,16 @@ namespace YxyXb.Cloud
             return CreateReady(db, provider).DeleteExpired(prefix, olderThanUtc, onDeleted);
         }
 
+        public void DiscardUpload(string localPath)
+        {
+            if (string.IsNullOrEmpty(localPath))
+            {
+                return;
+            }
+
+            BaiduUploadCheckpoint.Delete(AppPaths.DataDirectory, localPath);
+        }
+
         private static ICloudStorage CreateReady(SqliteDb db, string provider)
         {
             var account = CloudAccountStore.Get(db, provider);

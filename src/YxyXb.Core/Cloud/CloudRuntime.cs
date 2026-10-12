@@ -10,6 +10,8 @@ namespace YxyXb.Core.Cloud
         void Upload(SqliteDb db, string provider, string localPath, string remoteKey);
 
         int DeleteExpired(SqliteDb db, string provider, string prefix, DateTime olderThanUtc, Action<string> onDeleted);
+
+        void DiscardUpload(string localPath);
     }
 
     public static class CloudRuntime

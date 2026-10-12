@@ -105,6 +105,27 @@ namespace YxyXb.Core.Tests
             Assert.That(PendingBackup.AllowPack(true), Is.True);
         }
 
+        [Test]
+        public void TryDeleteZip_RemovesZipAndPart()
+        {
+            var dir = Path.Combine(Path.GetTempPath(), "yxy-zip-" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(dir);
+            var zip = Path.Combine(dir, "a.zip");
+            File.WriteAllText(zip, "zip");
+            File.WriteAllText(zip + ".yxypart", "part");
+            try
+            {
+                Assert.That(PendingFiles.TryDeleteZip(zip), Is.True);
+                Assert.That(File.Exists(zip), Is.False);
+                Assert.That(File.Exists(zip + ".yxypart"), Is.False);
+                Assert.That(PendingFiles.TryDeleteZip(zip), Is.True);
+            }
+            finally
+            {
+                if (Directory.Exists(dir)) Directory.Delete(dir, true);
+            }
+        }
+
         private static FileSnapshot Snap(string kind, string path, string fingerprint, int level, string passwordHash)
         {
             return new FileSnapshot
