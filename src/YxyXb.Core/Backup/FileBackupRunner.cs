@@ -68,7 +68,7 @@ namespace YxyXb.Core.Backup
             try
             {
                 var settings = SettingsStore.Get(db);
-                var bak = string.IsNullOrEmpty(settings.BakPath) ? AppPaths.BakDirectory : settings.BakPath;
+                var bak = AppPaths.BackupDirectoryOrThrow(settings.BakPath);
                 Directory.CreateDirectory(bak);
 
                 var error = FileTaskValidator.Validate(task, bak);
@@ -208,15 +208,14 @@ namespace YxyXb.Core.Backup
                     throw new InvalidOperationException(log.ToString());
                 }
 
-                FileTaskStore.SavePending(db, task.Id, null);
-                task.PendingJson = null;
-
                 if (!string.IsNullOrEmpty(task.PostProgram) && File.Exists(task.PostProgram))
                 {
                     Process.Start(new ProcessStartInfo(task.PostProgram) { UseShellExecute = true });
                     log.Append(" 已运行后续程序。");
                 }
 
+                FileTaskStore.SavePending(db, task.Id, null);
+                task.PendingJson = null;
                 ok = true;
             }
             catch (Exception ex)

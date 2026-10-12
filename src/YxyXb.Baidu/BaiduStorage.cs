@@ -147,6 +147,11 @@ namespace YxyXb.Baidu
             else
             {
                 uploadId = cp.UploadId;
+                if (!string.IsNullOrEmpty(cp.RemotePath))
+                {
+                    path = cp.RemotePath;
+                }
+
                 Note(dataDir, full, "续传 uploadid=" + uploadId + "，已完成 " + (cp.DonePartSeq == null ? 0 : cp.DonePartSeq.Length) + "/" + hashes.Count);
             }
 

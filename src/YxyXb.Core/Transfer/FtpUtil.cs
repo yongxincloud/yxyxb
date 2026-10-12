@@ -138,6 +138,40 @@ namespace YxyXb.Core.Transfer
             }
         }
 
+        /// <summary>
+        /// 用 MDTM 的服务器时间覆盖刚下载文件的本地写入时间。
+        /// 没有服务器时间则失败，调用方尚未决定是否删除未传完的包。
+        /// </summary>
+        private static void StampFromServer(FtpSettingsDto settings, string remote, string localPath)
+        {
+            string description;
+            try
+            {
+                var request = Create(settings, remote, WebRequestMethods.Ftp.GetDateTimestamp);
+                using (var response = (FtpWebResponse)request.GetResponse())
+                {
+                    description = response.StatusDescription;
+                }
+            }
+            catch (WebException ex)
+            {
+                throw new InvalidOperationException(MissingServerTimeMessage(remote), ex);
+            }
+
+            DateTime utc;
+            if (!FtpMdtm.TryParseUtc(description, out utc))
+            {
+                throw new InvalidOperationException(MissingServerTimeMessage(remote));
+            }
+
+            FtpMdtm.ApplyUtcWriteTime(localPath, utc);
+        }
+
+        private static string MissingServerTimeMessage(string remote)
+        {
+            return "FTP 源文件没有服务器修改时间，已中止，未删除未传完的包：" + remote;
+        }
+
         public static string DownloadTree(FtpSettingsDto settings, string remoteDir, string localRoot)
         {
             return DownloadTree(settings, remoteDir, localRoot, 0);
@@ -169,16 +203,19 @@ namespace YxyXb.Core.Transfer
                 }
                 else
                 {
+                    var localPath = Path.Combine(localDir, name);
                     var request = Create(settings, remote, WebRequestMethods.Ftp.DownloadFile);
                     using (var response = request.GetResponse())
                     using (var input = response.GetResponseStream())
-                    using (var output = File.Create(Path.Combine(localDir, name)))
+                    using (var output = File.Create(localPath))
                     {
                         if (input != null)
                         {
                             StreamPace.Copy(input, output, kbps);
                         }
                     }
+
+                    StampFromServer(settings, remote, localPath);
                 }
             }
         }
