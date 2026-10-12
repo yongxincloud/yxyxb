@@ -40,6 +40,8 @@ namespace YxyXb.Contracts.Dto
 
         public bool DoEmail { get; set; }
 
+        public string PendingJson { get; set; }
+
         public string PostProgram { get; set; }
 
         public string EnabledText

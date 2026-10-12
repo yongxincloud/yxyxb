@@ -48,6 +48,18 @@ namespace YxyXb.Core.Store
             return Read(table.Rows[0]);
         }
 
+        public static IList<MssqlTaskDto> ListByInstance(SqliteDb db, long instanceId)
+        {
+            var table = db.Query("SELECT * FROM mssql_tasks WHERE instance_id=@id", new SQLiteParameter("@id", instanceId));
+            var list = new List<MssqlTaskDto>();
+            foreach (DataRow row in table.Rows)
+            {
+                list.Add(Read(row));
+            }
+
+            return list;
+        }
+
         public static long Insert(SqliteDb db, MssqlTaskDto task)
         {
             db.Execute(
@@ -82,6 +94,14 @@ namespace YxyXb.Core.Store
                 new SQLiteParameter("@dd", task.DoDeleteNow ? 1 : 0),
                 new SQLiteParameter("@de", task.DoEmail ? 1 : 0),
                 new SQLiteParameter("@id", task.Id));
+        }
+
+        public static void SavePending(SqliteDb db, long id, string json)
+        {
+            db.Execute(
+                "UPDATE mssql_tasks SET pending_json=@p WHERE id=@id",
+                new SQLiteParameter("@p", (object)json ?? DBNull.Value),
+                new SQLiteParameter("@id", id));
         }
 
         public static void Delete(SqliteDb db, long id)
@@ -186,7 +206,8 @@ namespace YxyXb.Core.Store
                 DoCloud = Convert.ToInt32(row["do_cloud"]) != 0,
                 CloudProvider = row["cloud_provider"] == DBNull.Value ? null : Convert.ToString(row["cloud_provider"]),
                 DoDeleteNow = Convert.ToInt32(row["do_delete_now"]) != 0,
-                DoEmail = Convert.ToInt32(row["do_email"]) != 0
+                DoEmail = Convert.ToInt32(row["do_email"]) != 0,
+                PendingJson = row["pending_json"] == DBNull.Value ? null : Convert.ToString(row["pending_json"])
             };
         }
 

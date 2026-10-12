@@ -84,6 +84,14 @@ namespace YxyXb.Core.Store
                 new SQLiteParameter("@id", task.Id));
         }
 
+        public static void SavePending(SqliteDb db, long id, string json)
+        {
+            db.Execute(
+                "UPDATE file_tasks SET pending_json=@p WHERE id=@id",
+                new SQLiteParameter("@p", (object)json ?? DBNull.Value),
+                new SQLiteParameter("@id", id));
+        }
+
         public static void Delete(SqliteDb db, long id)
         {
             db.Execute("DELETE FROM file_tasks WHERE id=@id", new SQLiteParameter("@id", id));
@@ -142,7 +150,8 @@ namespace YxyXb.Core.Store
                 CloudProvider = row["cloud_provider"] == DBNull.Value ? null : Convert.ToString(row["cloud_provider"]),
                 DoDeleteNow = Convert.ToInt32(row["do_delete_now"]) != 0,
                 DoEmail = Convert.ToInt32(row["do_email"]) != 0,
-                PostProgram = row["post_program"] == DBNull.Value ? null : Convert.ToString(row["post_program"])
+                PostProgram = row["post_program"] == DBNull.Value ? null : Convert.ToString(row["post_program"]),
+                PendingJson = row["pending_json"] == DBNull.Value ? null : Convert.ToString(row["pending_json"])
             };
         }
 

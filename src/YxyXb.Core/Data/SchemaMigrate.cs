@@ -31,6 +31,9 @@ namespace YxyXb.Core.Data
             Add(db, "file_tasks", "run_lock_utc", "TEXT");
             Add(db, "mssql_tasks", "run_lock_utc", "TEXT");
             Add(db, "mysql_tasks", "run_lock_utc", "TEXT");
+            Add(db, "file_tasks", "pending_json", "TEXT");
+            Add(db, "mssql_tasks", "pending_json", "TEXT");
+            Add(db, "mysql_tasks", "pending_json", "TEXT");
         }
 
         private static void Add(SqliteDb db, string table, string column, string decl)

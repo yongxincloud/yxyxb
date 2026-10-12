@@ -77,6 +77,8 @@ namespace YxyXb.Contracts.Dto
 
         public bool DoEmail { get; set; }
 
+        public string PendingJson { get; set; }
+
         public string EnabledText
         {
             get { return Enabled ? "是" : "否"; }
