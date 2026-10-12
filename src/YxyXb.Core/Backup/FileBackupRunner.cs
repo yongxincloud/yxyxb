@@ -87,24 +87,129 @@ namespace YxyXb.Core.Backup
                 var files = SourceWalker.WalkLocal(sourceRoot, skipped);
                 log.Append("文件 ").Append(files.Count).Append("，跳过 ").Append(skipped.Count).Append("。");
 
-                var flags = settings.NameFlags == 0 ? NameParts.DefaultFlags : settings.NameFlags;
-                var parts = NameParts.FromFlags(flags);
-                var folder = BackupNaming.FileFolder(bak, settings.SoftwareId, task.Name, parts);
-                zipPath = Path.Combine(folder, BackupNaming.FileZipName(settings.SoftwareId, task.Name, now, parts));
-                ZipPacker.Pack(files, zipPath, settings.ZipPassword, settings.ZipLevel);
-                log.Append(" 产出 ").Append(zipPath);
-                log.Append(string.IsNullOrEmpty(settings.ZipPassword) ? "。" : "，已用压缩密码。");
-
-                var distOk = DistChannel.UncAndFtp(db, task.DoNetwork, task.DoFtp, zipPath, log);
-                if (!DistChannel.Cloud(db, task.DoCloud, task.CloudProvider, "file", task.Name, zipPath, log))
+                var fingerprintFiles = new List<FingerprintFile>();
+                for (var i = 0; i < files.Count; i++)
                 {
-                    distOk = false;
+                    var item = files[i];
+                    var info = new FileInfo(item.FullPath);
+                    fingerprintFiles.Add(new FingerprintFile
+                    {
+                        RelativePath = item.RelativePath,
+                        Length = info.Length,
+                        LastWriteUtcTicks = File.GetLastWriteTimeUtc(item.FullPath).Ticks
+                    });
+                }
+
+                var passwordHash = SourceFingerprint.PasswordHash(settings.ZipPassword);
+                var fingerprint = SourceFingerprint.Compute(fingerprintFiles);
+                var record = PendingBackup.Parse(task.PendingJson);
+                var decision = PendingBackup.DecideFile(record, new FileSnapshot
+                {
+                    SourceKind = task.SourceKind ?? "local",
+                    SourcePath = task.SourcePath ?? "",
+                    Fingerprint = fingerprint,
+                    ZipLevel = settings.ZipLevel,
+                    PasswordSha256 = passwordHash
+                }, File.Exists);
+                var track = task.DoNetwork || task.DoFtp || task.DoCloud;
+                if (decision.Reuse)
+                {
+                    TryDeleteDir(tempRoot);
+                    tempRoot = null;
+                    zipPath = decision.Keep[0].ZipPath;
+                    log.Append(" 沿用未传完的包 ").Append(zipPath);
+                }
+                else
+                {
+                    if (!PendingFiles.DeleteReplacements(decision.Replace, log))
+                    {
+                        throw new InvalidOperationException("删除未传完的包失败，已中止。");
+                    }
+
+                    record = PendingBackup.RemoveItems(record, decision.Replace);
+                    var removedJson = PendingBackup.ToJson(record);
+                    FileTaskStore.SavePending(db, task.Id, removedJson);
+                    task.PendingJson = removedJson;
+                    var flags = settings.NameFlags == 0 ? NameParts.DefaultFlags : settings.NameFlags;
+                    var parts = NameParts.FromFlags(flags);
+                    var folder = BackupNaming.FileFolder(bak, settings.SoftwareId, task.Name, parts);
+                    zipPath = Path.Combine(folder, BackupNaming.FileZipName(settings.SoftwareId, task.Name, now, parts));
+                    try
+                    {
+                        ZipPacker.Pack(files, zipPath, settings.ZipPassword, settings.ZipLevel);
+                    }
+                    catch (Exception)
+                    {
+                        PendingFiles.TryDeleteZip(zipPath);
+                        throw;
+                    }
+
+                    log.Append(" 产出 ").Append(zipPath);
+                    log.Append(string.IsNullOrEmpty(settings.ZipPassword) ? "。" : "，已用压缩密码。");
+                    if (decision.Replace != null && decision.Replace.Length > 0)
+                    {
+                        log.Append(" 重新打包：").Append(decision.Reason);
+                    }
+
+                    var packed = new PendingItem
+                    {
+                        Key = "file",
+                        ZipPath = zipPath,
+                        Fingerprint = fingerprint,
+                        ZipLevel = settings.ZipLevel,
+                        PasswordSha256 = passwordHash
+                    };
+                    if (record == null)
+                    {
+                        record = new PendingRecord();
+                    }
+
+                    record.SourceKind = task.SourceKind ?? "local";
+                    record.SourcePath = task.SourcePath ?? "";
+                    record.CycleUntilUtc = null;
+                    record.Items = new[] { packed };
+                    if (track)
+                    {
+                        var json = PendingBackup.ToJson(record);
+                        FileTaskStore.SavePending(db, task.Id, json);
+                        task.PendingJson = json;
+                    }
+                    else
+                    {
+                        FileTaskStore.SavePending(db, task.Id, null);
+                        task.PendingJson = null;
+                    }
+                }
+
+                var distOk = true;
+                if (track)
+                {
+                    var uploadItem = decision.Reuse ? decision.Keep[0] : record.Items[0];
+                    distOk = PendingFiles.UploadItem(
+                        db,
+                        uploadItem,
+                        task.DoNetwork,
+                        task.DoFtp,
+                        task.DoCloud,
+                        task.CloudProvider,
+                        "file",
+                        task.Name,
+                        log,
+                        delegate
+                        {
+                            var json = PendingBackup.ToJson(record);
+                            FileTaskStore.SavePending(db, task.Id, json);
+                            task.PendingJson = json;
+                        });
                 }
 
                 if (!DistChannel.Finish(db, task.DoEmail, task.DoDeleteNow, task.Name, new List<string> { zipPath }, distOk, log))
                 {
                     throw new InvalidOperationException(log.ToString());
                 }
+
+                FileTaskStore.SavePending(db, task.Id, null);
+                task.PendingJson = null;
 
                 if (!string.IsNullOrEmpty(task.PostProgram) && File.Exists(task.PostProgram))
                 {
