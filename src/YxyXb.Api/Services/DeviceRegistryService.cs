@@ -5,7 +5,7 @@ namespace YxyXb.Api.Services;
 
 public sealed record DeviceOccupyResult(bool Ok, string? ErrorCode, string? Error, int DeviceCount, int? MaxDevices);
 
-public sealed record DeviceRow(string DeviceId, string? DisplayName, DateTime FirstSeenAt, DateTime LastSeenAt);
+public sealed record DeviceRow(string DeviceId, string? DisplayName, string? Note, DateTime FirstSeenAt, DateTime LastSeenAt);
 
 public sealed class DeviceRegistryService
 {
@@ -23,7 +23,8 @@ public sealed class DeviceRegistryService
         string? deviceId,
         int? maxDevices,
         bool enforceLimit,
-        string? displayName = null)
+        string? displayName = null,
+        string? note = null)
     {
         if (string.IsNullOrWhiteSpace(deviceId))
             return new DeviceOccupyResult(false, "DEVICE_ID_REQUIRED", "缺少设备标识", 0, maxDevices);
@@ -40,6 +41,7 @@ public sealed class DeviceRegistryService
         {
             existing.LastSeenAt = now;
             if (!string.IsNullOrWhiteSpace(displayName)) existing.DisplayName = displayName.Trim();
+            ApplyNote(existing, note);
             await _db.SaveChangesAsync();
             return new DeviceOccupyResult(true, null, null, active.Count, maxDevices);
         }
@@ -54,6 +56,7 @@ public sealed class DeviceRegistryService
             existing.LastSeenAt = now;
             existing.FirstSeenAt = now;
             if (!string.IsNullOrWhiteSpace(displayName)) existing.DisplayName = displayName.Trim();
+            ApplyNote(existing, note);
         }
         else
         {
@@ -62,6 +65,7 @@ public sealed class DeviceRegistryService
                 AccountId = accountId,
                 DeviceId = id,
                 DisplayName = string.IsNullOrWhiteSpace(displayName) ? null : displayName.Trim(),
+                Note = NormalizeNote(note),
                 FirstSeenAt = now,
                 LastSeenAt = now,
                 Status = 1
@@ -78,8 +82,33 @@ public sealed class DeviceRegistryService
         return await _db.AccountDevices
             .Where(x => x.AccountId == accountId && x.Status == 1)
             .OrderByDescending(x => x.LastSeenAt)
-            .Select(x => new DeviceRow(x.DeviceId, x.DisplayName, x.FirstSeenAt, x.LastSeenAt))
+            .Select(x => new DeviceRow(x.DeviceId, x.DisplayName, x.Note, x.FirstSeenAt, x.LastSeenAt))
             .ToListAsync();
+    }
+
+    public async Task<bool> SetNoteAsync(long accountId, string deviceId, string? note)
+    {
+        if (string.IsNullOrWhiteSpace(deviceId)) return false;
+        var id = deviceId.Trim();
+        var row = await _db.AccountDevices.SingleOrDefaultAsync(x => x.AccountId == accountId && x.DeviceId == id && x.Status == 1);
+        if (row == null) return false;
+        row.Note = NormalizeNote(note);
+        await _db.SaveChangesAsync();
+        return true;
+    }
+
+    static void ApplyNote(AccountDevice row, string? note)
+    {
+        var text = NormalizeNote(note);
+        if (text != null) row.Note = text;
+    }
+
+    static string? NormalizeNote(string? note)
+    {
+        if (string.IsNullOrWhiteSpace(note)) return null;
+        var text = note.Trim().Replace("{", "").Replace("}", "");
+        if (text.Length == 0) return null;
+        return text.Length <= 40 ? text : text.Substring(0, 40);
     }
 
     public async Task<bool> KickAsync(long accountId, string deviceId)

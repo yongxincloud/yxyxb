@@ -7,9 +7,11 @@ const { board, loadError, load } = useVendorBoard()
 const days = ref(365)
 const reason = ref('手工开通')
 const grantProductNo = ref('STANDARD')
+const grantDevices = ref(10)
 const message = ref('')
 const busyId = ref(0)
 const editionDraft = reactive({})
+const deviceDraft = reactive({})
 const keyword = ref('')
 const rows = ref([])
 const listError = ref('')
@@ -31,8 +33,20 @@ onMounted(async () => {
 watch(rows, (list) => {
   for (const row of list || []) {
     editionDraft[row.id] = row.productNo || 'STANDARD'
+    deviceDraft[row.id] = row.maxDevices || ''
   }
 })
+
+function editionText(product) {
+  if (product.productNo === 'CUSTOM') return product.name + '（人数自定）'
+  return product.name + '（' + product.maxDevices + ' 台）'
+}
+
+function deviceCount(raw) {
+  const count = Number(raw)
+  if (!count || count < 1) return null
+  return Math.floor(count)
+}
 
 async function loadCustomers() {
   listError.value = ''
@@ -69,12 +83,19 @@ async function extend(row) {
     message.value = '天数要大于 0'
     return
   }
+  const productNo = grantProductNo.value || 'STANDARD'
+  const maxDevices = productNo === 'CUSTOM' ? deviceCount(grantDevices.value) : null
+  if (productNo === 'CUSTOM' && !maxDevices) {
+    message.value = '定制版人数要大于 0'
+    return
+  }
   busyId.value = row.id
   const data = await post('/api/vendor/grants', {
     email: row.email,
     days: count,
     reason: reason.value || '手工开通',
-    productNo: grantProductNo.value || 'STANDARD'
+    productNo,
+    maxDevices
   })
   busyId.value = 0
   message.value = data.ok
@@ -90,15 +111,22 @@ async function changeEdition(row) {
     message.value = '请选择账号类型'
     return
   }
-  if (productNo === row.productNo) {
+  const maxDevices = productNo === 'CUSTOM' ? deviceCount(deviceDraft[row.id]) : null
+  if (productNo === 'CUSTOM' && !maxDevices) {
+    message.value = '定制版人数要大于 0'
+    return
+  }
+  if (productNo === row.productNo && (productNo !== 'CUSTOM' || maxDevices === row.maxDevices)) {
     message.value = '账号类型未变化'
     return
   }
   const label = editionOptions.value.find((p) => p.productNo === productNo)?.name || productNo
-  if (!window.confirm('将 ' + row.email + ' 改为「' + label + '」？')) return
+  const people = productNo === 'CUSTOM' ? '，' + maxDevices + ' 人' : ''
+  if (!window.confirm('将 ' + row.email + ' 改为「' + label + '」' + people + '？')) return
   busyId.value = row.id
   const data = await post('/api/vendor/customers/' + row.id + '/edition', {
     productNo,
+    maxDevices,
     reason: reason.value || '后台改版'
   })
   busyId.value = 0
@@ -113,17 +141,18 @@ async function changeEdition(row) {
   <p class="err" v-if="loadError">{{ loadError }}</p>
   <section v-if="board" class="card-yxy">
     <h1>客户</h1>
-    <p class="lead">注册后的账号会出现在这里。支付未接通时，填写天数后点该行的「增加期限」。可单独修改账号类型（个人/标准/专业）。</p>
+    <p class="lead">注册后的账号会出现在这里。支付未接通时，填写天数后点该行的「增加期限」。可单独修改账号类型（个人/标准/专业/定制）。定制版要填写人数。</p>
     <p v-if="message" :class="message.includes('失败') || message.includes('要大于') || message.includes('未变化') || message.includes('请选择') ? 'err' : 'ok'">{{ message }}</p>
     <div class="row-form">
       <label>增加天数<input class="field-yxy" v-model="days" type="number" min="1" /></label>
       <label>开通类型
         <select class="field-yxy" v-model="grantProductNo">
           <option v-for="p in editionOptions" :key="p.productNo" :value="p.productNo">
-            {{ p.name }}（{{ p.maxDevices }} 台）
+            {{ editionText(p) }}
           </option>
         </select>
       </label>
+      <label v-if="grantProductNo === 'CUSTOM'">人数<input class="field-yxy devices" v-model="grantDevices" type="number" min="1" max="9999" /></label>
       <label>事由<input class="field-yxy reason" v-model="reason" /></label>
     </div>
     <form class="row-form" @submit.prevent="loadCustomers">
@@ -166,9 +195,10 @@ async function changeEdition(row) {
             <div class="edition">
               <select class="field-yxy" v-model="editionDraft[row.id]">
                 <option v-for="p in editionOptions" :key="p.productNo" :value="p.productNo">
-                  {{ p.name }}（{{ p.maxDevices }} 台）
+                  {{ editionText(p) }}
                 </option>
               </select>
+              <input v-if="editionDraft[row.id] === 'CUSTOM'" class="field-yxy devices" v-model="deviceDraft[row.id]" type="number" min="1" max="9999" placeholder="人数" />
               <button class="btn-yxy mini" type="button" :disabled="busyId === row.id" @click="changeEdition(row)">修改</button>
             </div>
             <span class="muted" v-if="!row.productNo">尚未开通</span>
@@ -191,6 +221,7 @@ async function changeEdition(row) {
 <style scoped>
 .edition { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .edition .field-yxy { min-width: 140px; }
+.devices { width: 90px; min-width: 90px; }
 .muted { display: block; margin-top: 4px; color: var(--c-text-muted); font-size: 12px; }
 .row-form { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 12px; align-items: end; }
 .row-form label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; }

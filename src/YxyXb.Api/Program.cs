@@ -116,12 +116,16 @@ using (var scope = app.Services.CreateScope())
           "AccountId" INTEGER NOT NULL,
           "DeviceId" TEXT NOT NULL,
           "DisplayName" TEXT NULL,
+          "Note" TEXT NULL,
           "FirstSeenAt" TEXT NOT NULL,
           "LastSeenAt" TEXT NOT NULL,
           "Status" INTEGER NOT NULL,
           "KickedAt" TEXT NULL
         );
         CREATE UNIQUE INDEX IF NOT EXISTS "IX_AccountDevices_Account_Device" ON "AccountDevices" ("AccountId", "DeviceId");
+        """);
+    AddColumn(db, "AccountDevices", "Note", "TEXT NULL");
+    db.Database.ExecuteSqlRaw("""
         CREATE TABLE IF NOT EXISTS "AuthTokens" (
           "Id" INTEGER NOT NULL CONSTRAINT "PK_AuthTokens" PRIMARY KEY AUTOINCREMENT,
           "AccountId" INTEGER NOT NULL,
@@ -144,18 +148,22 @@ using (var scope = app.Services.CreateScope())
           "GrantType" INTEGER NOT NULL,
           "GrantBy" INTEGER NULL,
           "GrantReason" TEXT NULL,
+          "DeviceLimit" INTEGER NULL,
           "CreatedAt" TEXT NOT NULL,
           "UpdatedAt" TEXT NOT NULL
         );
         """);
+    AddColumn(db, "SubscriptionAuths", "DeviceLimit", "INTEGER NULL");
     db.Database.ExecuteSqlRaw("""
         CREATE TABLE IF NOT EXISTS "AdminUsers" (
           "Id" INTEGER NOT NULL CONSTRAINT "PK_AdminUsers" PRIMARY KEY AUTOINCREMENT,
           "Username" TEXT NOT NULL,
           "PasswordHash" TEXT NOT NULL,
+          "Email" TEXT NULL,
           "CreatedAt" TEXT NOT NULL
         );
         CREATE UNIQUE INDEX IF NOT EXISTS "IX_AdminUsers_Username" ON "AdminUsers" ("Username");
+        CREATE UNIQUE INDEX IF NOT EXISTS "IX_AdminUsers_Email" ON "AdminUsers" ("Email");
         CREATE TABLE IF NOT EXISTS "Commissions" (
           "Id" INTEGER NOT NULL CONSTRAINT "PK_Commissions" PRIMARY KEY AUTOINCREMENT,
           "OrderId" INTEGER NOT NULL,
@@ -260,19 +268,32 @@ using (var scope = app.Services.CreateScope())
     AddColumn(db, "Customers", "InvoiceTaxNo", "TEXT NULL");
     AddColumn(db, "Customers", "InvoiceEmail", "TEXT NULL");
     AddColumn(db, "Customers", "InvoiceLicense", "TEXT NULL");
+    AddColumn(db, "AdminUsers", "Email", "TEXT NULL");
+    db.Database.ExecuteSqlRaw("""CREATE UNIQUE INDEX IF NOT EXISTS "IX_AdminUsers_Email" ON "AdminUsers" ("Email");""");
+    var username = app.Configuration["Admin:Username"];
+    var password = app.Configuration["Admin:Password"];
+    var adminEmail = AccountService.Norm(app.Configuration["Admin:Email"]);
+    if (string.IsNullOrWhiteSpace(username)) username = VendorController.DefaultAdminUser;
+    if (string.IsNullOrWhiteSpace(password)) password = VendorController.DefaultAdminPassword;
     if (!db.AdminUsers.Any())
     {
-        var username = app.Configuration["Admin:Username"];
-        var password = app.Configuration["Admin:Password"];
-        if (string.IsNullOrWhiteSpace(username)) username = VendorController.DefaultAdminUser;
-        if (string.IsNullOrWhiteSpace(password)) password = VendorController.DefaultAdminPassword;
         db.AdminUsers.Add(new AdminUser
         {
             Username = username.Trim(),
             PasswordHash = scope.ServiceProvider.GetRequiredService<IPasswordHasher>().Hash(password),
+            Email = string.IsNullOrEmpty(adminEmail) ? null : adminEmail,
             CreatedAt = DateTime.UtcNow
         });
         db.SaveChanges();
+    }
+    else if (!string.IsNullOrEmpty(adminEmail))
+    {
+        var admin = db.AdminUsers.SingleOrDefault(x => x.Username == username.Trim());
+        if (admin != null && string.IsNullOrEmpty(admin.Email))
+        {
+            admin.Email = adminEmail;
+            db.SaveChanges();
+        }
     }
 }
 static void AddColumn(WebDb db, string table, string column, string definition)

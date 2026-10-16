@@ -41,22 +41,22 @@ public sealed class ClientAuthService
         _time = time;
     }
 
-    public async Task<ClientSession> LoginPasswordAsync(string? email, string? password, string? deviceId, string? ip, string? displayName = null)
+    public async Task<ClientSession> LoginPasswordAsync(string? email, string? password, string? deviceId, string? ip, string? displayName = null, string? note = null)
     {
         var auth = await _accounts.LoginPasswordAsync(email, password, ip);
         if (!auth.Ok || auth.AccountId == null) return Fail(auth.Error);
-        return await IssueAsync(auth.AccountId.Value, deviceId, displayName);
+        return await IssueAsync(auth.AccountId.Value, deviceId, displayName, note);
     }
 
-    public async Task<ClientSession> LoginCodeAsync(string? email, string? code, string? deviceId, string? ip, string? displayName = null)
+    public async Task<ClientSession> LoginCodeAsync(string? email, string? code, string? deviceId, string? ip, string? displayName = null, string? note = null)
     {
         var auth = await _accounts.LoginCodeAsync(email, code, ip);
         if (!auth.Ok || auth.AccountId == null) return Fail(auth.Error);
-        return await IssueAsync(auth.AccountId.Value, deviceId, displayName);
+        return await IssueAsync(auth.AccountId.Value, deviceId, displayName, note);
     }
 
-    public Task<ClientSession> VerifyAsync(string? token, string? deviceId, string? displayName = null) =>
-        RefreshAsync(token, deviceId, displayName);
+    public Task<ClientSession> VerifyAsync(string? token, string? deviceId, string? displayName = null, string? note = null) =>
+        RefreshAsync(token, deviceId, displayName, note);
 
     public Task<ClientSession> RenewAsync(string? token) => RefreshAsync(token, null, null);
 
@@ -79,7 +79,7 @@ public sealed class ClientAuthService
         return (authEnd.Value - now).TotalDays > 30 ? 30 : GraceDays;
     }
 
-    async Task<ClientSession> RefreshAsync(string? rawToken, string? deviceId, string? displayName)
+    async Task<ClientSession> RefreshAsync(string? rawToken, string? deviceId, string? displayName, string? note = null)
     {
         var row = await FindLiveAsync(rawToken);
         if (row == null) return Fail("登录已失效");
@@ -89,10 +89,10 @@ public sealed class ClientAuthService
             await RevokeAccountAsync(row.AccountId);
             return Fail("登录已失效");
         }
-        return await IssueAsync(account.Id, deviceId ?? row.DeviceId, displayName);
+        return await IssueAsync(account.Id, deviceId ?? row.DeviceId, displayName, note);
     }
 
-    async Task<ClientSession> IssueAsync(long accountId, string? deviceId, string? displayName = null)
+    async Task<ClientSession> IssueAsync(long accountId, string? deviceId, string? displayName = null, string? note = null)
     {
         if (string.IsNullOrWhiteSpace(deviceId))
             return Fail("缺少设备标识", "DEVICE_ID_REQUIRED");
@@ -111,7 +111,7 @@ public sealed class ClientAuthService
             var product = await _db.Products.SingleOrDefaultAsync(x => x.Id == view.AuthRow.ProductId);
             productNo = product?.ProductNo;
             productName = product?.Name;
-            maxDevices = product?.MaxDevices;
+            maxDevices = product == null ? null : OrderService.DeviceCap(product.ProductNo, product.MaxDevices, view.AuthRow.DeviceLimit);
             var trial = false;
             if (view.AuthRow.OrderId is long orderId)
             {
@@ -121,9 +121,13 @@ public sealed class ClientAuthService
             enforceLimit = !trial && maxDevices != null;
         }
 
-        var occupy = await _devices.TryOccupyAsync(accountId, deviceId, maxDevices, enforceLimit, NormalizeDisplayName(displayName));
+        var occupy = await _devices.TryOccupyAsync(accountId, deviceId, maxDevices, enforceLimit, NormalizeDisplayName(displayName), note);
         if (!occupy.Ok)
+        {
+            if (occupy.ErrorCode == "DEVICE_LIMIT")
+                return await IssueLimitTokenAsync(account, customer, view, now, deviceId, occupy, productNo, productName);
             return Fail(occupy.Error, occupy.ErrorCode, productNo, occupy.MaxDevices, occupy.DeviceCount, productName);
+        }
 
         var days = NextCheckDays(view.End, now);
         var raw = MakeToken();
@@ -141,6 +145,34 @@ public sealed class ClientAuthService
             true, null, view.Usable, raw, account.Status, view.Status, view.End, days,
             customer?.Name, customer?.Nickname, customer?.CompanyName,
             null, productNo, maxDevices, occupy.DeviceCount, productName);
+    }
+
+    async Task<ClientSession> IssueLimitTokenAsync(
+        Account account,
+        Customer? customer,
+        AuthView view,
+        DateTime now,
+        string deviceId,
+        DeviceOccupyResult occupy,
+        string? productNo,
+        string? productName)
+    {
+        var days = NextCheckDays(view.End, now);
+        var raw = MakeToken();
+        _db.AuthTokens.Add(new AuthToken
+        {
+            AccountId = account.Id,
+            TokenHash = Hash(raw),
+            DeviceId = deviceId.Trim(),
+            IssuedAt = now,
+            ExpiresAt = now.AddDays(days + TokenBufferDays),
+            Revoked = 0
+        });
+        await _db.SaveChangesAsync();
+        return new ClientSession(
+            false, occupy.Error, false, raw, account.Status, "device_limit", view.End, days,
+            customer?.Name, customer?.Nickname, customer?.CompanyName,
+            "DEVICE_LIMIT", productNo, occupy.MaxDevices, occupy.DeviceCount, productName);
     }
 
     async Task<AuthView> LoadAuthAsync(long accountId, DateTime now)

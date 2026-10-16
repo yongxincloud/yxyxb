@@ -84,6 +84,12 @@ function submit() {
       </label>
       <p class="hint" v-if="hint">{{ hint }}</p>
       <p class="err" v-if="error">{{ error }}</p>
+      <p class="agree">
+        登录即表示已阅读并同意
+        <router-link to="/terms" target="_blank">《用户协议条款》</router-link>
+        和
+        <router-link to="/privacy" target="_blank">《隐私权协议条款》</router-link>
+      </p>
       <button class="btn-yxy submit" type="submit">{{ mode === 'password' ? '登录' : '验证码登录' }}</button>
       <p class="links">
         <router-link to="/register">注册账号</router-link>
@@ -136,6 +142,8 @@ label { display: grid; gap: 6px; color: var(--c-title); font-size: 13px; }
   cursor: pointer;
 }
 .hint { margin: 0; color: var(--c-text-muted); }
+.agree { margin: 0; font-size: 13px; line-height: 1.6; color: var(--c-text-muted); }
+.agree a { color: var(--brand-primary); }
 .submit { width: 100%; cursor: pointer; }
 .links { display: flex; justify-content: space-between; margin: 0; }
 .links a { color: var(--brand-primary); text-decoration: none; }

@@ -47,6 +47,7 @@ namespace YxyXb.Core.Data
 
             EnsureSingletonRows();
             SchemaMigrate.Apply(this);
+            SecretMigrate.Apply(this);
         }
 
         public static SqliteDb OpenDefault()
@@ -124,18 +125,32 @@ namespace YxyXb.Core.Data
         private void EnsureSingletonRows()
         {
             var now = UtcNowText();
+            var initialBak = AppPaths.DirectoryExists(AppPaths.DefaultBakDirectory) ? AppPaths.DefaultBakDirectory : "";
             Execute(
                 "INSERT OR IGNORE INTO settings (id, bak_path, software_id, updated_utc) VALUES (1, @bak, @sid, @utc)",
-                new SQLiteParameter("@bak", AppPaths.BakDirectory),
+                new SQLiteParameter("@bak", initialBak),
                 new SQLiteParameter("@sid", AppPaths.ProductPathName),
                 new SQLiteParameter("@utc", now));
-            var legacy = Path.Combine(AppPaths.InstallDirectory, "bak");
-            Execute(
-                "UPDATE settings SET bak_path=@bak, updated_utc=@utc WHERE id=1 AND (bak_path=@old OR bak_path=@oldSlash)",
-                new SQLiteParameter("@bak", AppPaths.BakDirectory),
-                new SQLiteParameter("@utc", now),
-                new SQLiteParameter("@old", legacy),
-                new SQLiteParameter("@oldSlash", legacy + Path.DirectorySeparatorChar));
+            if (AppPaths.DirectoryExists(AppPaths.DefaultBakDirectory))
+            {
+                var legacy = Path.Combine(AppPaths.InstallDirectory, "bak");
+                Execute(
+                    "UPDATE settings SET bak_path=@bak, updated_utc=@utc WHERE id=1 AND (bak_path=@old OR bak_path=@oldSlash)",
+                    new SQLiteParameter("@bak", AppPaths.DefaultBakDirectory),
+                    new SQLiteParameter("@utc", now),
+                    new SQLiteParameter("@old", legacy),
+                    new SQLiteParameter("@oldSlash", legacy + Path.DirectorySeparatorChar));
+            }
+            else
+            {
+                var current = ExecuteScalar("SELECT bak_path FROM settings WHERE id=1") as string;
+                if (AppPaths.IsDefaultBak(current))
+                {
+                    Execute(
+                        "UPDATE settings SET bak_path='', updated_utc=@utc WHERE id=1",
+                        new SQLiteParameter("@utc", now));
+                }
+            }
 
             Execute(
                 "INSERT OR IGNORE INTO license (id, first_run_utc) VALUES (1, @utc)",

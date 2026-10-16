@@ -74,6 +74,66 @@ namespace YxyXb.Core
             }
         }
 
+        public static bool DirectoryExists(string path)
+        {
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                return false;
+            }
+
+            try
+            {
+                return Directory.Exists(path);
+            }
+            catch (IOException)
+            {
+                return false;
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return false;
+            }
+        }
+
+        public static bool IsDefaultBak(string path)
+        {
+            var left = (path ?? "").Trim().TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            var right = DefaultBakDirectory.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            return string.Equals(left, right, StringComparison.OrdinalIgnoreCase);
+        }
+
+        public static string DisplayBakPath(string configured)
+        {
+            var path = (configured ?? "").Trim();
+            if (path.Length == 0)
+            {
+                return DirectoryExists(DefaultBakDirectory) ? DefaultBakDirectory : "";
+            }
+
+            if (IsDefaultBak(path) && !DirectoryExists(path))
+            {
+                return "";
+            }
+
+            return path;
+        }
+
+        public static bool HasValidBakPath(string configured)
+        {
+            return DirectoryExists(DisplayBakPath(configured));
+        }
+
+        public static string BackupDirectoryOrThrow(string configured)
+        {
+            var path = DisplayBakPath(configured);
+            if (!DirectoryExists(path))
+            {
+                throw new InvalidOperationException("未设置备份目录。请先在「设置 → 备份存储」选择一个已有磁盘上的文件夹。");
+            }
+
+            return path;
+        }
+
         public static string DatabaseFile
         {
             get { return Path.Combine(DataDirectory, DatabaseFileName); }
@@ -92,7 +152,6 @@ namespace YxyXb.Core
         public static void EnsureDirectories()
         {
             Directory.CreateDirectory(DataDirectory);
-            Directory.CreateDirectory(BakDirectory);
             Directory.CreateDirectory(BaiduUploadDirectory);
         }
     }

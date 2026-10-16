@@ -138,7 +138,7 @@ namespace YxyXb.Client.Dialogs
                 Enabled = _enabled.IsChecked == true,
                 DbScope = TagOf(_scope, "user"),
                 SelectedDbs = (_dbs.Text ?? "").Trim(),
-                RetryMinutes = 5,
+                RetryMinutes = 30,
                 CycleKind = TagOf(_cycle, "day"),
                 CycleInterval = interval,
                 NextRunUtc = DateTime.SpecifyKind(nextLocal, DateTimeKind.Local).ToUniversalTime(),

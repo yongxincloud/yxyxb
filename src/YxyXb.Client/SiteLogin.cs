@@ -15,6 +15,7 @@ using System.Windows.Media;
 using YxyXb.Core;
 using YxyXb.Core.Data;
 using YxyXb.Core.Device;
+using YxyXb.Core.Store;
 
 namespace YxyXb.Client
 {
@@ -33,9 +34,28 @@ namespace YxyXb.Client
         public string ProductName { get; set; }
         public int? MaxDevices { get; set; }
 
+        public bool DeviceLimited
+        {
+            get { return string.Equals(AuthStatus, "device_limit", StringComparison.OrdinalIgnoreCase); }
+        }
+
         public bool Usable
         {
-            get { return SiteGate.Allows(LoggedIn, Valid, AuthEndUtc, DateTime.UtcNow); }
+            get { return !DeviceLimited && SiteGate.Allows(LoggedIn, Valid, AuthEndUtc, DateTime.UtcNow); }
+        }
+
+        public static string DeviceLimitPrompt(int? maxDevices)
+        {
+            var head = maxDevices == null
+                ? "设备数已达上限"
+                : "已达 " + maxDevices.Value + " 台设备上限，请踢出设备或升级";
+            return head + "。请在「我的设备」踢出设备，或升级更高版本后再登录。";
+        }
+
+        public static string DeviceLimitPrompt(string serverError)
+        {
+            var head = string.IsNullOrWhiteSpace(serverError) ? "设备数已达上限" : serverError.Trim();
+            return head + "。请在「我的设备」踢出设备，或升级更高版本后再登录。";
         }
 
         public string EditionText
@@ -86,6 +106,11 @@ namespace YxyXb.Client
                     return "未登录。请先登录或申请帐号";
                 }
 
+                if (DeviceLimited)
+                {
+                    return DeviceLimitPrompt(MaxDevices) + "文件备份、数据库备份、云、UNC、FTP、邮件已停用。离线介质仍可使用。";
+                }
+
                 var who = DisplayName;
                 var edition = EditionText;
                 var editionSuffix = edition.Length == 0 ? "" : "，版本 " + edition;
@@ -122,6 +147,7 @@ namespace YxyXb.Client
                 case "PERSONAL": return "个人版";
                 case "STANDARD": return "标准版";
                 case "PRO": return "专业版";
+                case "CUSTOM": return "定制版";
                 default: return productNo.Trim();
             }
         }
@@ -276,6 +302,20 @@ namespace YxyXb.Client
                 return false;
             }
 
+            if (session.DeviceLimited)
+            {
+                try
+                {
+                    ListDevices();
+                    return false;
+                }
+                catch (Exception)
+                {
+                    SignOut();
+                    return true;
+                }
+            }
+
             try
             {
                 var list = ListDevices();
@@ -284,7 +324,7 @@ namespace YxyXb.Client
                 {
                     if (string.Equals(list.Items[i].DeviceId, local, StringComparison.OrdinalIgnoreCase))
                     {
-                        SoftVerify(session.Email);
+                        SoftVerify(session.Email, db);
                         return false;
                     }
                 }
@@ -299,7 +339,7 @@ namespace YxyXb.Client
             }
         }
 
-        private static void SoftVerify(string email)
+        private static void SoftVerify(string email, SqliteDb db)
         {
             try
             {
@@ -309,7 +349,8 @@ namespace YxyXb.Client
                 var body = Post("/api/client/verify",
                     "{\"token\":\"" + Escape(token)
                     + "\",\"deviceId\":\"" + Escape(DeviceId())
-                    + "\",\"displayName\":\"" + Escape(DeviceDisplayName()) + "\"}");
+                    + "\",\"displayName\":\"" + Escape(DeviceDisplayName())
+                    + "\",\"note\":\"" + Escape(CustomerNote(db)) + "\"}");
                 Save(email, body);
             }
             catch (Exception)
@@ -493,6 +534,12 @@ namespace YxyXb.Client
                     if (saved != null) saved();
                     dialog.Close();
                 }
+                catch (DeviceLimitException ex)
+                {
+                    dialog.Close();
+                    MessageBox.Show(owner, ex.Message, "登录", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    if (saved != null) saved();
+                }
                 catch (Exception ex)
                 {
                     error.Text = ex.Message;
@@ -506,21 +553,43 @@ namespace YxyXb.Client
             string json;
             var deviceLabel = Escape(DeviceDisplayName());
             var deviceId = Escape(DeviceId());
+            var note = Escape(CustomerNote(null));
             if (string.IsNullOrEmpty(code))
             {
                 path = "/api/client/login";
                 json = "{\"email\":\"" + Escape(email) + "\",\"password\":\"" + Escape(password)
-                    + "\",\"deviceId\":\"" + deviceId + "\",\"displayName\":\"" + deviceLabel + "\"}";
+                    + "\",\"deviceId\":\"" + deviceId + "\",\"displayName\":\"" + deviceLabel
+                    + "\",\"note\":\"" + note + "\"}";
             }
             else
             {
                 path = "/api/client/login-code";
                 json = "{\"email\":\"" + Escape(email) + "\",\"code\":\"" + Escape(code)
-                    + "\",\"deviceId\":\"" + deviceId + "\",\"displayName\":\"" + deviceLabel + "\"}";
+                    + "\",\"deviceId\":\"" + deviceId + "\",\"displayName\":\"" + deviceLabel
+                    + "\",\"note\":\"" + note + "\"}";
             }
 
             var body = Post(path, json);
+            if (IsDeviceLimit(body))
+            {
+                Save(email, body);
+                throw new DeviceLimitException(SiteSession.DeviceLimitPrompt(Match(body, "\"error\"\\s*:\\s*\"([^\"]*)\"")));
+            }
+
             Save(email, body);
+        }
+
+        private sealed class DeviceLimitException : InvalidOperationException
+        {
+            public DeviceLimitException(string message) : base(message)
+            {
+            }
+        }
+
+        private static bool IsDeviceLimit(string body)
+        {
+            var errorCode = Regex.Match(body ?? "", "\"errorCode\"\\s*:\\s*\"([^\"]*)\"");
+            return errorCode.Success && errorCode.Groups[1].Value == "DEVICE_LIMIT";
         }
 
         public static string SendCode(string email)
@@ -596,8 +665,7 @@ namespace YxyXb.Client
             var errorCode = Regex.Match(body ?? "", "\"errorCode\"\\s*:\\s*\"([^\"]*)\"");
             if (errorCode.Success && errorCode.Groups[1].Value == "DEVICE_LIMIT")
             {
-                var msg = err.Success ? err.Groups[1].Value : "设备数已达上限";
-                throw new InvalidOperationException(msg + "。请在网站「我的设备」踢出设备，或升级更高版本后再登录。");
+                return body ?? "";
             }
 
             throw new InvalidOperationException(err.Success ? err.Groups[1].Value : "登录失败");
@@ -707,6 +775,33 @@ namespace YxyXb.Client
             catch (IOException)
             {
                 return "pc";
+            }
+        }
+
+        static string CustomerNote(SqliteDb db)
+        {
+            SqliteDb owned = null;
+            try
+            {
+                var source = db;
+                if (source == null)
+                {
+                    owned = SqliteDb.OpenDefault();
+                    source = owned;
+                }
+
+                var id = SettingsStore.Get(source).SoftwareId;
+                if (string.IsNullOrWhiteSpace(id)) id = AppPaths.ProductPathName;
+                id = id.Trim();
+                return id.Length <= 40 ? id : id.Substring(0, 40);
+            }
+            catch (Exception)
+            {
+                return "";
+            }
+            finally
+            {
+                if (owned != null) owned.Dispose();
             }
         }
 

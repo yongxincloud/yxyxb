@@ -29,6 +29,7 @@ public sealed class WebDb : DbContext
     protected override void OnModelCreating(ModelBuilder b)
     {
         b.Entity<AdminUser>().HasIndex(x => x.Username).IsUnique();
+        b.Entity<AdminUser>().HasIndex(x => x.Email).IsUnique();
         b.Entity<Account>().HasIndex(x => x.Email).IsUnique();
         b.Entity<Customer>().HasIndex(x => x.AccountId).IsUnique();
         b.Entity<Customer>().HasIndex(x => x.CustomerNo).IsUnique();

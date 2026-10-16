@@ -17,6 +17,7 @@ namespace YxyXb.Core
         {
             var email = "";
             var valid = false;
+            var status = "";
             DateTime? end = null;
             try
             {
@@ -36,6 +37,7 @@ namespace YxyXb.Core
                         var value = line.Substring(index + 1);
                         if (key == "email") email = value;
                         else if (key == "valid") valid = value == "true";
+                        else if (key == "status") status = value;
                         else if (key == "end")
                         {
                             DateTime parsed;
@@ -63,6 +65,11 @@ namespace YxyXb.Core
             catch (IOException)
             {
                 loggedIn = false;
+            }
+
+            if (string.Equals(status, "device_limit", StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
             }
 
             return Allows(loggedIn, valid, end, utcNow);

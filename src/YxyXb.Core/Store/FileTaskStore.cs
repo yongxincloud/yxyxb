@@ -70,7 +70,7 @@ namespace YxyXb.Core.Store
                 new SQLiteParameter("@en", task.Enabled ? 1 : 0),
                 new SQLiteParameter("@sk", task.SourceKind ?? "local"),
                 new SQLiteParameter("@sp", task.SourcePath ?? ""),
-                new SQLiteParameter("@rm", task.RetryMinutes < 1 ? 5 : task.RetryMinutes),
+                new SQLiteParameter("@rm", task.RetryMinutes < 1 ? 30 : task.RetryMinutes),
                 new SQLiteParameter("@so", task.SortOrder),
                 new SQLiteParameter("@ck", task.CycleKind ?? "day"),
                 new SQLiteParameter("@ci", task.CycleInterval < 1 ? 1 : task.CycleInterval),
@@ -130,7 +130,7 @@ namespace YxyXb.Core.Store
             }
             else
             {
-                var retry = task.RetryMinutes < 1 ? 5 : task.RetryMinutes;
+                var retry = task.RetryMinutes < 1 ? 30 : task.RetryMinutes;
                 next = utcNow.AddMinutes(retry);
             }
 
@@ -187,7 +187,7 @@ namespace YxyXb.Core.Store
                 new SQLiteParameter("@en", task.Enabled ? 1 : 0),
                 new SQLiteParameter("@sk", task.SourceKind ?? "local"),
                 new SQLiteParameter("@sp", task.SourcePath ?? ""),
-                new SQLiteParameter("@rm", task.RetryMinutes < 1 ? 5 : task.RetryMinutes),
+                new SQLiteParameter("@rm", task.RetryMinutes < 1 ? 30 : task.RetryMinutes),
                 new SQLiteParameter("@so", task.SortOrder),
                 new SQLiteParameter("@ck", task.CycleKind ?? "day"),
                 new SQLiteParameter("@ci", task.CycleInterval < 1 ? 1 : task.CycleInterval),

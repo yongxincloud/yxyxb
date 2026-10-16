@@ -35,7 +35,7 @@ public sealed class OrderController : ControllerBase
     {
         await _orders.EnsureCatalogAsync();
         var now = DateTime.UtcNow;
-        var plans = await _db.Products.Where(x => x.Status == 1)
+        var plans = await _db.Products.Where(x => x.Status == 1 && x.ProductNo != OrderService.CustomProductNo)
             .OrderBy(x => x.SortOrder)
             .ThenBy(x => x.Id)
             .ToListAsync();

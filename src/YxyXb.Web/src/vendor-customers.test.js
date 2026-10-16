@@ -20,5 +20,8 @@ test('vendor customer list shows profile fields and searches the api', () => {
   expect(page).toContain('收票邮箱')
   expect(page).toContain('执照文件名')
   expect(page).toContain('没有匹配的客户')
+  expect(page).toContain('CUSTOM')
+  expect(page).toContain('人数')
+  expect(page).toContain('maxDevices')
   expect(page).toContain('—')
 })

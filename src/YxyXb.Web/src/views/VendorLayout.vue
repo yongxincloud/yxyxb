@@ -10,6 +10,7 @@ const username = ref('')
 const links = [
   { to: '/vendor', label: '概览' },
   { to: '/vendor/customers', label: '客户' },
+  { to: '/vendor/devices', label: '设备查询' },
   { to: '/vendor/orders', label: '订单' },
   { to: '/vendor/auths', label: '授权记录' },
   { to: '/vendor/providers', label: '服务商' },
@@ -34,7 +35,7 @@ onMounted(async () => {
 
 async function logout() {
   await post('/api/vendor/logout')
-  router.replace('/vendor/login')
+  router.replace('/')
 }
 </script>
 

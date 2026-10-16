@@ -429,9 +429,14 @@ namespace YxyXb.Media
             var log = new StringBuilder();
             var settings = SettingsStore.Get(db);
             var source = (task.SourcePath ?? "").Trim();
-            var bakDir = string.IsNullOrEmpty(settings.BakPath) ? AppPaths.BakDirectory : settings.BakPath;
+            var bakDir = AppPaths.DisplayBakPath(settings.BakPath);
             try
             {
+                if (string.IsNullOrEmpty(bakDir))
+                {
+                    throw new InvalidOperationException("未设置备份目录。请先在「设置 → 备份存储」选择一个已有磁盘上的文件夹。");
+                }
+
                 var refuse = MediaSafety.RefuseWrite(live, bakDir);
                 if (refuse != null)
                 {

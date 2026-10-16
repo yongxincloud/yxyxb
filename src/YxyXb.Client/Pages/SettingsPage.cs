@@ -139,11 +139,11 @@ namespace YxyXb.Client.Pages
             _purgeFtp = new CheckBox { Content = "删 FTP 过期 zip" };
             _purgeQiniu = new CheckBox { Content = "删七牛本产品过期对象" };
             _purgeBaidu = new CheckBox { Content = "删百度网盘本产品过期对象" };
-            _retainLocal = new TextBox { Text = "7" };
-            _retainNetwork = new TextBox { Text = "7" };
-            _retainFtp = new TextBox { Text = "7" };
-            _retainQiniu = new TextBox { Text = "7" };
-            _retainBaidu = new TextBox { Text = "7" };
+            _retainLocal = new TextBox { Text = "10" };
+            _retainNetwork = new TextBox { Text = "10" };
+            _retainFtp = new TextBox { Text = "10" };
+            _retainQiniu = new TextBox { Text = "10" };
+            _retainBaidu = new TextBox { Text = "10" };
             _purgeTime = DateTimePick.TimeBox();
             _nameFileSid = NameCheck("客户标识");
             _nameFileTask = NameCheck("任务名");
@@ -168,7 +168,7 @@ namespace YxyXb.Client.Pages
         private UIElement StorageTab()
         {
             var panel = new StackPanel { Margin = new Thickness(12) };
-            panel.Children.Add(Label("备份目录"));
+            panel.Children.Add(Label("备份目录（必填）"));
             var row = new DockPanel();
             var browse = new Button { Content = "选择", Width = 72, Margin = new Thickness(8, 0, 0, 0) };
             DockPanel.SetDock(browse, Dock.Right);
@@ -186,6 +186,13 @@ namespace YxyXb.Client.Pages
             row.Children.Add(browse);
             row.Children.Add(_bak);
             panel.Children.Add(row);
+            panel.Children.Add(new TextBlock
+            {
+                Text = "必填。请选择一个已经存在的文件夹。目录无效时不能最小化、退出或关闭。",
+                TextWrapping = TextWrapping.Wrap,
+                Margin = new Thickness(0, 4, 0, 8),
+                Foreground = (Brush)Application.Current.Resources["Muted"]
+            });
             panel.Children.Add(Label("压缩等级 0-9（默认 5）"));
             panel.Children.Add(_zipLevel);
             panel.Children.Add(Label("压缩密码（可空；不进日志）"));
@@ -406,7 +413,7 @@ namespace YxyXb.Client.Pages
         private void Load()
         {
             var s = SettingsStore.Get(_boot.Db);
-            _bak.Text = s.BakPath;
+            _bak.Text = AppPaths.DisplayBakPath(s.BakPath);
             _zipLevel.Text = s.ZipLevel.ToString();
             _zipPwd.Password = s.ZipPassword ?? "";
             _softwareId.Text = s.SoftwareId;
@@ -447,23 +454,30 @@ namespace YxyXb.Client.Pages
             _purgeFtp.IsChecked = s.PurgeFtp;
             _purgeQiniu.IsChecked = s.PurgeQiniu;
             _purgeBaidu.IsChecked = s.PurgeBaidu;
-            _retainLocal.Text = (s.LocalRetainDays <= 0 ? 7 : s.LocalRetainDays).ToString();
-            _retainNetwork.Text = (s.NetworkRetainDays <= 0 ? 7 : s.NetworkRetainDays).ToString();
-            _retainFtp.Text = (s.FtpRetainDays <= 0 ? 7 : s.FtpRetainDays).ToString();
-            _retainQiniu.Text = (s.QiniuRetainDays <= 0 ? 7 : s.QiniuRetainDays).ToString();
-            _retainBaidu.Text = (s.BaiduRetainDays <= 0 ? 7 : s.BaiduRetainDays).ToString();
+            _retainLocal.Text = (s.LocalRetainDays <= 0 ? 10 : s.LocalRetainDays).ToString();
+            _retainNetwork.Text = (s.NetworkRetainDays <= 0 ? 10 : s.NetworkRetainDays).ToString();
+            _retainFtp.Text = (s.FtpRetainDays <= 0 ? 10 : s.FtpRetainDays).ToString();
+            _retainQiniu.Text = (s.QiniuRetainDays <= 0 ? 10 : s.QiniuRetainDays).ToString();
+            _retainBaidu.Text = (s.BaiduRetainDays <= 0 ? 10 : s.BaiduRetainDays).ToString();
             DateTimePick.SetHmm(_purgeTime, string.IsNullOrEmpty(s.PurgeTime) ? "00:30" : s.PurgeTime);
             RefreshPreview();
         }
 
         private void SaveStorage()
         {
+            var text = (_bak.Text ?? "").Trim();
+            if (string.IsNullOrEmpty(text) || !AppPaths.DirectoryExists(text))
+            {
+                MessageBox.Show(Window.GetWindow(this), "备份目录为必填，请选择一个已经存在的文件夹。", "备份存储", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
             var s = SettingsStore.Get(_boot.Db);
-            s.BakPath = string.IsNullOrWhiteSpace(_bak.Text) ? AppPaths.BakDirectory : _bak.Text.Trim();
+            s.BakPath = text;
+
             int level;
             s.ZipLevel = int.TryParse(_zipLevel.Text, out level) ? level : 5;
             s.ZipPassword = _zipPwd.Password;
-            Directory.CreateDirectory(s.BakPath);
             SettingsStore.Save(_boot.Db, s);
             RefreshPreview();
             MessageBox.Show(Window.GetWindow(this), "已保存。", "备份存储");
@@ -532,11 +546,11 @@ namespace YxyXb.Client.Pages
             s.PurgeFtp = _purgeFtp.IsChecked == true;
             s.PurgeQiniu = _purgeQiniu.IsChecked == true;
             s.PurgeBaidu = _purgeBaidu.IsChecked == true;
-            s.LocalRetainDays = int.TryParse(_retainLocal.Text, out a) && a > 0 ? a : 7;
-            s.NetworkRetainDays = int.TryParse(_retainNetwork.Text, out b) && b > 0 ? b : 7;
-            s.FtpRetainDays = int.TryParse(_retainFtp.Text, out c) && c > 0 ? c : 7;
-            s.QiniuRetainDays = int.TryParse(_retainQiniu.Text, out d) && d > 0 ? d : 7;
-            s.BaiduRetainDays = int.TryParse(_retainBaidu.Text, out e) && e > 0 ? e : 7;
+            s.LocalRetainDays = int.TryParse(_retainLocal.Text, out a) && a > 0 ? a : 10;
+            s.NetworkRetainDays = int.TryParse(_retainNetwork.Text, out b) && b > 0 ? b : 10;
+            s.FtpRetainDays = int.TryParse(_retainFtp.Text, out c) && c > 0 ? c : 10;
+            s.QiniuRetainDays = int.TryParse(_retainQiniu.Text, out d) && d > 0 ? d : 10;
+            s.BaiduRetainDays = int.TryParse(_retainBaidu.Text, out e) && e > 0 ? e : 10;
             s.PurgeTime = DateTimePick.GetHmm(_purgeTime, "00:30");
             SettingsStore.Save(_boot.Db, s);
             MessageBox.Show(Window.GetWindow(this), "已保存。", "自动删除");
@@ -669,8 +683,10 @@ namespace YxyXb.Client.Pages
             }
 
             var sid = string.IsNullOrWhiteSpace(_softwareId.Text) ? AppPaths.ProductPathName : _softwareId.Text.Trim();
-            var bak = string.IsNullOrWhiteSpace(_bak.Text) ? AppPaths.BakDirectory : _bak.Text.Trim();
-            _preview.Text = "预览：\n" + BackupNaming.Preview(bak, sid, NameParts.FromFlags(ReadNameFlags()));
+            var bak = AppPaths.DisplayBakPath(_bak.Text);
+            _preview.Text = string.IsNullOrEmpty(bak)
+                ? "预览：请先选择备份目录。"
+                : "预览：\n" + BackupNaming.Preview(bak, sid, NameParts.FromFlags(ReadNameFlags()));
         }
 
         private int ReadNameFlags()

@@ -11,6 +11,7 @@ public sealed record ProviderApplyBody(string? CompanyName, string? TaxNo, strin
 public sealed record InvoiceApplyBody(string? TitleName, string? TaxNo, string? Email, string? LicenseFile, string[]? OrderNos);
 public sealed record SettlementBody(string? InvoiceFile);
 public sealed record KickDeviceBody(string? DeviceId);
+public sealed record DeviceNoteBody(string? DeviceId, string? Note);
 
 [ApiController]
 public sealed class PortalController : ControllerBase
@@ -33,7 +34,7 @@ public sealed class PortalController : ControllerBase
     {
         await _orders.EnsureCatalogAsync();
         var now = DateTime.UtcNow;
-        var plans = await _db.Products.Where(x => x.Status == 1)
+        var plans = await _db.Products.Where(x => x.Status == 1 && x.ProductNo != OrderService.CustomProductNo)
             .OrderBy(x => x.SortOrder)
             .ThenBy(x => x.Id)
             .ToListAsync();
@@ -91,6 +92,19 @@ public sealed class PortalController : ControllerBase
         return ok ? Ok(new { ok = true }) : BadRequest(new { ok = false, error = "设备不存在或已踢出" });
     }
 
+    [Authorize]
+    [HttpPost("/api/portal/devices/note")]
+    public async Task<IActionResult> SetDeviceNote([FromBody] DeviceNoteBody body)
+    {
+        if (string.IsNullOrWhiteSpace(body.DeviceId))
+            return BadRequest(new { ok = false, error = "缺少设备标识" });
+        var note = (body.Note ?? "").Trim();
+        if (note.Length > 40)
+            return BadRequest(new { ok = false, error = "备注最多 40 个字" });
+        var ok = await _devices.SetNoteAsync(AccountId(), body.DeviceId, note);
+        return ok ? Ok(new { ok = true }) : BadRequest(new { ok = false, error = "设备不存在或已踢出" });
+    }
+
     async Task<int?> CurrentMaxDevicesAsync(long accountId)
     {
         var customer = await _db.Customers.SingleOrDefaultAsync(x => x.AccountId == accountId);
@@ -101,7 +115,8 @@ public sealed class PortalController : ControllerBase
             .FirstOrDefaultAsync();
         if (auth == null) return null;
         var product = await _db.Products.SingleOrDefaultAsync(x => x.Id == auth.ProductId);
-        return product?.MaxDevices;
+        if (product == null) return null;
+        return OrderService.DeviceCap(product.ProductNo, product.MaxDevices, auth.DeviceLimit);
     }
 
     [Authorize]
@@ -117,7 +132,7 @@ public sealed class PortalController : ControllerBase
     [HttpGet("/api/portal/commissions")]
     public async Task<IActionResult> Commissions()
     {
-        var provider = await _db.Providers.SingleOrDefaultAsync(x => x.AccountId == AccountId());
+        var provider = await _db.Providers.SingleOrDefaultAsync(x => x.AccountId == AccountId() && x.Status == 1);
         if (provider == null) return Ok(new { ok = false, error = "还不是服务商" });
         var rows = await _db.Commissions.Where(x => x.ProviderId == provider.Id)
             .OrderByDescending(x => x.Id)
@@ -130,7 +145,7 @@ public sealed class PortalController : ControllerBase
     [HttpGet("/api/portal/customers")]
     public async Task<IActionResult> Customers()
     {
-        var provider = await _db.Providers.SingleOrDefaultAsync(x => x.AccountId == AccountId());
+        var provider = await _db.Providers.SingleOrDefaultAsync(x => x.AccountId == AccountId() && x.Status == 1);
         if (provider == null) return Ok(new { ok = false, error = "还不是服务商" });
         var ids = await _db.Customers.Where(x => x.DirectProviderId == provider.Id).Select(x => x.AccountId).ToListAsync();
         var emails = await _db.Accounts.Where(x => ids.Contains(x.Id)).Select(x => x.Email).ToListAsync();
@@ -141,7 +156,7 @@ public sealed class PortalController : ControllerBase
     [HttpGet("/api/portal/settlements")]
     public async Task<IActionResult> MySettlements()
     {
-        var provider = await _db.Providers.SingleOrDefaultAsync(x => x.AccountId == AccountId());
+        var provider = await _db.Providers.SingleOrDefaultAsync(x => x.AccountId == AccountId() && x.Status == 1);
         if (provider == null) return Ok(new { ok = false, error = "还不是服务商" });
         var rows = await _db.Settlements.Where(x => x.ProviderId == provider.Id).OrderByDescending(x => x.Id)
             .Select(x => new { x.SettlementNo, x.Amount, x.Status }).ToListAsync();

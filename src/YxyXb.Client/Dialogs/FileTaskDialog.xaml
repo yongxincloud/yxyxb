@@ -41,7 +41,7 @@
                     <TextBox x:Name="TxtPath" Grid.Row="2" Grid.Column="1" Margin="0,4"/>
                     <Button x:Name="BtnBrowse" Grid.Row="2" Grid.Column="2" Content="选择" Margin="8,4,0,4" Click="BtnBrowse_OnClick"/>
                     <TextBlock Text="重计时(分)" Grid.Row="3" VerticalAlignment="Center"/>
-                    <TextBox x:Name="TxtRetry" Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="2" Text="5" Margin="0,4"/>
+                    <TextBox x:Name="TxtRetry" Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="2" Text="30" Margin="0,4"/>
                     <TextBlock Text="排序" Grid.Row="4" VerticalAlignment="Center"/>
                     <TextBox x:Name="TxtSort" Grid.Row="4" Grid.Column="1" Grid.ColumnSpan="2" Text="0" Margin="0,4"/>
                     <CheckBox x:Name="ChkEnabled" Grid.Row="5" Grid.Column="1" Content="启用" IsChecked="True" VerticalAlignment="Center"/>

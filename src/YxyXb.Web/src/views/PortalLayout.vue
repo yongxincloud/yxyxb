@@ -1,30 +1,55 @@
 <script setup>
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { get, post } from '../api.js'
 
 const route = useRoute()
 const router = useRouter()
 const email = ref('')
+const isProvider = ref(false)
 
-const links = [
-  { to: '/home', label: '我的订阅' },
-  { to: '/orders', label: '续费 / 订单' },
-  { to: '/portal/devices', label: '我的设备' },
-  { to: '/portal/invoice', label: '开票' },
-  { to: '/portal/provider', label: '申请服务商' },
-  { to: '/portal/commission', label: '我的佣金' },
-  { to: '/portal/customers', label: '我的客户' },
-  { to: '/portal/settlements', label: '结算单' },
-  { to: '/portal/messages', label: '站内信' },
-  { to: '/portal/download', label: '客户端下载' },
-  { to: '/portal/account', label: '账号信息' }
-]
+const providerPaths = ['/portal/commission', '/portal/customers', '/portal/settlements']
+
+const links = computed(() => {
+  const rows = [
+    { to: '/home', label: '我的订阅' },
+    { to: '/orders', label: '续费 / 订单' },
+    { to: '/portal/devices', label: '我的设备' },
+    { to: '/portal/invoice', label: '开票' }
+  ]
+  if (isProvider.value) {
+    rows.push(
+      { to: '/portal/commission', label: '我的佣金' },
+      { to: '/portal/customers', label: '我的客户' },
+      { to: '/portal/settlements', label: '结算单' }
+    )
+  } else {
+    rows.push({ to: '/portal/provider', label: '申请服务商' })
+  }
+  rows.push(
+    { to: '/portal/messages', label: '站内信' },
+    { to: '/portal/download', label: '客户端下载' },
+    { to: '/portal/account', label: '账号信息' }
+  )
+  return rows
+})
+
+function guardProviderRoutes() {
+  if (!isProvider.value && providerPaths.includes(route.path)) {
+    router.replace('/home')
+  }
+}
 
 onMounted(async () => {
   const me = await get('/api/account/me')
-  if (me.ok) email.value = me.email
+  if (me.ok) {
+    email.value = me.email
+    isProvider.value = !!me.isProvider
+  }
+  guardProviderRoutes()
 })
+
+watch(() => route.path, () => guardProviderRoutes())
 
 function active(path) {
   return route.path === path
@@ -32,7 +57,7 @@ function active(path) {
 
 async function logout() {
   await post('/api/account/logout')
-  router.replace('/login')
+  router.replace('/')
 }
 </script>
 

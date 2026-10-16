@@ -24,7 +24,7 @@ namespace YxyXb.Core.Data
             Add(db, "settings", "upload_min_kbps", "INTEGER NOT NULL DEFAULT 0");
             Add(db, "settings", "upload_max_kbps", "INTEGER NOT NULL DEFAULT 0");
             Add(db, "settings", "theme", "TEXT NOT NULL DEFAULT 'light'");
-            Add(db, "settings", "baidu_retain_days", "INTEGER NOT NULL DEFAULT 7");
+            Add(db, "settings", "baidu_retain_days", "INTEGER NOT NULL DEFAULT 10");
             Add(db, "settings", "purge_baidu", "INTEGER NOT NULL DEFAULT 0");
             Add(db, "settings", "upload_parallel", "INTEGER NOT NULL DEFAULT 1");
             Add(db, "settings", "log_retain_days", "INTEGER NOT NULL DEFAULT 30");

@@ -58,7 +58,7 @@ async function save(productNo) {
   <section v-if="board" class="card-yxy">
     <h1>产品定价</h1>
     <p v-if="message" class="lead">{{ message }}</p>
-    <div v-for="row in board.products" :key="row.productNo" class="product">
+    <div v-for="row in board.products.filter((p) => p.productNo !== 'CUSTOM')" :key="row.productNo" class="product">
       <p>
         {{ row.name }}（{{ row.productNo }}）原价 {{ row.price }} 元 /
         {{ row.periodDays }} 天 · 最多 {{ row.maxDevices }} 台

@@ -69,11 +69,7 @@ namespace YxyXb.Client
                 "需要重新登录",
                 MessageBoxButton.OK,
                 MessageBoxImage.Information);
-            SiteLogin.Prompt(this, delegate
-            {
-                RefreshLoginButton();
-                ShowPage("home");
-            });
+            SiteLogin.Prompt(this, AfterLogin);
         }
 
         private void Nav_OnClick(object sender, RoutedEventArgs e)
@@ -90,17 +86,26 @@ namespace YxyXb.Client
         private void BtnLogin_OnClick(object sender, RoutedEventArgs e)
         {
             var session = SiteLogin.Load();
-            if (session.LoggedIn)
+            if (session.LoggedIn && !session.DeviceLimited)
             {
                 ShowPage("devices");
                 return;
             }
 
-            SiteLogin.Prompt(this, delegate
+            SiteLogin.Prompt(this, AfterLogin);
+        }
+
+        private void AfterLogin()
+        {
+            RefreshLoginButton();
+            var session = SiteLogin.Load();
+            if (session.DeviceLimited)
             {
-                RefreshLoginButton();
-                ShowPage(SiteLogin.Load().LoggedIn ? "devices" : "home");
-            });
+                ShowPage("devices");
+                return;
+            }
+
+            ShowPage(_current);
         }
 
         private void OnDeviceSignedOut()
@@ -111,7 +116,8 @@ namespace YxyXb.Client
 
         private void RefreshLoginButton()
         {
-            BtnLogin.Content = SiteLogin.Load().LoggedIn ? "已登录" : "登录";
+            var session = SiteLogin.Load();
+            BtnLogin.Content = session.LoggedIn && !session.DeviceLimited ? "已登录" : "登录";
         }
 
         private void Drag_OnDown(object sender, MouseButtonEventArgs e)
@@ -157,9 +163,24 @@ namespace YxyXb.Client
                 RefreshLoginButton();
                 dialog.Close();
                 ShowPage(_current);
+                try
+                {
+                    Process.Start(new ProcessStartInfo(SiteLogin.WebsiteRoot) { UseShellExecute = true });
+                }
+                catch
+                {
+                }
             };
             mini.Click += delegate
             {
+                if (!AppPaths.HasValidBakPath(SettingsStore.Get(_boot.Db).BakPath))
+                {
+                    dialog.Close();
+                    MessageBox.Show(this, "备份目录还没设置好。请先在「设置 → 备份存储」选择一个已经存在的文件夹，才能最小化、退出或关闭。", "备份目录必填", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    ShowPage("settings");
+                    return;
+                }
+
                 dialog.Close();
                 WindowState = WindowState.Minimized;
             };
@@ -346,6 +367,19 @@ namespace YxyXb.Client
 
         protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
         {
+            if (!AppPaths.HasValidBakPath(SettingsStore.Get(_boot.Db).BakPath))
+            {
+                e.Cancel = true;
+                _forceClose = false;
+                ShowInTaskbar = true;
+                Show();
+                WindowState = WindowState.Normal;
+                Activate();
+                MessageBox.Show(this, "备份目录还没设置好。请先在「设置 → 备份存储」选择一个已经存在的文件夹，才能最小化、退出或关闭。", "备份目录必填", MessageBoxButton.OK, MessageBoxImage.Warning);
+                ShowPage("settings");
+                return;
+            }
+
             if (!_forceClose && SettingsStore.Get(_boot.Db).CloseToTray)
             {
                 e.Cancel = true;

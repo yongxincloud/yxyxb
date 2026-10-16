@@ -11,8 +11,8 @@ namespace YxyXb.Api.Controllers;
 public sealed record LevelBody(string? Name, decimal Rate);
 public sealed record ApproveBody(long LevelId);
 public sealed record PayBody(string? VoucherNo);
-public sealed record GrantBody(string? Email, int? Days, DateTime? EndTime, string? Reason, string? ProductNo);
-public sealed record EditionBody(string? ProductNo, string? Reason);
+public sealed record GrantBody(string? Email, int? Days, DateTime? EndTime, string? Reason, string? ProductNo, int? MaxDevices);
+public sealed record EditionBody(string? ProductNo, string? Reason, int? MaxDevices);
 public sealed record PriceBody(decimal Price);
 public sealed record ProductUpdateBody(
     decimal? Price,
@@ -24,6 +24,10 @@ public sealed record ProductUpdateBody(
     int? Status);
 public sealed record AssignBody(string? ProviderNo);
 public sealed record VendorLoginBody(string? Username, string? Password);
+public sealed record VendorLoginCodeBody(string? Email, string? Code);
+public sealed record VendorSendCodeBody(string? Email, string? Scene);
+public sealed record VendorResetBody(string? Email, string? Code, string? Password, string? Confirm);
+public sealed record VendorProfileBody(string? Email);
 public sealed record MailBody(string? Host, int? Port, string? User, string? Password, string? From, bool? Ssl);
 public sealed record MailTestBody(string? Email);
 
@@ -35,12 +39,20 @@ public sealed class VendorController : ControllerBase
     public const string VendorScheme = "YxyVendor";
     public const string DefaultAdminUser = "admin";
     public const string DefaultAdminPassword = "Admin@yxy123";
+    public const string LoginScene = "vendor-login";
+    public const string ResetScene = "vendor-reset";
     private readonly WebDb _db;
     private readonly MailSettingsService _mail;
-    public VendorController(WebDb db, MailSettingsService mail)
+    private readonly EmailCodeService _codes;
+    private readonly IEmailSender _email;
+    private readonly IPasswordHasher _hasher;
+    public VendorController(WebDb db, MailSettingsService mail, EmailCodeService codes, IEmailSender email, IPasswordHasher hasher)
     {
         _db = db;
         _mail = mail;
+        _codes = codes;
+        _email = email;
+        _hasher = hasher;
     }
 
     [HttpPost("login")]
@@ -48,8 +60,7 @@ public sealed class VendorController : ControllerBase
     {
         var username = (body.Username ?? "").Trim();
         var admin = await _db.AdminUsers.SingleOrDefaultAsync(x => x.Username == username);
-        var hasher = HttpContext.RequestServices.GetRequiredService<IPasswordHasher>();
-        if (admin == null || !hasher.Verify(body.Password ?? "", admin.PasswordHash))
+        if (admin == null || !_hasher.Verify(body.Password ?? "", admin.PasswordHash))
             return BadRequest(new { ok = false, error = "账号或密码不正确" });
         await HttpContext.SignInAsync(VendorScheme, new ClaimsPrincipal(new ClaimsIdentity(new[]
         {
@@ -57,6 +68,75 @@ public sealed class VendorController : ControllerBase
             new Claim(ClaimTypes.Role, "vendor")
         }, VendorScheme)));
         return Ok(new { ok = true, username = admin.Username });
+    }
+
+    [HttpPost("send-code")]
+    public async Task<IActionResult> SendCode([FromBody] VendorSendCodeBody body)
+    {
+        var email = AccountService.Norm(body.Email);
+        if (string.IsNullOrEmpty(email) || !email.Contains('@'))
+            return BadRequest(new { ok = false, error = "请填写邮箱" });
+        var scene = (body.Scene ?? "reset").Trim().ToLowerInvariant();
+        var codeScene = scene switch
+        {
+            "login" => LoginScene,
+            "reset" => ResetScene,
+            _ => null
+        };
+        if (codeScene == null)
+            return BadRequest(new { ok = false, error = "场景不正确" });
+        var admin = await _db.AdminUsers.AsNoTracking().SingleOrDefaultAsync(x => x.Email == email);
+        if (admin == null) return Ok(new { ok = true });
+        var issued = await _codes.IssueAsync(email, codeScene, ClientIp());
+        if (!issued.Ok)
+            return BadRequest(new { ok = false, error = issued.Error == "too_soon" ? "发送过于频繁" : "今日发送次数已达上限" });
+        try
+        {
+            await _email.SendAsync(email, "用心云·循备厂商验证码", "验证码 " + issued.Code + " ，5 分钟内有效。");
+        }
+        catch (InvalidOperationException)
+        {
+            return BadRequest(new { ok = false, error = "邮件发送失败，请检查发信服务器" });
+        }
+        var env = HttpContext.RequestServices.GetRequiredService<IHostEnvironment>();
+        if (env.IsDevelopment() && !await _mail.IsConfiguredAsync())
+            return Ok(new { ok = true, devCode = issued.Code });
+        return Ok(new { ok = true });
+    }
+
+    [HttpPost("login-code")]
+    public async Task<IActionResult> LoginCode([FromBody] VendorLoginCodeBody body)
+    {
+        var email = AccountService.Norm(body.Email);
+        if (!await _codes.ConsumeAsync(email, LoginScene, body.Code ?? ""))
+            return BadRequest(new { ok = false, error = "邮箱或验证码错误" });
+        var admin = await _db.AdminUsers.SingleOrDefaultAsync(x => x.Email == email);
+        if (admin == null)
+            return BadRequest(new { ok = false, error = "邮箱或验证码错误" });
+        await HttpContext.SignInAsync(VendorScheme, new ClaimsPrincipal(new ClaimsIdentity(new[]
+        {
+            new Claim(ClaimTypes.Name, admin.Username),
+            new Claim(ClaimTypes.Role, "vendor")
+        }, VendorScheme)));
+        return Ok(new { ok = true, username = admin.Username });
+    }
+
+    [HttpPost("reset")]
+    public async Task<IActionResult> Reset([FromBody] VendorResetBody body)
+    {
+        var email = AccountService.Norm(body.Email);
+        if (body.Password != body.Confirm)
+            return BadRequest(new { ok = false, error = "两次密码不一致" });
+        if (!PasswordRules.IsStrong(body.Password))
+            return BadRequest(new { ok = false, error = "密码至少 8 位且同时包含字母和数字" });
+        if (!await _codes.ConsumeAsync(email, ResetScene, body.Code ?? ""))
+            return BadRequest(new { ok = false, error = "邮箱或验证码错误" });
+        var admin = await _db.AdminUsers.SingleOrDefaultAsync(x => x.Email == email);
+        if (admin == null)
+            return BadRequest(new { ok = false, error = "邮箱或验证码错误" });
+        admin.PasswordHash = _hasher.Hash(body.Password!);
+        await _db.SaveChangesAsync();
+        return Ok(new { ok = true });
     }
 
     [HttpPost("logout")]
@@ -67,10 +147,29 @@ public sealed class VendorController : ControllerBase
     }
 
     [HttpGet("me")]
-    public IActionResult Me()
+    public async Task<IActionResult> Me()
     {
         if (!Vendor()) return Unauthorized(new { ok = false, error = "未登录" });
-        return Ok(new { ok = true, username = User.Identity?.Name ?? DefaultAdminUser });
+        var username = User.Identity?.Name ?? DefaultAdminUser;
+        var admin = await _db.AdminUsers.AsNoTracking().SingleOrDefaultAsync(x => x.Username == username);
+        return Ok(new { ok = true, username, email = admin?.Email });
+    }
+
+    [HttpPost("profile")]
+    public async Task<IActionResult> SaveProfile([FromBody] VendorProfileBody body)
+    {
+        if (!Vendor()) return Unauthorized(new { ok = false, error = "未登录" });
+        var email = AccountService.Norm(body.Email);
+        if (string.IsNullOrEmpty(email) || !email.Contains('@'))
+            return BadRequest(new { ok = false, error = "请填写有效邮箱" });
+        var username = User.Identity?.Name ?? DefaultAdminUser;
+        var admin = await _db.AdminUsers.SingleOrDefaultAsync(x => x.Username == username);
+        if (admin == null) return BadRequest(new { ok = false, error = "账号不存在" });
+        var taken = await _db.AdminUsers.AnyAsync(x => x.Email == email && x.Id != admin.Id);
+        if (taken) return BadRequest(new { ok = false, error = "该邮箱已被其它管理员使用" });
+        admin.Email = email;
+        await _db.SaveChangesAsync();
+        return Ok(new { ok = true, email });
     }
 
     [HttpGet("board")]
@@ -287,6 +386,8 @@ public sealed class VendorController : ControllerBase
         var productNo = string.IsNullOrWhiteSpace(body.ProductNo) ? OrderService.StandardProductNo : body.ProductNo.Trim().ToUpperInvariant();
         var product = await _db.Products.SingleOrDefaultAsync(x => x.ProductNo == productNo);
         if (product == null || product.Status != 1) return BadRequest(new { ok = false, error = "产品不存在或已下架" });
+        var limitError = CustomLimitError(product, body.MaxDevices);
+        if (limitError != null) return BadRequest(new { ok = false, error = limitError });
         var now = DateTime.UtcNow;
         DateTime end;
         if (body.EndTime != null)
@@ -309,6 +410,7 @@ public sealed class VendorController : ControllerBase
             Status = 1,
             GrantType = 2,
             GrantReason = body.Reason,
+            DeviceLimit = product.ProductNo == OrderService.CustomProductNo ? body.MaxDevices : null,
             CreatedAt = now,
             UpdatedAt = now
         });
@@ -478,6 +580,48 @@ public sealed class VendorController : ControllerBase
         return Ok(new { ok = true, rows });
     }
 
+    [HttpGet("devices")]
+    public async Task<IActionResult> Devices([FromQuery] string? q)
+    {
+        if (!Vendor()) return NotFound();
+        var needle = (q ?? "").Trim().ToLowerInvariant();
+        var query =
+            from device in _db.AccountDevices
+            join account in _db.Accounts on device.AccountId equals account.Id
+            join customer in _db.Customers on account.Id equals customer.AccountId into customers
+            from customer in customers.DefaultIfEmpty()
+            select new { device, account, customer };
+        if (needle.Length > 0)
+        {
+            query = query.Where(x =>
+                x.account.Email.ToLower().Contains(needle) ||
+                (x.account.Phone ?? "").ToLower().Contains(needle) ||
+                (x.customer.Name ?? "").ToLower().Contains(needle) ||
+                (x.customer.Nickname ?? "").ToLower().Contains(needle) ||
+                (x.customer.CompanyName ?? "").ToLower().Contains(needle) ||
+                (x.customer.CustomerNo ?? "").ToLower().Contains(needle) ||
+                x.device.DeviceId.ToLower().Contains(needle) ||
+                (x.device.DisplayName ?? "").ToLower().Contains(needle) ||
+                (x.device.Note ?? "").ToLower().Contains(needle));
+        }
+
+        var take = needle.Length > 0 ? 100 : 50;
+        var rows = await query.OrderByDescending(x => x.device.LastSeenAt).Take(take)
+            .Select(x => new
+            {
+                email = x.account.Email,
+                name = x.customer == null ? null : x.customer.Name,
+                customerNo = x.customer == null ? null : x.customer.CustomerNo,
+                deviceId = x.device.DeviceId,
+                displayName = x.device.DisplayName,
+                note = x.device.Note,
+                status = x.device.Status,
+                firstSeenAt = x.device.FirstSeenAt,
+                lastSeenAt = x.device.LastSeenAt
+            }).ToListAsync();
+        return Ok(new { ok = true, rows });
+    }
+
     [HttpGet("customers")]
     public async Task<IActionResult> Customers([FromQuery] string? q)
     {
@@ -524,7 +668,7 @@ public sealed class VendorController : ControllerBase
 
         var ids = rows.Select(x => x.Id).ToList();
         var auths = await _db.SubscriptionAuths.Where(x => ids.Contains(x.CustomerId))
-            .Select(x => new { x.CustomerId, x.ProductId, x.AuthEndTime })
+            .Select(x => new { x.CustomerId, x.ProductId, x.AuthEndTime, x.DeviceLimit })
             .ToListAsync();
         var latest = auths.GroupBy(x => x.CustomerId)
             .ToDictionary(g => g.Key, g => g.OrderByDescending(x => x.AuthEndTime).First());
@@ -558,7 +702,7 @@ public sealed class VendorController : ControllerBase
                     authEndTime = auth == null ? (DateTime?)null : auth.AuthEndTime,
                     productNo = product?.ProductNo,
                     productName = product?.Name,
-                    maxDevices = product?.MaxDevices
+                    maxDevices = product == null ? (int?)null : OrderService.DeviceCap(product.ProductNo, product.MaxDevices, auth?.DeviceLimit)
                 };
             })
         });
@@ -574,6 +718,8 @@ public sealed class VendorController : ControllerBase
         if (string.IsNullOrEmpty(productNo)) return BadRequest(new { ok = false, error = "请选择账号类型" });
         var product = await _db.Products.SingleOrDefaultAsync(x => x.ProductNo == productNo);
         if (product == null || product.Status != 1) return BadRequest(new { ok = false, error = "产品不存在或已下架" });
+        var limitError = CustomLimitError(product, body.MaxDevices);
+        if (limitError != null) return BadRequest(new { ok = false, error = limitError });
 
         var auth = await _db.SubscriptionAuths
             .Where(x => x.CustomerId == customer.Id)
@@ -582,7 +728,10 @@ public sealed class VendorController : ControllerBase
         if (auth == null) return BadRequest(new { ok = false, error = "客户尚未开通授权，请先增加期限" });
 
         var beforeProduct = await _db.Products.SingleOrDefaultAsync(x => x.Id == auth.ProductId);
-        if (beforeProduct != null && beforeProduct.Id == product.Id)
+        var nextLimit = product.ProductNo == OrderService.CustomProductNo ? body.MaxDevices : null;
+        var sameProduct = beforeProduct != null && beforeProduct.Id == product.Id;
+        var sameLimit = auth.DeviceLimit == nextLimit;
+        if (sameProduct && sameLimit)
             return BadRequest(new { ok = false, error = "账号类型未变化" });
 
         var account = await _db.Accounts.SingleOrDefaultAsync(x => x.Id == customer.AccountId);
@@ -591,6 +740,7 @@ public sealed class VendorController : ControllerBase
         var after = product.ProductNo + " " + product.Name;
         var now = DateTime.UtcNow;
         auth.ProductId = product.Id;
+        auth.DeviceLimit = nextLimit;
         auth.UpdatedAt = now;
         if (!string.IsNullOrWhiteSpace(body.Reason))
             auth.GrantReason = body.Reason.Trim();
@@ -607,7 +757,7 @@ public sealed class VendorController : ControllerBase
         {
             AccountId = customer.AccountId,
             Title = "账号类型已变更",
-            Content = "已调整为 " + product.Name + "（最多 " + product.MaxDevices + " 台设备）",
+            Content = "已调整为 " + product.Name + "（最多 " + OrderService.DeviceCap(product.ProductNo, product.MaxDevices, nextLimit) + " 台设备）",
             CreatedAt = now
         });
         await _db.SaveChangesAsync();
@@ -616,8 +766,16 @@ public sealed class VendorController : ControllerBase
             ok = true,
             productNo = product.ProductNo,
             productName = product.Name,
-            maxDevices = product.MaxDevices
+            maxDevices = OrderService.DeviceCap(product.ProductNo, product.MaxDevices, nextLimit)
         });
+    }
+
+    static string? CustomLimitError(Product product, int? maxDevices)
+    {
+        if (product.ProductNo != OrderService.CustomProductNo) return null;
+        if (maxDevices is not > 0) return "定制版人数要大于 0";
+        if (maxDevices > 9999) return "定制版人数最多 9999";
+        return null;
     }
 
     [HttpPost("customers/{id:long}/provider")]
@@ -723,5 +881,13 @@ public sealed class VendorController : ControllerBase
         var env = HttpContext.RequestServices.GetRequiredService<IHostEnvironment>();
         if (!env.IsDevelopment() && !env.IsEnvironment("Testing")) return false;
         return Request.Headers.TryGetValue("X-Vendor-Key", out var key) && key == VendorKey;
+    }
+
+    string? ClientIp()
+    {
+        var env = HttpContext.RequestServices.GetRequiredService<IHostEnvironment>();
+        if (env.IsEnvironment("Testing") && Request.Headers.TryGetValue("X-Test-Ip", out var testIp))
+            return testIp.ToString();
+        return HttpContext.Connection.RemoteIpAddress?.ToString();
     }
 }

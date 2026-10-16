@@ -63,9 +63,15 @@ namespace YxyXb.Client.Pages
             {
                 var list = SiteLogin.ListDevices();
                 var maxText = list.MaxDevices == null ? "—" : list.MaxDevices.Value.ToString();
-                _hint.Text = "当前版本：" + list.EditionText
+                var hint = "当前版本：" + list.EditionText
                     + "。设备上限：" + maxText + " 台（已占用 " + list.Items.Count + " 台）。"
                     + "退出登录不释放名额，需主动踢出。踢出本机后将变为未登录。";
+                if (SiteLogin.Load().DeviceLimited)
+                {
+                    hint = SiteSession.DeviceLimitPrompt(list.MaxDevices) + "\n" + hint;
+                }
+
+                _hint.Text = hint;
                 _grid.ItemsSource = null;
                 _grid.ItemsSource = list.Items;
             }

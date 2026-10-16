@@ -30,8 +30,10 @@ body {
 .btn-yxy {
   height: 43px; border-radius: var(--radius-pill); border: 0;
   background: var(--brand-primary); color: #fff; font-size: 16px; padding: 0 22px;
+  display: inline-flex; align-items: center; justify-content: center;
+  text-decoration: none; box-sizing: border-box; cursor: pointer;
 }
-.btn-yxy:hover { background: var(--brand-cyan); color: #fff; }
+.btn-yxy:hover { background: var(--brand-cyan); color: #fff; text-decoration: none; }
 .field-yxy {
   background: var(--c-surface-alt); border: 1px solid var(--c-border);
   border-radius: var(--radius-input); height: 40px; width: 100%; padding: 0 10px; box-sizing: border-box;

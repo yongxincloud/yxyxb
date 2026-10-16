@@ -16,6 +16,12 @@ public sealed class OrderService
     public const string PersonalProductNo = "PERSONAL";
     public const string StandardProductNo = "STANDARD";
     public const string ProProductNo = "PRO";
+    public const string CustomProductNo = "CUSTOM";
+
+    public static int DeviceCap(string? productNo, int productMax, int? deviceLimit) =>
+        string.Equals(productNo, CustomProductNo, StringComparison.OrdinalIgnoreCase) && deviceLimit is > 0
+            ? deviceLimit.Value
+            : productMax;
 
     private readonly WebDb _db;
     private readonly TimeProvider _time;
@@ -36,6 +42,7 @@ public sealed class OrderService
         await EnsureTierAsync(PersonalProductNo, "个人版", "最多 3 台设备", 36m, 3, 1, now);
         await EnsureTierAsync(StandardProductNo, "标准版", "最多 10 台设备", 98m, 10, 2, now);
         await EnsureTierAsync(ProProductNo, "专业版", "最多 50 台设备", 198m, 50, 3, now);
+        await EnsureTierAsync(CustomProductNo, "定制版", "人数由后台填写", 0m, 1, 4, now);
         var legacy = await _db.Products.SingleOrDefaultAsync(x => x.ProductNo == "STD");
         if (legacy != null)
         {
@@ -75,6 +82,7 @@ public sealed class OrderService
         var oldProduct = await _db.Products.SingleOrDefaultAsync(x => x.Id == auth.ProductId);
         var newProduct = await _db.Products.SingleOrDefaultAsync(x => x.ProductNo == targetProductNo && x.Status == 1);
         if (oldProduct == null || newProduct == null) return new UpgradePreview(false, "产品不可购买");
+        if (newProduct.ProductNo == CustomProductNo) return new UpgradePreview(false, "定制版仅后台开通");
         if (newProduct.MaxDevices <= oldProduct.MaxDevices) return new UpgradePreview(false, "只能升级到设备上限更高的版本");
         var daysLeft = Math.Max(0, (int)Math.Floor((auth.AuthEndTime - now).TotalDays));
         var delta = ProductPricing.SalePrice(newProduct, now) - ProductPricing.SalePrice(oldProduct, now);
@@ -92,6 +100,7 @@ public sealed class OrderService
         if (customer == null) return new OrderResult(false, "请先注册");
         var product = await _db.Products.SingleOrDefaultAsync(x => x.ProductNo == (productNo ?? StandardProductNo));
         if (product == null || product.Status != 1) return new OrderResult(false, "产品不可购买");
+        if (product.ProductNo == CustomProductNo) return new OrderResult(false, "定制版仅后台开通");
         var now = _time.GetUtcNow().UtcDateTime;
         decimal amount;
         if (orderType == 2)

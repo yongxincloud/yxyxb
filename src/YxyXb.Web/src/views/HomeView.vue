@@ -28,6 +28,7 @@ async function buy(productNo) {
       <nav>
         <a href="#pricing">价格</a>
         <a href="#media">离线介质</a>
+        <a href="#about">关于我们</a>
         <a href="#download">下载</a>
         <router-link to="/login">登录</router-link>
         <router-link class="nav-cta" to="/register">申请账号</router-link>
@@ -56,7 +57,7 @@ async function buy(productNo) {
     <section id="pricing" class="pricing">
       <div class="section-head">
         <h2>选择适合你的设备档位</h2>
-        <p>功能相同，差别在可同时登录的设备数。价格由后台配置，促销期内显示促销价。</p>
+        <p>功能相同，差别在可同时登录的设备数。活动促销期内最总以促销价结算。</p>
       </div>
       <div class="plans" v-if="plans.length">
         <article v-for="plan in plans" :key="plan.productNo" class="plan">
@@ -152,6 +153,27 @@ async function buy(productNo) {
       </div>
     </section>
 
+    <section id="about" class="about">
+      <div class="section-head">
+        <h2>关于我们</h2>
+        <p>常州用心软件有限公司为专注企业管理软件20年。公司地址：常州市新北区通江中路600号芝时商业广场2-905。400电话：400-051-9608。下面三款是目前的主要产品。</p>
+      </div>
+      <ul class="about-list">
+        <li>
+          <strong>用心云MES</strong>
+          <span>面向生产现场的制造执行软件，管设备、数采、工单、质量、工序和现场进度。</span>
+        </li>
+        <li>
+          <strong>用心云看板</strong>
+          <span>把现场数据做成可视看板，方便在车间直接看进度和异常。</span>
+        </li>
+        <li>
+          <strong>用心云循备</strong>
+          <span>装在 Windows 上的备份工具。文件和数据库在本机打成 zip，再拷到离线介质。备份内容留在客户自己的电脑和盘上。</span>
+        </li>
+      </ul>
+    </section>
+
     <section id="download" class="download">
       <div class="section-head">
         <h2>下载 Windows 客户端</h2>
@@ -162,11 +184,12 @@ async function buy(productNo) {
 
     <footer>
       <p>常州用心软件有限公司</p>
-      <p>联系电话 <a href="tel:4000519608">400-051-9608</a></p>
-      <p>联系邮箱 market.yongxinyun.com</p>
-      <p><router-link to="/terms">用户协议</router-link> · <router-link to="/privacy">隐私政策</router-link></p>
+      <p>公司地址：常州市新北区通江中路600号芝时商业广场2-905</p>
+      <p>400电话：<a href="tel:4000519608">400-051-9608</a></p>
+      <p>联系邮箱 market@yongxinyun.com</p>
+      <p><router-link to="/terms">《用户协议条款》</router-link> · <router-link to="/privacy">《隐私权协议条款》</router-link></p>
       <p class="legal">
-        Copyright ©2026 常州用心软件有限公司
+        版权所有：常州用心软件有限公司
         <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener">苏ICP备19043516号-6</a>
         公安备案号:
         <a href="https://beian.mps.gov.cn/#/query/webSearch?code=32041102001697" target="_blank" rel="noopener">苏公网安备32041102001697号</a>
@@ -305,9 +328,30 @@ async function buy(productNo) {
   color: var(--c-text);
 }
 
-.pricing, .value, .notice, .download {
+.pricing, .value, .notice, .about, .download {
   padding: 48px 0;
 }
+.about { background: #fff; }
+.about-list {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 0 24px;
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+.about-list li {
+  display: grid;
+  gap: 8px;
+  padding: 20px 18px;
+  border: 1px solid var(--c-border);
+  border-top: 3px solid #DC0606;
+  border-radius: 4px;
+  background: #FFFBFA;
+}
+.about-list strong { font-size: 18px; color: var(--c-title); }
+.about-list span { line-height: 1.7; color: var(--c-text); }
 .pricing { background: #fff; }
 .plans {
   max-width: 1180px;
@@ -444,12 +488,14 @@ footer a { color: #fff; }
   .shot.reverse .shot-copy,
   .shot.reverse img { order: initial; }
   .plans,
-  .value-list { grid-template-columns: 1fr; }
+  .value-list,
+  .about-list { grid-template-columns: 1fr; }
   .hero { padding-top: 12px; }
   .nav { padding-inline: 16px; }
   .section-head,
   .plans,
   .value-list,
+  .about-list,
   .shots,
   .download .btn-yxy { padding-inline: 16px; }
   .download .btn-yxy { margin-left: 16px; }

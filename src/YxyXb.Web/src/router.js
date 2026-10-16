@@ -14,6 +14,7 @@ import DownloadView from './views/DownloadView.vue'
 import CommissionView from './views/CommissionView.vue'
 import VendorView from './views/VendorView.vue'
 import VendorCustomersView from './views/VendorCustomersView.vue'
+import VendorDevicesView from './views/VendorDevicesView.vue'
 import VendorOrdersView from './views/VendorOrdersView.vue'
 import VendorAuthsView from './views/VendorAuthsView.vue'
 import VendorProvidersView from './views/VendorProvidersView.vue'
@@ -22,6 +23,7 @@ import VendorProductsView from './views/VendorProductsView.vue'
 import VendorMailView from './views/VendorMailView.vue'
 import VendorLogsView from './views/VendorLogsView.vue'
 import VendorLoginView from './views/VendorLoginView.vue'
+import VendorForgotView from './views/VendorForgotView.vue'
 import VendorLayout from './views/VendorLayout.vue'
 import CustomersView from './views/CustomersView.vue'
 import SettlementsView from './views/SettlementsView.vue'
@@ -37,12 +39,14 @@ export const router = createRouter({
     { path: '/register', component: RegisterView },
     { path: '/login', component: LoginView },
     { path: '/vendor/login', component: VendorLoginView },
+    { path: '/vendor/forgot', component: VendorForgotView },
     {
       path: '/vendor',
       component: VendorLayout,
       children: [
         { path: '', component: VendorView },
         { path: 'customers', component: VendorCustomersView },
+        { path: 'devices', component: VendorDevicesView },
         { path: 'orders', component: VendorOrdersView },
         { path: 'auths', component: VendorAuthsView },
         { path: 'providers', component: VendorProvidersView },

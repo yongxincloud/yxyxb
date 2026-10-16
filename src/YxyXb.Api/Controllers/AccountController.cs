@@ -97,7 +97,21 @@ public sealed class AccountController : ControllerBase
 
     [Authorize]
     [HttpGet("me")]
-    public IActionResult Me() => Ok(new ApiResult(true, null, User.FindFirstValue(ClaimTypes.Email)));
+    public async Task<IActionResult> Me()
+    {
+        var accountId = AccountId();
+        var email = User.FindFirstValue(ClaimTypes.Email);
+        var provider = await _db.Providers.AsNoTracking()
+            .SingleOrDefaultAsync(x => x.AccountId == accountId && x.Status == 1);
+        return Ok(new
+        {
+            ok = true,
+            error = (string?)null,
+            email,
+            isProvider = provider != null,
+            providerStatus = provider?.Status
+        });
+    }
 
     [Authorize]
     [HttpPost("logout")]

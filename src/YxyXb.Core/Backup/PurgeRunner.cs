@@ -57,7 +57,7 @@ namespace YxyXb.Core.Backup
             {
                 if (settings.PurgeLocal)
                 {
-                    var bak = string.IsNullOrEmpty(settings.BakPath) ? AppPaths.BakDirectory : settings.BakPath;
+                    var bak = AppPaths.DisplayBakPath(settings.BakPath);
                     var n = LocalPurge.DeleteOldZips(bak, settings.LocalRetainDays, DateTime.UtcNow);
                     log.Append("本机删除 ").Append(n).Append(" 个过期 zip。");
                 }
@@ -115,7 +115,7 @@ namespace YxyXb.Core.Backup
                     try
                     {
                         var prefix = CloudObjectKeys.ProductPrefix(settings.SoftwareId);
-                        var days = settings.BaiduRetainDays <= 0 ? 7 : settings.BaiduRetainDays;
+                        var days = settings.BaiduRetainDays <= 0 ? 10 : settings.BaiduRetainDays;
                         var older = DateTime.UtcNow.AddDays(-days);
                         var n = CloudRuntime.Require().DeleteExpired(db, CloudProviders.Baidu, prefix, older, delegate(string key)
                         {

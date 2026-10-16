@@ -34,7 +34,7 @@
                         <ComboBoxItem Content="指定库" Tag="selected"/>
                     </ComboBox>
                     <TextBlock Text="重计时(分)" Grid.Row="3" VerticalAlignment="Center"/>
-                    <TextBox x:Name="TxtRetry" Grid.Row="3" Grid.Column="1" Text="5" Margin="0,4"/>
+                    <TextBox x:Name="TxtRetry" Grid.Row="3" Grid.Column="1" Text="30" Margin="0,4"/>
                     <TextBlock Text="数据库" Grid.Row="4" VerticalAlignment="Top" Margin="0,8,0,0"/>
                     <ScrollViewer Grid.Row="4" Grid.Column="1" Margin="0,4" MinHeight="160" VerticalScrollBarVisibility="Auto">
                         <ItemsControl x:Name="LstDbs"/>
