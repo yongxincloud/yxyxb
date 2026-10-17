@@ -23,12 +23,13 @@ async function buy(productNo) {
   <div class="home">
     <header class="nav">
       <router-link class="brand" to="/">
-        <img class="nav-logo" src="/logo.png" :alt="PRODUCT_DISPLAY_NAME" />
+        <img class="nav-logo" src="/images/logo.png" :alt="PRODUCT_DISPLAY_NAME" />
       </router-link>
       <nav>
         <a href="#pricing">价格</a>
         <a href="#media">离线介质</a>
-        <a href="#about">关于我们</a>
+        <router-link to="/about">关于我们</router-link>
+        <router-link to="/contact">联系我们</router-link>
         <a href="#download">下载</a>
         <router-link to="/login">登录</router-link>
         <router-link class="nav-cta" to="/register">申请账号</router-link>
@@ -37,20 +38,21 @@ async function buy(productNo) {
 
     <section class="hero">
       <div class="hero-copy">
-        <img class="hero-logo" src="/logo.png" :alt="PRODUCT_DISPLAY_NAME" />
+        <img class="hero-logo" src="/images/logo.png" :alt="PRODUCT_DISPLAY_NAME" />
         <p class="product">{{ PRODUCT_DISPLAY_NAME }}</p>
-        <h1>本机加密备份，盘拷完还能离线</h1>
+        <h1>本地、离线、自有云，三重备份</h1>
         <p class="lead">
-          勒索加密往往连同在线备份一起带走。{{ PRODUCT_DISPLAY_NAME }}在 Windows 上把文件和数据库打成 zip，
-          再拷到已登记的移动盘，并按计划让介质离线——无网时离线任务仍可执行。
+          {{ PRODUCT_DISPLAY_NAME }}装在客户自己的 Windows 电脑上，无需额外服务器。
+          文件和数据库先备到本机磁盘，再拷到移动硬盘或 U 盘离线，也可直传到客户自己的百度网盘、七牛云。
+          我们不中转、不托管、不碰业务数据。
         </p>
         <div class="cta">
           <a class="btn-yxy" :href="downloadUrl">下载客户端</a>
           <router-link class="btn-ghost" to="/register">申请账号</router-link>
         </div>
       </div>
-      <div class="hero-visual" aria-hidden="true">
-        <img src="/product1.png" alt="" />
+      <div class="hero-visual">
+        <img src="/images/product1.png" alt="用心云·循备 Windows 客户端：本地备份、离线介质与自有云盘" />
       </div>
     </section>
 
@@ -76,33 +78,33 @@ async function buy(productNo) {
 
     <section id="value" class="value">
       <div class="section-head">
-        <h2>为管理软件与业务机准备的本机灾备</h2>
-        <p>结构上对标常见灾备方案页，能力上突出离线介质——这是与「只做云端备份」产品的主差异。</p>
+        <h2>三重备份，层层防护</h2>
+        <p>本地磁盘、移动硬盘或 U 盘、自有云盘，三层都在。断网也能备，数据主权在客户手里。</p>
       </div>
       <ul class="value-list">
         <li>
-          <strong>离线介质</strong>
-          <span>登记 USB / 移动 SSD，到点把 zip 拷进盘，再按级别离线，降低同盘被一起加密的风险。</span>
+          <strong>本地磁盘备份</strong>
+          <span>文件、SQL Server、MySQL 先在本机打成备份包，留在客户自己的电脑上。</span>
         </li>
         <li>
-          <strong>本机加密打包</strong>
-          <span>文件、SQL Server、MySQL 打成 zip，日志留在本机，不依赖公网才能备份。</span>
+          <strong>离线介质，物理隔离</strong>
+          <span>支持备份到移动硬盘、U 盘。断网也能备，断网更安全，用于勒索病毒的防范和网络攻击防护。</span>
         </li>
         <li>
-          <strong>恢复入口</strong>
-          <span>客户端侧栏提供库恢复操作，减少「只会备份不会还原」的断层。</span>
+          <strong>自有云盘在线备份</strong>
+          <span>可直传百度网盘、七牛云等客户自己的云账号。数据直传，我们不中转、不托管。</span>
         </li>
         <li>
-          <strong>授权与设备</strong>
-          <span>个人 / 标准 / 专业按同时登录设备数分档，门户与客户端可踢出设备。</span>
+          <strong>数据主权归你</strong>
+          <span>云端用的是客户自己的账号。业务数据不经过我们的服务器，我们不碰备份内容。</span>
         </li>
         <li>
-          <strong>云与传输（可选）</strong>
-          <span>授权有效时，可再上传七牛或送到共享目录、FTP，并按结果发邮件。</span>
+          <strong>轻量免运维</strong>
+          <span>装在客户自己的 Windows 电脑上，装好即用，无需额外服务器。</span>
         </li>
         <li>
-          <strong>无网仍跑离线任务</strong>
-          <span>已保存的离线介质任务到点仍会执行，适合断网机房与隔离网段。</span>
+          <strong>三层一起用</strong>
+          <span>本地、离线、自有云缺一不可。在线备份被一起加密时，离线盘仍是离开主机的那一份。</span>
         </li>
       </ul>
     </section>
@@ -110,11 +112,11 @@ async function buy(productNo) {
     <section id="media" class="shots">
       <article class="shot">
         <div class="shot-copy">
-          <p class="eyebrow">主差异 · 离线介质</p>
-          <h2>先登记盘，再谈拷贝</h2>
-          <p>按序列号、签名、容量识别 USB / 移动 SSD。双击登记后，任务只写到已登记的介质，降低拷错盘的概率。</p>
+          <p class="eyebrow">离线介质 · 物理隔离</p>
+          <h2>移动硬盘、U 盘，断网也能备</h2>
+          <p>按序列号、签名、容量识别介质。备份写到已登记的盘上，和主机、网络分开，用来挡住勒索和网络攻击。</p>
         </div>
-        <img src="/product4.png" alt="离线介质登记界面" />
+        <img src="/images/product4.png" alt="离线介质登记界面" />
       </article>
       <article class="shot reverse">
         <div class="shot-copy">
@@ -122,62 +124,41 @@ async function buy(productNo) {
           <h2>到点拷包，到点离线</h2>
           <p>设置任务开始时间与介质离线时间、保留版本与天数。拷贝完成后按所选级别隔离介质，而不是一直挂在系统里。</p>
         </div>
-        <img src="/product3.png" alt="添加离线介质任务" />
+        <img src="/images/product3.png" alt="添加离线介质任务" />
       </article>
       <article class="shot">
         <div class="shot-copy">
-          <p class="eyebrow">备份任务</p>
-          <h2>文件与数据库同一套节奏</h2>
-          <p>文件、MSSQL、MySQL 任务统一调度。先打到本机备份目录，再由介质任务把包带走。</p>
+          <p class="eyebrow">本地磁盘</p>
+          <h2>先落在自己的电脑上</h2>
+          <p>文件、SQL Server、MySQL 按同一套节奏打包，先存进本机备份目录，再由离线介质或自有云盘带走。</p>
         </div>
-        <img src="/product2.png" alt="备份任务列表" />
+        <img src="/images/product2.png" alt="备份任务列表" />
       </article>
       <article class="shot reverse">
         <div class="shot-copy">
-          <p class="eyebrow">云与清理（可选）</p>
-          <h2>授权期内再加一道去向</h2>
-          <p>需要时配置百度网盘或七牛等通道，并按保留策略清理过期对象。云不是唯一依赖，离线盘才是兜底。</p>
+          <p class="eyebrow">自有云盘</p>
+          <h2>百度网盘、七牛云，数据直传</h2>
+          <p>用客户自己的云账号。备份从电脑直接传到云盘，我们不中转、不托管、不碰业务数据。</p>
         </div>
-        <img src="/product5.png" alt="云备份配置" />
+        <img src="/images/product5.png" alt="云备份配置" />
       </article>
     </section>
 
     <section class="notice">
       <div class="section-head">
-        <h2>为什么要强调离线</h2>
+        <h2>为什么离线这一层不能省</h2>
         <p>
-          2026 年境内多起勒索事件中，业务文件与「一直在线的备份」常被一并加密。
-          {{ PRODUCT_DISPLAY_NAME }}不做查杀与解密；系统补丁、账号口令和杀毒仍需单独落实。
-          它补的是：事先有一份可以离开主机的拷贝。
+          一直挂在网上的备份，可能和业务文件一起被加密。
+          移动硬盘和 U 盘可以在拷完后离开主机，断网时任务仍能执行。
+          {{ PRODUCT_DISPLAY_NAME }}不做查杀和解密，它提供的是离开网络的那一份拷贝。
         </p>
       </div>
-    </section>
-
-    <section id="about" class="about">
-      <div class="section-head">
-        <h2>关于我们</h2>
-        <p>常州用心软件有限公司为专注企业管理软件20年。公司地址：常州市新北区通江中路600号芝时商业广场2-905。400电话：400-051-9608。下面三款是目前的主要产品。</p>
-      </div>
-      <ul class="about-list">
-        <li>
-          <strong>用心云MES</strong>
-          <span>面向生产现场的制造执行软件，管设备、数采、工单、质量、工序和现场进度。</span>
-        </li>
-        <li>
-          <strong>用心云看板</strong>
-          <span>把现场数据做成可视看板，方便在车间直接看进度和异常。</span>
-        </li>
-        <li>
-          <strong>用心云循备</strong>
-          <span>装在 Windows 上的备份工具。文件和数据库在本机打成 zip，再拷到离线介质。备份内容留在客户自己的电脑和盘上。</span>
-        </li>
-      </ul>
     </section>
 
     <section id="download" class="download">
       <div class="section-head">
         <h2>下载 Windows 客户端</h2>
-        <p>解压后运行。安装后须登录；设备数按所购版本上限计入，可在门户或客户端踢出设备。</p>
+        <p>装在客户自己的 Windows 电脑上，装好即用，无需额外服务器。安装后登录；设备数按所购版本计入。</p>
       </div>
       <a class="btn-yxy" :href="downloadUrl">下载客户端</a>
     </section>
@@ -187,7 +168,15 @@ async function buy(productNo) {
       <p>公司地址：常州市新北区通江中路600号芝时商业广场2-905</p>
       <p>400电话：<a href="tel:4000519608">400-051-9608</a></p>
       <p>联系邮箱 market@yongxinyun.com</p>
-      <p><router-link to="/terms">《用户协议条款》</router-link> · <router-link to="/privacy">《隐私权协议条款》</router-link></p>
+      <p>
+        <router-link to="/about">关于我们</router-link>
+        ·
+        <router-link to="/contact">联系我们</router-link>
+        ·
+        <router-link to="/terms">《用户协议条款》</router-link>
+        ·
+        <router-link to="/privacy">《隐私权协议条款》</router-link>
+      </p>
       <p class="legal">
         版权所有：常州用心软件有限公司
         <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener">苏ICP备19043516号-6</a>
@@ -328,30 +317,9 @@ async function buy(productNo) {
   color: var(--c-text);
 }
 
-.pricing, .value, .notice, .about, .download {
+.pricing, .value, .notice, .download {
   padding: 48px 0;
 }
-.about { background: #fff; }
-.about-list {
-  max-width: 1180px;
-  margin: 0 auto;
-  padding: 0 24px;
-  list-style: none;
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
-}
-.about-list li {
-  display: grid;
-  gap: 8px;
-  padding: 20px 18px;
-  border: 1px solid var(--c-border);
-  border-top: 3px solid #DC0606;
-  border-radius: 4px;
-  background: #FFFBFA;
-}
-.about-list strong { font-size: 18px; color: var(--c-title); }
-.about-list span { line-height: 1.7; color: var(--c-text); }
 .pricing { background: #fff; }
 .plans {
   max-width: 1180px;
@@ -452,7 +420,7 @@ async function buy(productNo) {
   background: #fff;
 }
 .download .btn-yxy {
-  margin-left: 24px;
+  margin-left: max(24px, calc((100% - 1180px) / 2 + 24px));
   text-decoration: none;
   display: inline-flex;
   align-items: center;
@@ -488,16 +456,13 @@ footer a { color: #fff; }
   .shot.reverse .shot-copy,
   .shot.reverse img { order: initial; }
   .plans,
-  .value-list,
-  .about-list { grid-template-columns: 1fr; }
+  .value-list { grid-template-columns: 1fr; }
   .hero { padding-top: 12px; }
   .nav { padding-inline: 16px; }
   .section-head,
   .plans,
   .value-list,
-  .about-list,
-  .shots,
-  .download .btn-yxy { padding-inline: 16px; }
+  .shots { padding-inline: 16px; }
   .download .btn-yxy { margin-left: 16px; }
 }
 </style>

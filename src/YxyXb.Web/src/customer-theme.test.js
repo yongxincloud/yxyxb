@@ -22,19 +22,19 @@ test('customer theme overrides ink and red without replacing vendor blue', () =>
 })
 
 test('logo appears on home, login, register, and portal/vendor shells', () => {
-  expect(read('views/HomeView.vue')).toContain('src="/logo.png"')
+  expect(read('views/HomeView.vue')).toContain('src="/images/logo.png"')
   expect(read('views/HomeView.vue')).toContain('height: 88px')
   expect(read('views/HomeView.vue')).toContain('product1.png')
-  expect(read('views/LoginView.vue')).toContain('src="/logo.png"')
+  expect(read('views/LoginView.vue')).toContain('src="/images/logo.png"')
   expect(read('views/LoginView.vue')).toContain('#DC0606')
-  expect(read('views/PortalLayout.vue')).toContain('src="/logo.png"')
+  expect(read('views/PortalLayout.vue')).toContain('src="/images/logo.png"')
   expect(read('views/PortalLayout.vue')).toContain('height: 72px')
   expect(read('views/PortalLayout.vue')).toContain('#F8E8E8')
-  expect(read('views/RegisterView.vue')).toContain('src="/logo.png"')
-  expect(read('views/VendorLayout.vue')).toContain('src="/logo.png"')
+  expect(read('views/RegisterView.vue')).toContain('src="/images/logo.png"')
+  expect(read('views/VendorLayout.vue')).toContain('src="/images/logo.png"')
   expect(read('views/VendorLayout.vue')).toContain('#F8E8E8')
   expect(read('views/VendorLayout.vue')).not.toContain('#eef3ff')
-  expect(read('views/VendorLoginView.vue')).toContain('src="/logo.png"')
+  expect(read('views/VendorLoginView.vue')).toContain('src="/images/logo.png"')
 })
 
 test('subscription page lists what the license covers', () => {

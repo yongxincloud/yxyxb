@@ -57,7 +57,7 @@ function submit() {
 <template>
   <section class="login">
     <aside>
-      <div class="plate"><img class="logo" src="/logo.png" alt="用心云·循备" /></div>
+      <div class="plate"><img class="logo" src="/images/logo.png" alt="用心云·循备" /></div>
       <h1>登录后管理订阅和订单</h1>
       <p>请使用注册邮箱登录。三档版本按可同时登录设备数区分，可在门户查看并管理设备。</p>
     </aside>

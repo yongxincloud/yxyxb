@@ -56,6 +56,8 @@ public sealed class AccountController : ControllerBase
     public async Task<IActionResult> Register([FromBody] RegisterInput body)
     {
         var result = await _accounts.RegisterAsync(body, ClientIp());
+        if (!result.Ok) return ToJson(result);
+        await SignIn(result);
         return ToJson(result);
     }
 

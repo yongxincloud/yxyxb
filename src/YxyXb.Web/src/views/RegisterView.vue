@@ -47,7 +47,7 @@ async function submit() {
     error.value = data.error || '注册失败'
     return
   }
-  router.push('/login')
+  router.push('/home')
 }
 
 onMounted(loadCaptcha)
@@ -56,7 +56,7 @@ onMounted(loadCaptcha)
 <template>
   <section class="login">
     <aside>
-      <div class="plate"><img class="logo" src="/logo.png" :alt="PRODUCT_DISPLAY_NAME" /></div>
+      <div class="plate"><img class="logo" src="/images/logo.png" :alt="PRODUCT_DISPLAY_NAME" /></div>
       <h1>申请账号，开始本机离线备份</h1>
       <p>{{ PRODUCT_DISPLAY_NAME }}把文件和 SQL Server 打成 zip，再拷到已登记的移动硬盘并离线。个人版 / 标准版 / 专业版按可同时登录设备数区分，登录后可在门户选购或续费。</p>
       <ul>

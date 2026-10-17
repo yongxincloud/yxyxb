@@ -58,7 +58,7 @@ function submit() {
 <template>
   <section class="login">
     <aside>
-      <div class="plate"><img class="logo" src="/logo.png" alt="用心云·循备" /></div>
+      <div class="plate"><img class="logo" src="/images/logo.png" alt="用心云·循备" /></div>
       <h1>厂商后台</h1>
       <p>登录后可查看全部客户、订单、授权、服务商和结算。可先绑定找回邮箱，再用验证码登录。</p>
     </aside>

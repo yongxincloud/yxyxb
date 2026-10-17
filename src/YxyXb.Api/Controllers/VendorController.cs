@@ -581,9 +581,11 @@ public sealed class VendorController : ControllerBase
     }
 
     [HttpGet("devices")]
-    public async Task<IActionResult> Devices([FromQuery] string? q)
+    public async Task<IActionResult> Devices([FromQuery] string? q, [FromQuery] int page = 1, [FromQuery] int pageSize = 20)
     {
         if (!Vendor()) return NotFound();
+        if (page < 1) page = 1;
+        if (pageSize is < 1 or > 100) pageSize = 20;
         var needle = (q ?? "").Trim().ToLowerInvariant();
         var query =
             from device in _db.AccountDevices
@@ -605,8 +607,12 @@ public sealed class VendorController : ControllerBase
                 (x.device.Note ?? "").ToLower().Contains(needle));
         }
 
-        var take = needle.Length > 0 ? 100 : 50;
-        var rows = await query.OrderByDescending(x => x.device.LastSeenAt).Take(take)
+        var total = await query.CountAsync();
+        var pages = total == 0 ? 1 : (int)Math.Ceiling(total / (double)pageSize);
+        if (page > pages) page = pages;
+        var rows = await query.OrderByDescending(x => x.device.LastSeenAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
             .Select(x => new
             {
                 email = x.account.Email,
@@ -619,7 +625,7 @@ public sealed class VendorController : ControllerBase
                 firstSeenAt = x.device.FirstSeenAt,
                 lastSeenAt = x.device.LastSeenAt
             }).ToListAsync();
-        return Ok(new { ok = true, rows });
+        return Ok(new { ok = true, rows, total, page, pageSize, pages });
     }
 
     [HttpGet("customers")]

@@ -1,0 +1,13 @@
+User-agent: *
+Allow: /
+Allow: /about
+Allow: /contact
+Allow: /terms
+Allow: /privacy
+Disallow: /vendor
+Disallow: /home
+Disallow: /orders
+Disallow: /portal
+Disallow: /api
+
+Sitemap: https://backup.yongxincloud.cn/sitemap.xml

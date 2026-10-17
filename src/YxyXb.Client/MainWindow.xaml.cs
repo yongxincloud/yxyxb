@@ -20,6 +20,7 @@ namespace YxyXb.Client
         private string _current = "home";
         private bool _forceClose;
         private bool _unlocking;
+        private bool _inClosing;
 
         public MainWindow()
             : this(null)
@@ -354,41 +355,64 @@ namespace YxyXb.Client
         protected override void OnStateChanged(EventArgs e)
         {
             base.OnStateChanged(e);
-            if (WindowState == WindowState.Minimized)
+            if (_inClosing || WindowState != WindowState.Minimized)
             {
-                ShowInTaskbar = false;
-                Hide();
-                if (_tray.Icon != null)
-                {
-                    _tray.Visible = true;
-                }
+                return;
+            }
+
+            ShowInTaskbar = false;
+            Hide();
+            if (_tray.Icon != null)
+            {
+                _tray.Visible = true;
             }
         }
 
         protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
         {
+            if (_inClosing)
+            {
+                base.OnClosing(e);
+                return;
+            }
+
             if (!AppPaths.HasValidBakPath(SettingsStore.Get(_boot.Db).BakPath))
             {
                 e.Cancel = true;
                 _forceClose = false;
-                ShowInTaskbar = true;
-                Show();
-                WindowState = WindowState.Normal;
-                Activate();
-                MessageBox.Show(this, "备份目录还没设置好。请先在「设置 → 备份存储」选择一个已经存在的文件夹，才能最小化、退出或关闭。", "备份目录必填", MessageBoxButton.OK, MessageBoxImage.Warning);
-                ShowPage("settings");
+                Dispatcher.BeginInvoke(new Action(RemindBakPath));
                 return;
             }
 
             if (!_forceClose && SettingsStore.Get(_boot.Db).CloseToTray)
             {
                 e.Cancel = true;
-                Hide();
-                _tray.Visible = true;
+                Dispatcher.BeginInvoke(new Action(SendToTray));
                 return;
             }
 
+            _inClosing = true;
             base.OnClosing(e);
+        }
+
+        private void RemindBakPath()
+        {
+            ShowInTaskbar = true;
+            if (!IsVisible)
+            {
+                Show();
+            }
+
+            WindowState = WindowState.Normal;
+            Activate();
+            MessageBox.Show(this, "备份目录还没设置好。请先在「设置 → 备份存储」选择一个已经存在的文件夹，才能最小化、退出或关闭。", "备份目录必填", MessageBoxButton.OK, MessageBoxImage.Warning);
+            ShowPage("settings");
+        }
+
+        private void SendToTray()
+        {
+            Hide();
+            _tray.Visible = true;
         }
 
         protected override void OnClosed(System.EventArgs e)

@@ -42,7 +42,7 @@ async function logout() {
 <template>
   <div class="shell">
     <aside>
-      <img class="logo" src="/logo.png" alt="用心云·循备" />
+      <img class="logo" src="/images/logo.png" alt="用心云·循备" />
       <p class="brand">厂商后台</p>
       <p class="mail">{{ username || '未登录' }}</p>
       <nav>
