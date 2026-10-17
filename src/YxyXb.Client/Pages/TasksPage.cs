@@ -1,4 +1,5 @@
 using System;
+using System.Data.SQLite;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -17,11 +18,9 @@ namespace YxyXb.Client.Pages
     public sealed class TasksPage : UserControl
     {
         private readonly HostBootstrap _boot;
-        private readonly ExclusiveBgJob _runJob = new ExclusiveBgJob();
         private readonly DataGrid _fileGrid;
         private readonly DataGrid _mssqlGrid;
         private DataGrid _mysqlGrid;
-        private UploadLiveLogWindow _liveLog;
 
         public TasksPage(HostBootstrap boot)
         {
@@ -50,7 +49,7 @@ namespace YxyXb.Client.Pages
             panel.Children.Add(bar);
             var hint = new TextBlock
             {
-                Text = "点选一条文件任务后可立即执行。完成后弹窗显示结果，也可看「日志 → 文件备份」。",
+                Text = "点选一条文件任务后可立即执行。任务交给引擎，结果在「日志 → 文件备份」。当前备份目录：" + CurrentBakText(),
                 TextWrapping = TextWrapping.Wrap,
                 Margin = new Thickness(0, 0, 0, 8)
             };
@@ -85,7 +84,7 @@ namespace YxyXb.Client.Pages
             panel.Children.Add(bar);
             var hint = new TextBlock
             {
-                Text = "先在「实例」里添加并测试 MSSQL。立即执行后看弹窗和「日志 → 数据库备份」。zip 落在 bak\\库备份，离线任务到任务开始时间后能扫到。",
+                Text = "先在「实例」里添加并测试 MSSQL。立即执行交给引擎，结果在「日志 → 数据库备份」。压缩包在当前备份目录的「库备份」。当前备份目录：" + CurrentBakText(),
                 TextWrapping = TextWrapping.Wrap,
                 Margin = new Thickness(0, 0, 0, 8)
             };
@@ -199,7 +198,7 @@ namespace YxyXb.Client.Pages
                 return;
             }
 
-            RunNow(task.Name, task.Id, FileBackupRunner.ExecuteNow, ReloadFile);
+            QueueEngine("file_tasks", task.Id, task.Enabled, ReloadFile);
         }
 
         private UIElement BuildMysql()
@@ -215,7 +214,7 @@ namespace YxyXb.Client.Pages
             panel.Children.Add(bar);
             var hint = new TextBlock
             {
-                Text = "先在「实例」里添加并测试 MySQL。备份调用 mysqldump，zip 落在 bak\\库备份。",
+                Text = "先在「实例」里添加并测试 MySQL。立即执行交给引擎，结果在「日志 → 数据库备份」。压缩包在当前备份目录的「库备份」。当前备份目录：" + CurrentBakText(),
                 TextWrapping = TextWrapping.Wrap,
                 Margin = new Thickness(0, 0, 0, 8)
             };
@@ -298,7 +297,7 @@ namespace YxyXb.Client.Pages
                 return;
             }
 
-            RunNow(task.Name, task.Id, MysqlRunner.ExecuteNow, ReloadMysql);
+            QueueEngine("mysql_tasks", task.Id, task.Enabled, ReloadMysql);
         }
 
         private MssqlTaskDto SelectedMssql()
@@ -367,44 +366,28 @@ namespace YxyXb.Client.Pages
                 return;
             }
 
-            RunNow(task.Name, task.Id, MssqlRunner.ExecuteNow, ReloadMssql);
+            QueueEngine("mssql_tasks", task.Id, task.Enabled, ReloadMssql);
         }
 
-        private void RunNow(string taskName, long taskId, Func<SqliteDb, long, string> execute, Action reload)
+        private string CurrentBakText()
         {
-            var owner = Window.GetWindow(this);
-            if (!_runJob.TryStart(delegate
-            {
-                using (var db = SqliteDb.OpenDefault())
-                {
-                    return execute(db, taskId);
-                }
-            }, delegate(string result, Exception error)
-            {
-                Dispatcher.BeginInvoke(new Action(delegate
-                {
-                    reload();
-                    if (_liveLog != null)
-                    {
-                        _liveLog.Complete();
-                    }
+            var path = AppPaths.DisplayBakPath(SettingsStore.Get(_boot.Db).BakPath);
+            return string.IsNullOrEmpty(path) ? "（尚未保存）" : path;
+        }
 
-                    if (error != null)
-                    {
-                        ScrollableMessage.Show(owner, "立即执行", "立即执行失败：" + error.Message);
-                    }
-                    else
-                    {
-                        ScrollableMessage.Show(owner, "立即执行", result);
-                    }
-                }));
-            }))
+        private void QueueEngine(string table, long id, bool enabled, Action reload)
+        {
+            if (!enabled)
             {
-                MessageBox.Show(owner, "已有任务正在执行，请稍候。", "立即执行");
+                MessageBox.Show(Window.GetWindow(this), "任务未启用，引擎不会执行。", "立即执行");
                 return;
             }
 
-            _liveLog = UploadLiveLogWindow.Open(owner, taskName);
+            _boot.Db.Execute(
+                "UPDATE " + table + " SET next_run_utc=@n, run_lock_utc=NULL WHERE id=@id",
+                new SQLiteParameter("@n", DateTime.UtcNow.ToString("o")),
+                new SQLiteParameter("@id", id));
+            reload();
         }
 
         private static Button Btn(string text, RoutedEventHandler click)

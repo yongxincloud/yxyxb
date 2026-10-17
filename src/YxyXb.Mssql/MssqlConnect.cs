@@ -123,6 +123,24 @@ namespace YxyXb.Mssql
             return conn;
         }
 
+        public static string ReadDefaultBackupDirectory(MssqlInstanceDto instance)
+        {
+            using (var conn = Open(instance))
+            using (var cmd = conn.CreateCommand())
+            {
+                cmd.CommandTimeout = 30;
+                cmd.CommandText = "DECLARE @dir nvarchar(4000); EXEC master.dbo.xp_instance_regread N'HKEY_LOCAL_MACHINE', N'Software\\Microsoft\\MSSQLServer\\MSSQLServer', N'BackupDirectory', @dir OUTPUT; SELECT @dir;";
+                var value = cmd.ExecuteScalar();
+                if (value == null || value == DBNull.Value)
+                {
+                    return null;
+                }
+
+                var text = Convert.ToString(value);
+                return string.IsNullOrWhiteSpace(text) ? null : text.Trim();
+            }
+        }
+
         public static void BackupDatabase(MssqlInstanceDto instance, string dbName, string bakFile)
         {
             if (IsSystemDb(dbName))

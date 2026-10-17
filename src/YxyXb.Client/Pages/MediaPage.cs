@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Data.SQLite;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -17,7 +18,6 @@ namespace YxyXb.Client.Pages
     public sealed class MediaPage : UserControl
     {
         private readonly HostBootstrap _boot;
-        private readonly ExclusiveBgJob _runJob = new ExclusiveBgJob();
         private DataGrid _liveGrid;
         private DataGrid _regGrid;
         private TextBlock _regHint;
@@ -393,30 +393,17 @@ namespace YxyXb.Client.Pages
                 return;
             }
 
-            if (!_runJob.TryStart(delegate
+            if (!task.Enabled)
             {
-                using (var db = SqliteDb.OpenDefault())
-                {
-                    return MediaRunner.ExecuteNow(db, task.Id);
-                }
-            }, delegate(string result, Exception error)
-            {
-                Dispatcher.BeginInvoke(new Action(delegate
-                {
-                    ReloadAll();
-                    if (error != null)
-                    {
-                        ScrollableMessage.Show(Window.GetWindow(this), "立即执行", "立即执行失败：" + error.Message);
-                    }
-                    else
-                    {
-                        ScrollableMessage.Show(Window.GetWindow(this), "立即执行", result);
-                    }
-                }));
-            }))
-            {
-                Alert("已有任务正在执行，请稍候。");
+                Alert("任务未启用，引擎不会执行。");
+                return;
             }
+
+            _boot.Db.Execute(
+                "UPDATE media_tasks SET next_run_utc=@n, waiting_since_utc=NULL WHERE id=@id",
+                new SQLiteParameter("@n", DateTime.UtcNow.ToString("o")),
+                new SQLiteParameter("@id", task.Id));
+            ReloadAll();
         }
 
         private void AddTask()

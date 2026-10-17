@@ -71,6 +71,7 @@ namespace YxyXb.Mssql
                 var settings = SettingsStore.Get(db);
                 var bakRoot = AppPaths.BackupDirectoryOrThrow(settings.BakPath);
                 Directory.CreateDirectory(bakRoot);
+                log.Append("备份目录 ").Append(bakRoot).Append("。");
 
                 var dbs = ResolveDatabases(instance, task);
                 if (dbs.Count == 0)
@@ -144,7 +145,7 @@ namespace YxyXb.Mssql
                         File.Delete(bakFile);
                     }
 
-                    MssqlConnect.BackupDatabase(instance, dbName, bakFile);
+                    BackupToWorkFile(instance, dbName, bakFile, bakRoot);
                     var flags = settings.NameFlags == 0 ? NameParts.DefaultFlags : settings.NameFlags;
                     var parts = NameParts.FromFlags(flags);
                     var folder = BackupNaming.MssqlFolder(bakRoot, settings.SoftwareId, task.Name, instance.Name, parts);
@@ -276,12 +277,56 @@ namespace YxyXb.Mssql
                 MssqlConnect.IsSystemDb);
         }
 
+        private static void BackupToWorkFile(MssqlInstanceDto instance, string dbName, string bakFile, string bakRoot)
+        {
+            Exception first;
+            try
+            {
+                MssqlConnect.BackupDatabase(instance, dbName, bakFile);
+                return;
+            }
+            catch (Exception ex)
+            {
+                first = ex;
+            }
+
+            string staging = null;
+            try
+            {
+                var sqlDir = MssqlConnect.ReadDefaultBackupDirectory(instance);
+                if (string.IsNullOrWhiteSpace(sqlDir))
+                {
+                    throw new InvalidOperationException("SQL Server 没有可用的默认备份目录。");
+                }
+
+                Directory.CreateDirectory(sqlDir);
+                staging = Path.Combine(sqlDir, Path.GetFileNameWithoutExtension(bakFile) + "-" + Guid.NewGuid().ToString("N") + ".bak");
+                MssqlConnect.BackupDatabase(instance, dbName, staging);
+                if (!File.Exists(staging) || new FileInfo(staging).Length == 0)
+                {
+                    throw new InvalidOperationException("SQL Server 未生成备份文件。");
+                }
+
+                File.Copy(staging, bakFile, true);
+            }
+            catch (Exception second)
+            {
+                throw new InvalidOperationException(
+                    "未能写入备份目录 " + bakRoot + "。SQL Server 服务需要能在该目录创建文件。请给 SQL Server 服务帐号这个文件夹的修改权限后重试。"
+                    + first.Message + " " + second.Message);
+            }
+            finally
+            {
+                TryDelete(staging);
+            }
+        }
+
         private static string PrepareWorkDir(string bakRoot)
         {
             var dirs = new[]
             {
-                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "用心云循备", "mssql-work"),
-                Path.Combine(bakRoot, "_mssql_work")
+                Path.Combine(bakRoot, "_mssql_work"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "用心云循备", "mssql-work")
             };
             Exception last = null;
             for (var i = 0; i < dirs.Length; i++)

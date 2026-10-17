@@ -480,7 +480,7 @@ namespace YxyXb.Client.Pages
             s.ZipPassword = _zipPwd.Password;
             SettingsStore.Save(_boot.Db, s);
             RefreshPreview();
-            MessageBox.Show(Window.GetWindow(this), "已保存。", "备份存储");
+            MessageBox.Show(Window.GetWindow(this), "已保存。之后的文件和数据库备份写入：\n" + text, "备份存储");
         }
 
         private void SelectTheme(string theme)

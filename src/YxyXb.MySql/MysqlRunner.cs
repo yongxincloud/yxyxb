@@ -71,6 +71,7 @@ namespace YxyXb.MySql
                 var settings = SettingsStore.Get(db);
                 var bakRoot = AppPaths.BackupDirectoryOrThrow(settings.BakPath);
                 Directory.CreateDirectory(bakRoot);
+                log.Append("备份目录 ").Append(bakRoot).Append("。");
                 var dbs = ResolveDatabases(instance, task);
                 if (dbs.Count == 0)
                 {
@@ -139,7 +140,14 @@ namespace YxyXb.MySql
 
                     var sqlFile = Path.Combine(work, SafeFile(dbName) + ".sql");
                     if (File.Exists(sqlFile)) File.Delete(sqlFile);
-                    MysqlConnect.DumpDatabase(instance, dbName, sqlFile);
+                    try
+                    {
+                        MysqlConnect.DumpDatabase(instance, dbName, sqlFile);
+                    }
+                    catch (Exception ex)
+                    {
+                        throw new InvalidOperationException("未能写入备份目录 " + bakRoot + "。" + ex.Message);
+                    }
                     var flags = settings.NameFlags == 0 ? NameParts.DefaultFlags : settings.NameFlags;
                     var parts = NameParts.FromFlags(flags);
                     var folder = BackupNaming.MssqlFolder(bakRoot, settings.SoftwareId, task.Name, instance.Name, parts);
