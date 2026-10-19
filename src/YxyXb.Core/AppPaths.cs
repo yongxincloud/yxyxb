@@ -59,6 +59,11 @@ namespace YxyXb.Core
             get { return Path.Combine(DataDirectory, "baidu-upload"); }
         }
 
+        public static string QiniuUploadDirectory
+        {
+            get { return Path.Combine(DataDirectory, "qiniu-upload"); }
+        }
+
         public const string DefaultBakDirectory = @"D:\yxyxb\bak";
 
         public static string BakDirectory
@@ -153,6 +158,7 @@ namespace YxyXb.Core
         {
             Directory.CreateDirectory(DataDirectory);
             Directory.CreateDirectory(BaiduUploadDirectory);
+            Directory.CreateDirectory(QiniuUploadDirectory);
         }
     }
 }

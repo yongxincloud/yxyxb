@@ -4,6 +4,8 @@ using System.IO;
 using System.Text;
 using YxyXb.Contracts.Cloud;
 using YxyXb.Contracts.Dto;
+using YxyXb.Core;
+using YxyXb.Core.Backup;
 
 namespace YxyXb.Qiniu
 {
@@ -11,6 +13,8 @@ namespace YxyXb.Qiniu
     {
         private CloudAccountDto _account;
         private int _maxKbps;
+
+        public Action<string> OnLog { get; set; }
 
         public string ProviderKey
         {
@@ -68,7 +72,35 @@ namespace YxyXb.Qiniu
             }
 
             var token = QiniuHttp.UploadToken(acc.AccessKey, acc.SecretKey, acc.Bucket);
-            QiniuHttp.UploadFile(QiniuHttp.UploadHost(acc.Zone), token, remoteKey, localPath, _maxKbps);
+            QiniuHttp.UploadFile(QiniuHttp.UploadHost(acc.Zone), token, remoteKey, localPath, _maxKbps, delegate(string line)
+            {
+                Note(localPath, line);
+            });
+        }
+
+        private void Note(string localPath, string message)
+        {
+            try
+            {
+                SliceLog.Write(AppPaths.QiniuUploadDirectory, localPath, message);
+            }
+            catch (IOException)
+            {
+            }
+
+            var sink = OnLog;
+            if (sink == null)
+            {
+                return;
+            }
+
+            try
+            {
+                sink(message);
+            }
+            catch (Exception)
+            {
+            }
         }
 
         public int DeleteExpired(string prefix, DateTime olderThanUtc, Action<string> onDeleted)

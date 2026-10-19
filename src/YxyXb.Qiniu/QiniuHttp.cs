@@ -14,6 +14,21 @@ namespace YxyXb.Qiniu
         public static void EnsureTls12()
         {
             TlsPolicy.Apply();
+            if (ServicePointManager.DefaultConnectionLimit < 8)
+            {
+                ServicePointManager.DefaultConnectionLimit = 8;
+            }
+        }
+
+        private static void Prepare(HttpWebRequest request)
+        {
+            request.KeepAlive = false;
+            request.ProtocolVersion = HttpVersion.Version11;
+            request.ServicePoint.Expect100Continue = false;
+            if (request.ServicePoint.ConnectionLimit < 8)
+            {
+                request.ServicePoint.ConnectionLimit = 8;
+            }
         }
 
         public static string UploadHost(string zone)
@@ -68,6 +83,7 @@ namespace YxyXb.Qiniu
             request.Method = method;
             request.Timeout = 60000;
             request.ReadWriteTimeout = 60000;
+            Prepare(request);
             if (!string.IsNullOrEmpty(authorization))
             {
                 request.Headers[HttpRequestHeader.Authorization] = authorization;
@@ -109,18 +125,21 @@ namespace YxyXb.Qiniu
             }
         }
 
-        public static void UploadFile(string host, string token, string key, string localPath, int maxKbps)
+        public static void UploadFile(string host, string token, string key, string localPath, int maxKbps, Action<string> note)
         {
             EnsureTls12();
             var fileLen = new FileInfo(localPath).Length;
             if (fileLen <= 0)
             {
+                Say(note, "七牛 小文件直传 " + Path.GetFileName(localPath) + "，远程 " + key);
                 UploadForm(host, token, key, localPath);
+                Say(note, "七牛 直传完成。");
                 return;
             }
 
             const int blockSize = 4 * 1024 * 1024;
             var count = (int)((fileLen + blockSize - 1) / blockSize);
+            Say(note, "七牛 开始上传 " + Path.GetFileName(localPath) + "，大小 " + fileLen + " 字节，分片 " + count + "，远程 " + key);
             var ctx = new string[count];
             var pacer = new BytePacer(maxKbps);
             var gate = new object();
@@ -159,6 +178,7 @@ namespace YxyXb.Qiniu
                 Exception last = null;
                 string one = null;
                 string nextHost = null;
+                var tries = 0;
                 for (var attempt = 0; attempt < 3; attempt++)
                 {
                     try
@@ -188,6 +208,8 @@ namespace YxyXb.Qiniu
                     catch (Exception ex)
                     {
                         last = ex;
+                        tries++;
+                        Say(note, "七牛 分片 " + (i + 1) + "/" + count + " 失败第 " + (attempt + 1) + " 次：" + ex.Message);
                         System.Threading.Thread.Sleep(400 * (attempt + 1));
                     }
                 }
@@ -206,6 +228,7 @@ namespace YxyXb.Qiniu
                 }
 
                 ctx[i] = one;
+                Say(note, "七牛 分片 " + (i + 1) + "/" + count + " 成功，" + size + " 字节" + (tries > 0 ? "（重试 " + tries + "）" : ""));
                 if (!string.IsNullOrEmpty(nextHost))
                 {
                     lock (gate)
@@ -217,11 +240,29 @@ namespace YxyXb.Qiniu
 
             if (error != null)
             {
+                Say(note, "七牛 分片未齐，停止合并。");
                 throw new InvalidOperationException("七牛分片上传失败：" + error.Message);
             }
 
             var body = Encoding.UTF8.GetBytes(string.Join(",", ctx));
             PostRaw(mkHost.TrimEnd('/') + "/mkfile/" + fileLen + "/key/" + UrlSafeBase64(key), "UpToken " + token, body, "text/plain", 120000, null);
+            Say(note, "七牛 分片已齐，合并完成。");
+        }
+
+        private static void Say(Action<string> note, string message)
+        {
+            if (note == null)
+            {
+                return;
+            }
+
+            try
+            {
+                note(message);
+            }
+            catch (Exception)
+            {
+            }
         }
 
         private static void UploadForm(string host, string token, string key, string localPath)
@@ -242,7 +283,7 @@ namespace YxyXb.Qiniu
             request.Timeout = 300000;
             request.ReadWriteTimeout = 300000;
             request.ContentType = "multipart/form-data; boundary=" + boundary;
-            request.KeepAlive = false;
+            Prepare(request);
             request.ContentLength = head.Length + fileLen + tail.Length;
             using (var output = request.GetRequestStream())
             {
@@ -264,7 +305,7 @@ namespace YxyXb.Qiniu
             request.Method = "POST";
             request.Timeout = timeoutMs;
             request.ReadWriteTimeout = timeoutMs;
-            request.KeepAlive = true;
+            Prepare(request);
             request.Headers[HttpRequestHeader.Authorization] = authorization;
             request.ContentType = contentType;
             request.ContentLength = body == null ? 0 : body.Length;
@@ -377,7 +418,7 @@ namespace YxyXb.Qiniu
 
         private static string UrlSafe(byte[] raw)
         {
-            return Convert.ToBase64String(raw).Replace('+', '-').Replace('/', '_');
+            return Convert.ToBase64String(raw).TrimEnd('=').Replace('+', '-').Replace('/', '_');
         }
 
         private static string Escape(string text)

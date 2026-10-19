@@ -322,7 +322,7 @@ namespace YxyXb.Client.Pages
             panel.Children.Add(_smtpFooter);
             panel.Children.Add(new TextBlock
             {
-                Text = "可用 {任务}、{结果}、{时间}、{详情}。标题或内容留空时用默认句式。结尾写在正文最后，留空则不附加。",
+                Text = "可用 {任务}、{结果}、{时间}、{详情}、{客户标识}。客户标识取自「综合设置」。标题或内容留空时用默认句式。结尾写在正文最后，留空则不附加。",
                 TextWrapping = TextWrapping.Wrap,
                 Margin = new Thickness(0, 8, 0, 0)
             });
@@ -334,7 +334,7 @@ namespace YxyXb.Client.Pages
                 try
                 {
                     SaveSmtp();
-                    MailUtil.Test(ReadSmtp());
+                    MailUtil.Test(ReadSmtp(), _softwareId.Text);
                     MessageBox.Show(Window.GetWindow(this), "已发送。", "邮件", MessageBoxButton.OK, MessageBoxImage.Information);
                 }
                 catch (Exception ex)

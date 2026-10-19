@@ -65,17 +65,21 @@ namespace YxyXb.Core.Backup
                 var use = string.IsNullOrWhiteSpace(provider) ? CloudProviders.Qiniu : provider;
                 CloudRuntime.Require().Upload(db, use, zipPath, key);
                 log.Append(" 云上传成功 ").Append(key).Append("。");
-                if (string.Equals(use, CloudProviders.Baidu, StringComparison.OrdinalIgnoreCase))
+                if (string.Equals(use, CloudProviders.Baidu, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(use, CloudProviders.Qiniu, StringComparison.OrdinalIgnoreCase))
                 {
-                    log.Append(" 分片过程见「日志 → 百度分片」。目录：")
-                        .Append(AppPaths.BaiduUploadDirectory)
+                    var folder = string.Equals(use, CloudProviders.Qiniu, StringComparison.OrdinalIgnoreCase)
+                        ? AppPaths.QiniuUploadDirectory
+                        : AppPaths.BaiduUploadDirectory;
+                    log.Append(" 分片过程见「日志 → 分片日志」。目录：")
+                        .Append(folder)
                         .Append("。");
                 }
                 return true;
             }
             catch (Exception ex)
             {
-                log.Append(" 云上传失败：").Append(ex.Message).Append("。");
+                log.Append(" 云上传失败 ").Append(Path.GetFileName(zipPath)).Append("：").Append(ex.Message).Append("。");
                 return false;
             }
         }
@@ -88,7 +92,7 @@ namespace YxyXb.Core.Backup
             {
                 try
                 {
-                    MailUtil.SendResult(smtp, taskName, distOk, log.ToString());
+                    MailUtil.SendResult(smtp, taskName, distOk, log.ToString(), SettingsStore.Get(db).SoftwareId);
                     log.Append(" 已发邮件。");
                 }
                 catch (Exception ex)

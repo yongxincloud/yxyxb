@@ -4,9 +4,9 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Threading;
-using YxyXb.Baidu;
 using YxyXb.Contracts.Dto;
 using YxyXb.Core;
+using YxyXb.Core.Backup;
 using YxyXb.Core.Runtime;
 using YxyXb.Core.Store;
 
@@ -22,12 +22,13 @@ namespace YxyXb.Client.Pages
             tabs.Items.Add(MakeTab("MySQL", boot, "mysql"));
             tabs.Items.Add(MakeTab("离线介质", boot, "media"));
             tabs.Items.Add(MakeTab("自动删除", boot, "purge"));
-            tabs.Items.Add(MakeTab("百度分片", boot, "baidu"));
+            tabs.Items.Add(MakeTab("分片日志", boot, "slice"));
             Content = tabs;
         }
 
         private static TabItem MakeTab(string header, HostBootstrap boot, string type)
         {
+            var slice = type == "slice";
             var grid = new DataGrid
             {
                 AutoGenerateColumns = false,
@@ -41,13 +42,18 @@ namespace YxyXb.Client.Pages
             ScrollViewer.SetVerticalScrollBarVisibility(grid, ScrollBarVisibility.Visible);
             ScrollViewer.SetHorizontalScrollBarVisibility(grid, ScrollBarVisibility.Auto);
             grid.Columns.Add(new DataGridTextColumn { Header = "时间", Binding = new Binding("CreatedLocal"), Width = 150 });
+            if (slice)
+            {
+                grid.Columns.Add(new DataGridTextColumn { Header = "来源", Binding = new Binding("Source"), Width = 70 });
+            }
+
             grid.Columns.Add(new DataGridTextColumn { Header = "任务", Binding = new Binding("TaskName"), Width = 140 });
             grid.Columns.Add(new DataGridTextColumn { Header = "结果", Binding = new Binding("Result"), Width = 70 });
             grid.Columns.Add(new DataGridTextColumn { Header = "模式", Binding = new Binding("Mode"), Width = 70 });
             grid.Columns.Add(new DataGridTextColumn { Header = "说明", Binding = new Binding("Preview"), Width = new DataGridLength(1, DataGridLengthUnitType.Star) });
 
             var detail = ScrollableMessage.CreateBox();
-            var extra = type == "baidu" ? " 文件：" + AppPaths.BaiduUploadDirectory : "";
+            var extra = slice ? " 文件：" + AppPaths.BaiduUploadDirectory + " ；" + AppPaths.QiniuUploadDirectory : "";
             var hint = new TextBlock
             {
                 Text = "点选一行后，完整说明在下方滚动查看。进行中自动刷新。" + extra,
@@ -63,7 +69,9 @@ namespace YxyXb.Client.Pages
             Action reload = delegate
             {
                 var keep = grid.SelectedIndex;
-                var rows = Wrap(LogStore.List(boot.Db, type, 300));
+                var rows = slice
+                    ? Wrap(LogStore.ListAny(boot.Db, new[] { "baidu", "qiniu" }, 300))
+                    : Wrap(LogStore.List(boot.Db, type, 300));
                 grid.ItemsSource = rows;
                 if (rows.Count == 0)
                 {
@@ -103,14 +111,21 @@ namespace YxyXb.Client.Pages
                     return;
                 }
 
-                LogStore.DeleteByType(boot.Db, type);
+                if (slice)
+                {
+                    LogStore.DeleteAny(boot.Db, new[] { "baidu", "qiniu" });
+                }
+                else
+                {
+                    LogStore.DeleteByType(boot.Db, type);
+                }
                 reload();
             };
             bar.Children.Add(refresh);
             bar.Children.Add(clear);
 
             TextBox fileBox = null;
-            if (type == "baidu")
+            if (slice)
             {
                 fileBox = ScrollableMessage.CreateBox();
                 fileBox.MinHeight = 100;
@@ -120,7 +135,7 @@ namespace YxyXb.Client.Pages
             var bottom = new DockPanel { LastChildFill = true };
             DockPanel.SetDock(bottom, Dock.Bottom);
             DockPanel.SetDock(hint, Dock.Top);
-            bottom.Height = type == "baidu" ? 280 : 180;
+            bottom.Height = slice ? 280 : 180;
             bottom.Children.Add(hint);
             if (fileBox != null)
             {
@@ -133,7 +148,7 @@ namespace YxyXb.Client.Pages
             root.Children.Add(bar);
             root.Children.Add(grid);
 
-            if (type == "baidu")
+            if (slice)
             {
                 var timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
                 Action pulse = delegate
@@ -146,7 +161,7 @@ namespace YxyXb.Client.Pages
                     reload();
                     try
                     {
-                        var text = BaiduUploadLog.ReadRecent(AppPaths.DataDirectory, 16000);
+                        var text = SliceLog.ReadRecent(AppPaths.DataDirectory, 16000);
                         fileBox.Text = string.IsNullOrEmpty(text) ? "尚无分片日志文件。" : text;
                     }
                     catch (Exception ex)
@@ -172,6 +187,7 @@ namespace YxyXb.Client.Pages
                 rows.Add(new LogRow
                 {
                     CreatedLocal = item.CreatedUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss"),
+                    Source = item.Type == "qiniu" ? "七牛" : "百度",
                     TaskName = item.TaskName,
                     Result = item.Result == "ok" ? "成功" : "失败",
                     Mode = item.Mode == "auto" ? "自动" : "手动",
@@ -197,6 +213,8 @@ namespace YxyXb.Client.Pages
         private sealed class LogRow
         {
             public string CreatedLocal { get; set; }
+
+            public string Source { get; set; }
 
             public string TaskName { get; set; }
 

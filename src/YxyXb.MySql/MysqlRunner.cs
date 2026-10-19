@@ -194,24 +194,35 @@ namespace YxyXb.MySql
                     var items = record.Items ?? new PendingItem[0];
                     for (var i = 0; i < items.Length; i++)
                     {
-                        if (!PendingFiles.UploadItem(
-                            db,
-                            items[i],
-                            task.DoNetwork,
-                            task.DoFtp,
-                            task.DoCloud,
-                            task.CloudProvider,
-                            "mysql",
-                            task.Name,
-                            log,
-                            delegate
+                        var item = items[i];
+                        var label = item == null || string.IsNullOrEmpty(item.Key) ? "第" + (i + 1) + "个库" : item.Key;
+                        try
+                        {
+                            if (!PendingFiles.UploadItem(
+                                db,
+                                item,
+                                task.DoNetwork,
+                                task.DoFtp,
+                                task.DoCloud,
+                                task.CloudProvider,
+                                "mysql",
+                                task.Name,
+                                log,
+                                delegate
+                                {
+                                    var json = PendingBackup.ToJson(record);
+                                    MysqlTaskStore.SavePending(db, task.Id, json);
+                                    task.PendingJson = json;
+                                }))
                             {
-                                var json = PendingBackup.ToJson(record);
-                                MysqlTaskStore.SavePending(db, task.Id, json);
-                                task.PendingJson = json;
-                            }))
+                                distOk = false;
+                                log.Append(" ").Append(label).Append(" 未传完。");
+                            }
+                        }
+                        catch (Exception ex)
                         {
                             distOk = false;
+                            log.Append(" ").Append(label).Append(" 上传中断：").Append(ex.Message).Append("。");
                         }
                     }
                 }
@@ -232,7 +243,7 @@ namespace YxyXb.MySql
                 {
                     try
                     {
-                        MailUtil.SendResult(SettingsStore.GetXfer<SmtpSettingsDto>(db, "smtp"), task.Name, false, log.ToString());
+                        MailUtil.SendResult(SettingsStore.GetXfer<SmtpSettingsDto>(db, "smtp"), task.Name, false, log.ToString(), SettingsStore.Get(db).SoftwareId);
                     }
                     catch
                     {

@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using YxyXb.Baidu;
+using YxyXb.Qiniu;
 using YxyXb.Contracts.Cloud;
 using YxyXb.Contracts.Dto;
 using YxyXb.Core;
@@ -31,13 +32,20 @@ namespace YxyXb.Cloud
             storage.SetSpeed(uploadKbps, uploadKbps);
             storage.SetParallel(settings.UploadParallel);
             var baidu = storage as BaiduStorage;
+            var qiniu = storage as QiniuStorage;
             if (baidu != null)
             {
                 baidu.OnLog = delegate(string line)
                 {
-                    LogStore.Add(db, "baidu", "auto",
-                        (line ?? "").IndexOf("失败", StringComparison.Ordinal) >= 0 ? "error" : "ok",
-                        Path.GetFileName(localPath), line);
+                    LogStore.Add(db, "baidu", "auto", SliceResult(line), Path.GetFileName(localPath), line);
+                };
+            }
+
+            if (qiniu != null)
+            {
+                qiniu.OnLog = delegate(string line)
+                {
+                    LogStore.Add(db, "qiniu", "auto", SliceResult(line), Path.GetFileName(localPath), line);
                 };
             }
 
@@ -50,6 +58,11 @@ namespace YxyXb.Cloud
                 if (baidu != null)
                 {
                     baidu.OnLog = null;
+                }
+
+                if (qiniu != null)
+                {
+                    qiniu.OnLog = null;
                 }
             }
         }
@@ -67,6 +80,17 @@ namespace YxyXb.Cloud
             }
 
             BaiduUploadCheckpoint.Delete(AppPaths.DataDirectory, localPath);
+        }
+
+        private static string SliceResult(string line)
+        {
+            var text = line ?? "";
+            if (text.IndexOf("失败", StringComparison.Ordinal) >= 0 || text.IndexOf("未齐", StringComparison.Ordinal) >= 0)
+            {
+                return "error";
+            }
+
+            return "ok";
         }
 
         private static ICloudStorage CreateReady(SqliteDb db, string provider)

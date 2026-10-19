@@ -2,8 +2,8 @@ using System;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Threading;
-using YxyXb.Baidu;
 using YxyXb.Core;
+using YxyXb.Core.Backup;
 
 namespace YxyXb.Client.Pages
 {
@@ -33,7 +33,7 @@ namespace YxyXb.Client.Pages
             var panel = (DockPanel)Content;
             var hint = new TextBlock
             {
-                Text = "分片过程实时刷新。文件在 " + AppPaths.BaiduUploadDirectory,
+                Text = "分片过程实时刷新。百度：" + AppPaths.BaiduUploadDirectory + " 七牛：" + AppPaths.QiniuUploadDirectory,
                 TextWrapping = TextWrapping.Wrap,
                 Margin = new Thickness(0, 0, 0, 8)
             };
@@ -65,9 +65,9 @@ namespace YxyXb.Client.Pages
         {
             try
             {
-                var text = BaiduUploadLog.ReadRecent(AppPaths.DataDirectory, 20000);
+                var text = SliceLog.ReadRecent(AppPaths.DataDirectory, 20000);
                 _box.Text = string.IsNullOrEmpty(text)
-                    ? "等待分片日志… 若长时间为空，确认任务勾选了百度云。"
+                    ? "等待分片日志… 若长时间为空，确认任务勾选了七牛云或百度网盘。"
                     : text;
                 _box.ScrollToEnd();
             }

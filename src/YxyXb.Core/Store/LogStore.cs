@@ -78,6 +78,47 @@ namespace YxyXb.Core.Store
             return list;
         }
 
+        public static IList<LogEntryDto> ListAny(SqliteDb db, string[] types, int take)
+        {
+            if (take <= 0)
+            {
+                take = 200;
+            }
+
+            if (types == null || types.Length == 0)
+            {
+                return new List<LogEntryDto>();
+            }
+
+            var names = new string[types.Length];
+            var args = new SQLiteParameter[types.Length];
+            for (var i = 0; i < types.Length; i++)
+            {
+                names[i] = "@t" + i.ToString();
+                args[i] = new SQLiteParameter(names[i], types[i] ?? "");
+            }
+
+            var table = db.Query(
+                "SELECT * FROM logs WHERE type IN (" + string.Join(",", names) + ") ORDER BY id DESC LIMIT " + take,
+                args);
+            var list = new List<LogEntryDto>();
+            foreach (DataRow row in table.Rows)
+            {
+                list.Add(new LogEntryDto
+                {
+                    Id = Convert.ToInt64(row["id"]),
+                    Type = Convert.ToString(row["type"]),
+                    Mode = Convert.ToString(row["mode"]),
+                    Result = Convert.ToString(row["result"]),
+                    Message = row["message"] == DBNull.Value ? "" : Convert.ToString(row["message"]),
+                    TaskName = row["task_name"] == DBNull.Value ? "" : Convert.ToString(row["task_name"]),
+                    CreatedUtc = SqliteDb.ParseUtc(Convert.ToString(row["created_utc"]))
+                });
+            }
+
+            return list;
+        }
+
         public static int DeleteByType(SqliteDb db, string type)
         {
             if (string.IsNullOrWhiteSpace(type))
@@ -88,6 +129,24 @@ namespace YxyXb.Core.Store
             return db.Execute(
                 "DELETE FROM logs WHERE type=@t",
                 new SQLiteParameter("@t", type));
+        }
+
+        public static int DeleteAny(SqliteDb db, string[] types)
+        {
+            if (types == null || types.Length == 0)
+            {
+                return 0;
+            }
+
+            var names = new string[types.Length];
+            var args = new SQLiteParameter[types.Length];
+            for (var i = 0; i < types.Length; i++)
+            {
+                names[i] = "@t" + i.ToString();
+                args[i] = new SQLiteParameter(names[i], types[i] ?? "");
+            }
+
+            return db.Execute("DELETE FROM logs WHERE type IN (" + string.Join(",", names) + ")", args);
         }
 
         public static int DeleteOlderThan(SqliteDb db, DateTime cutoffUtc)

@@ -225,7 +225,7 @@ namespace YxyXb.Core.Backup
                 {
                     try
                     {
-                        MailUtil.SendResult(SettingsStore.GetXfer<SmtpSettingsDto>(db, "smtp"), task.Name, false, log.ToString());
+                        MailUtil.SendResult(SettingsStore.GetXfer<SmtpSettingsDto>(db, "smtp"), task.Name, false, log.ToString(), SettingsStore.Get(db).SoftwareId);
                     }
                     catch
                     {

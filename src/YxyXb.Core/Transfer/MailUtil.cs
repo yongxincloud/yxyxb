@@ -7,13 +7,13 @@ namespace YxyXb.Core.Transfer
 {
     public static class MailUtil
     {
-        public const string DefaultSubject = "{结果} - {任务}";
+        public const string DefaultSubject = "{客户标识} {结果} - {任务}";
 
         public const string DefaultBody = "任务：{任务}\r\n结果：{结果}\r\n时间：{时间}\r\n{详情}";
 
-        public static void Test(SmtpSettingsDto settings)
+        public static void Test(SmtpSettingsDto settings, string softwareId)
         {
-            SendResult(settings, "测试", true, "这是一封测试邮件。");
+            SendResult(settings, "测试", true, "这是一封测试邮件。", softwareId);
         }
 
         public static bool SmtpReady(SmtpSettingsDto settings)
@@ -60,37 +60,38 @@ namespace YxyXb.Core.Transfer
             return !success;
         }
 
-        public static void SendResult(SmtpSettingsDto settings, string taskName, bool ok, string detail)
+        public static void SendResult(SmtpSettingsDto settings, string taskName, bool ok, string detail, string softwareId)
         {
             string subject;
             string body;
-            Compose(settings, taskName, ok, detail, out subject, out body);
+            Compose(settings, taskName, ok, detail, softwareId, out subject, out body);
             Send(settings, subject, body);
         }
 
-        public static void Compose(SmtpSettingsDto settings, string taskName, bool ok, string detail, out string subject, out string body)
+        public static void Compose(SmtpSettingsDto settings, string taskName, bool ok, string detail, string softwareId, out string subject, out string body)
         {
             var result = ok ? "成功" : "失败";
             var time = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
             var subjectText = settings == null || string.IsNullOrWhiteSpace(settings.Subject) ? DefaultSubject : settings.Subject.Trim();
             var bodyText = settings == null || string.IsNullOrWhiteSpace(settings.Body) ? DefaultBody : settings.Body;
-            subject = Fill(subjectText, taskName, result, time, detail);
-            body = Fill(bodyText, taskName, result, time, detail);
+            subject = Fill(subjectText, taskName, result, time, detail, softwareId);
+            body = Fill(bodyText, taskName, result, time, detail, softwareId);
             var footer = settings == null || string.IsNullOrWhiteSpace(settings.Footer) ? "" : settings.Footer;
-            footer = Fill(footer, taskName, result, time, detail);
+            footer = Fill(footer, taskName, result, time, detail, softwareId);
             if (!string.IsNullOrEmpty(footer))
             {
                 body = body.TrimEnd() + "\r\n\r\n" + footer;
             }
         }
 
-        private static string Fill(string template, string taskName, string result, string time, string detail)
+        private static string Fill(string template, string taskName, string result, string time, string detail, string softwareId)
         {
             return (template ?? "")
                 .Replace("{任务}", taskName ?? "")
                 .Replace("{结果}", result ?? "")
                 .Replace("{时间}", time ?? "")
-                .Replace("{详情}", detail ?? "");
+                .Replace("{详情}", detail ?? "")
+                .Replace("{客户标识}", softwareId ?? "");
         }
 
         public static void Send(SmtpSettingsDto settings, string subject, string body)
