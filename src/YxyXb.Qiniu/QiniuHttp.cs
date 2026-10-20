@@ -365,7 +365,7 @@ namespace YxyXb.Qiniu
 
         public static string UrlSafeBase64(string text)
         {
-            return UrlSafe(Encoding.UTF8.GetBytes(text ?? ""));
+            return UrlSafe(Encoding.UTF8.GetBytes(text ?? "")).TrimEnd('=');
         }
 
         public static DateTime FromPutTime(long putTime)
@@ -418,7 +418,7 @@ namespace YxyXb.Qiniu
 
         private static string UrlSafe(byte[] raw)
         {
-            return Convert.ToBase64String(raw).TrimEnd('=').Replace('+', '-').Replace('/', '_');
+            return Convert.ToBase64String(raw).Replace('+', '-').Replace('/', '_');
         }
 
         private static string Escape(string text)
