@@ -30,6 +30,7 @@ namespace YxyXb.Core.Backup
                 {
                     ok = false;
                     log.Append(" 网络传输失败：").Append(ex.Message).Append("。");
+                    NetFail.NoteKept(log, ex);
                 }
             }
 
@@ -45,6 +46,7 @@ namespace YxyXb.Core.Backup
                 {
                     ok = false;
                     log.Append(" FTP 失败：").Append(ex.Message).Append("。");
+                    NetFail.NoteKept(log, ex);
                 }
             }
 
@@ -80,6 +82,7 @@ namespace YxyXb.Core.Backup
             catch (Exception ex)
             {
                 log.Append(" 云上传失败 ").Append(Path.GetFileName(zipPath)).Append("：").Append(ex.Message).Append("。");
+                NetFail.NoteKept(log, ex);
                 return false;
             }
         }
@@ -99,6 +102,7 @@ namespace YxyXb.Core.Backup
                 {
                     mailOk = false;
                     log.Append(" 邮件失败：").Append(ex.Message).Append("。");
+                    NetFail.NoteKept(log, ex);
                 }
             }
 

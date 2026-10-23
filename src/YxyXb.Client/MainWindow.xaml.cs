@@ -5,6 +5,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using YxyXb.Client.Dialogs;
 using YxyXb.Client.Pages;
 using YxyXb.Core;
@@ -48,9 +49,62 @@ namespace YxyXb.Client
                 Close();
             });
             _tray.ContextMenuStrip = menu;
+            ApplyOem();
             RefreshLoginButton();
             ShowPage("home");
             Loaded += MainWindow_OnLoaded;
+        }
+
+        private void ApplyOem()
+        {
+            var skin = OemSkin.Load();
+            var name = skin.DisplayName();
+            Title = name;
+            TxtBrand.Text = name;
+            TxtVersion.Text = "Ver " + AppPaths.ReleaseVersion;
+            var company = (skin.Company ?? "").Trim();
+            var phone = (skin.Phone ?? "").Trim();
+            if (company.Length > 0)
+            {
+                TxtBrandSub.Text = company;
+            }
+
+            if (phone.Length > 0)
+            {
+                TxtBrandPhone.Text = phone;
+                TxtBrandPhone.Visibility = Visibility.Visible;
+            }
+
+            var tray = name.Length > 63 ? name.Substring(0, 63) : name;
+            _tray.Text = tray;
+            var icon = skin.IconPath();
+            if (icon.Length > 0)
+            {
+                try
+                {
+                    var image = new BitmapImage();
+                    image.BeginInit();
+                    image.CacheOption = BitmapCacheOption.OnLoad;
+                    image.UriSource = new Uri(icon);
+                    image.EndInit();
+                    ImgLogo.Source = image;
+                    Icon = image;
+                }
+                catch (Exception)
+                {
+                }
+
+                if (icon.EndsWith(".ico", StringComparison.OrdinalIgnoreCase))
+                {
+                    try
+                    {
+                        _tray.Icon = new System.Drawing.Icon(icon);
+                    }
+                    catch (Exception)
+                    {
+                    }
+                }
+            }
         }
 
         private void MainWindow_OnLoaded(object sender, RoutedEventArgs e)
@@ -59,11 +113,13 @@ namespace YxyXb.Client
             if (!SiteLogin.ReconcileDeviceSession(_boot.Db))
             {
                 RefreshLoginButton();
+                UpdateCheck.Start(_boot);
                 return;
             }
 
             RefreshLoginButton();
             ShowPage("home");
+            UpdateCheck.Start(_boot);
             MessageBox.Show(
                 this,
                 "检测到本机设备与登录记录不一致（例如程序从其它电脑整包拷贝，或本机不在账号设备列表中）。请重新登录。",

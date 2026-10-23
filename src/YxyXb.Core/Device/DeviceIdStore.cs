@@ -3,6 +3,7 @@ using System.Data.SQLite;
 using System.IO;
 using System.Security.Cryptography;
 using System.Text;
+using Microsoft.Win32;
 using YxyXb.Contracts.Dto;
 using YxyXb.Core.Data;
 
@@ -28,82 +29,150 @@ namespace YxyXb.Core.Device
             }
 
             resetBecauseCopied = false;
-            var fromFile = TryReadProtectedFile();
-            if (File.Exists(AppPaths.DeviceIdFile) && fromFile == null)
+            var read = ReadProtectedFile();
+            if (read.Kind == FileReadKind.Foreign)
             {
-                // 文件来自其它机器的 DPAPI，本机解不开 → 视为拷贝安装
                 resetBecauseCopied = true;
                 TryDeleteFile(AppPaths.DeviceIdFile);
                 db.Execute("DELETE FROM device_id WHERE id = 1");
             }
 
+            var machine = ReadMachineGuid();
             var existing = db.ExecuteScalar("SELECT device_id FROM device_id WHERE id = 1") as string;
             var createdText = db.ExecuteScalar("SELECT created_utc FROM device_id WHERE id = 1") as string;
-
-            if (!string.IsNullOrEmpty(fromFile))
+            var deviceId = machine;
+            if (string.IsNullOrEmpty(deviceId))
             {
-                if (!string.Equals(existing, fromFile, StringComparison.Ordinal))
+                deviceId = read.Kind == FileReadKind.Ok ? read.Id : null;
+            }
+
+            if (string.IsNullOrEmpty(deviceId))
+            {
+                deviceId = existing;
+            }
+
+            if (string.IsNullOrEmpty(deviceId))
+            {
+                if (read.Kind == FileReadKind.Locked)
                 {
-                    db.Execute("DELETE FROM device_id WHERE id = 1");
-                    var now = SqliteDb.UtcNowText();
-                    db.Execute(
-                        "INSERT INTO device_id (id, device_id, created_utc) VALUES (1, @id, @utc)",
-                        new SQLiteParameter("@id", fromFile),
-                        new SQLiteParameter("@utc", now));
-                    createdText = now;
+                    deviceId = "pc";
                 }
-
-                return new DeviceInfoDto
+                else
                 {
-                    DeviceId = fromFile,
-                    CreatedUtc = string.IsNullOrEmpty(createdText) ? DateTime.UtcNow : SqliteDb.ParseUtc(createdText)
-                };
+                    deviceId = Guid.NewGuid().ToString("N");
+                }
             }
 
-            if (!string.IsNullOrEmpty(existing))
+            if (!string.Equals(existing, deviceId, StringComparison.Ordinal))
             {
-                WriteProtectedFile(existing);
-                return new DeviceInfoDto
-                {
-                    DeviceId = existing,
-                    CreatedUtc = string.IsNullOrEmpty(createdText) ? DateTime.UtcNow : SqliteDb.ParseUtc(createdText)
-                };
+                db.Execute("DELETE FROM device_id WHERE id = 1");
+                var now = SqliteDb.UtcNowText();
+                db.Execute(
+                    "INSERT INTO device_id (id, device_id, created_utc) VALUES (1, @id, @utc)",
+                    new SQLiteParameter("@id", deviceId),
+                    new SQLiteParameter("@utc", now));
+                createdText = now;
             }
 
-            var deviceId = Guid.NewGuid().ToString("N");
-            var created = SqliteDb.UtcNowText();
-            db.Execute(
-                "INSERT OR IGNORE INTO device_id (id, device_id, created_utc) VALUES (1, @id, @utc)",
-                new SQLiteParameter("@id", deviceId),
-                new SQLiteParameter("@utc", created));
-            WriteProtectedFile(deviceId);
+            if (read.Kind != FileReadKind.Locked && read.Kind != FileReadKind.Ok)
+            {
+                WriteProtectedFile(deviceId);
+            }
+            else if (read.Kind == FileReadKind.Ok && !string.Equals(read.Id, deviceId, StringComparison.Ordinal))
+            {
+                WriteProtectedFile(deviceId);
+            }
+
             return new DeviceInfoDto
             {
                 DeviceId = deviceId,
-                CreatedUtc = SqliteDb.ParseUtc(created)
+                CreatedUtc = string.IsNullOrEmpty(createdText) ? DateTime.UtcNow : SqliteDb.ParseUtc(createdText)
             };
         }
 
-        private static string TryReadProtectedFile()
+        public static string CurrentId()
+        {
+            var machine = ReadMachineGuid();
+            if (!string.IsNullOrEmpty(machine))
+            {
+                return machine;
+            }
+
+            var read = ReadProtectedFile();
+            if (read.Kind == FileReadKind.Ok && !string.IsNullOrEmpty(read.Id))
+            {
+                return read.Id;
+            }
+
+            return "pc";
+        }
+
+        private static string ReadMachineGuid()
+        {
+            var from64 = ReadMachineGuid(RegistryView.Registry64);
+            if (!string.IsNullOrEmpty(from64))
+            {
+                return from64;
+            }
+
+            return ReadMachineGuid(RegistryView.Registry32);
+        }
+
+        private static string ReadMachineGuid(RegistryView view)
+        {
+            try
+            {
+                using (var baseKey = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, view))
+                using (var key = baseKey.OpenSubKey(@"SOFTWARE\Microsoft\Cryptography"))
+                {
+                    var value = key == null ? null : key.GetValue("MachineGuid") as string;
+                    return NormalizeGuid(value);
+                }
+            }
+            catch (Exception)
+            {
+                return null;
+            }
+        }
+
+        private static string NormalizeGuid(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return null;
+            }
+
+            Guid parsed;
+            if (!Guid.TryParse(value.Trim().Trim('{', '}'), out parsed))
+            {
+                return null;
+            }
+
+            return parsed.ToString("N");
+        }
+
+        private static FileRead ReadProtectedFile()
         {
             try
             {
                 if (!File.Exists(AppPaths.DeviceIdFile))
                 {
-                    return null;
+                    return new FileRead(FileReadKind.Missing, null);
                 }
 
                 var raw = File.ReadAllBytes(AppPaths.DeviceIdFile);
                 var plain = ProtectedData.Unprotect(raw, null, DataProtectionScope.LocalMachine);
-                return Encoding.UTF8.GetString(plain);
+                var text = Encoding.UTF8.GetString(plain);
+                var id = NormalizeGuid(text);
+                return new FileRead(FileReadKind.Ok, string.IsNullOrEmpty(id) ? text : id);
             }
             catch (CryptographicException)
             {
-                return null;
+                return new FileRead(FileReadKind.Foreign, null);
             }
             catch (IOException)
             {
-                return null;
+                return new FileRead(FileReadKind.Locked, null);
             }
         }
 
@@ -136,6 +205,27 @@ namespace YxyXb.Core.Device
             catch (UnauthorizedAccessException)
             {
             }
+        }
+
+        private enum FileReadKind
+        {
+            Missing,
+            Ok,
+            Foreign,
+            Locked
+        }
+
+        private sealed class FileRead
+        {
+            public FileRead(FileReadKind kind, string id)
+            {
+                Kind = kind;
+                Id = id;
+            }
+
+            public FileReadKind Kind { get; private set; }
+
+            public string Id { get; private set; }
         }
     }
 }

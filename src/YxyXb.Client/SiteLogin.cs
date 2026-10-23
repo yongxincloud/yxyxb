@@ -5,7 +5,6 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.NetworkInformation;
-using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Windows;
@@ -318,13 +317,13 @@ namespace YxyXb.Client
 
             try
             {
+                SoftVerify(session.Email, db);
                 var list = ListDevices();
                 var local = DeviceId();
                 for (var i = 0; i < list.Items.Count; i++)
                 {
                     if (string.Equals(list.Items[i].DeviceId, local, StringComparison.OrdinalIgnoreCase))
                     {
-                        SoftVerify(session.Email, db);
                         return false;
                     }
                 }
@@ -332,8 +331,13 @@ namespace YxyXb.Client
                 SignOut();
                 return true;
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                if (NetFail.IsUnreachable(ex))
+                {
+                    return false;
+                }
+
                 SignOut();
                 return true;
             }
@@ -434,7 +438,7 @@ namespace YxyXb.Client
         {
             var dialog = new Window
             {
-                Title = "登录",
+                Title = OemSkin.Load().DisplayName(),
                 Owner = owner,
                 Width = 440,
                 Height = 460,
@@ -760,22 +764,7 @@ namespace YxyXb.Client
 
         private static string DeviceId()
         {
-            try
-            {
-                if (!File.Exists(AppPaths.DeviceIdFile)) return "pc";
-                var raw = File.ReadAllBytes(AppPaths.DeviceIdFile);
-                using (var sha = SHA256.Create())
-                {
-                    var hash = sha.ComputeHash(raw);
-                    var text = new StringBuilder(hash.Length * 2);
-                    foreach (var item in hash) text.Append(item.ToString("x2"));
-                    return text.ToString();
-                }
-            }
-            catch (IOException)
-            {
-                return "pc";
-            }
+            return DeviceIdStore.CurrentId();
         }
 
         static string CustomerNote(SqliteDb db)

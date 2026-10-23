@@ -1,4 +1,4 @@
-Microsoft Visual Studio Solution File, Format Version 12.00
+﻿Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
@@ -33,6 +33,8 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "YxyXb.Core.Tests", "tests\YxyXb.Core.Tests\YxyXb.Core.Tests.csproj", "{C1000001-0000-4000-8000-000000000001}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "YxyXb.Api", "src\YxyXb.Api\YxyXb.Api.csproj", "{E529C39C-6822-4B23-8325-E265E1E940CF}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "YxyXb.Update", "src\YxyXb.Update\YxyXb.Update.csproj", "{B9589C58-044B-4D67-940A-9890558F4AD4}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -96,6 +98,10 @@ Global
 		{E529C39C-6822-4B23-8325-E265E1E940CF}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E529C39C-6822-4B23-8325-E265E1E940CF}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{E529C39C-6822-4B23-8325-E265E1E940CF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B9589C58-044B-4D67-940A-9890558F4AD4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B9589C58-044B-4D67-940A-9890558F4AD4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B9589C58-044B-4D67-940A-9890558F4AD4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B9589C58-044B-4D67-940A-9890558F4AD4}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -115,5 +121,6 @@ Global
 		{B1000001-0000-4000-8000-00000000000B} = {A1000001-0000-4000-8000-000000000001}
 		{C1000001-0000-4000-8000-000000000001} = {A1000001-0000-4000-8000-000000000002}
 		{E529C39C-6822-4B23-8325-E265E1E940CF} = {A1000001-0000-4000-8000-000000000001}
+		{B9589C58-044B-4D67-940A-9890558F4AD4} = {A1000001-0000-4000-8000-000000000001}
 	EndGlobalSection
 EndGlobal
