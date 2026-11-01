@@ -5,12 +5,33 @@ import { get } from '../api.js'
 import { PRODUCT_DISPLAY_NAME } from '../brand.js'
 
 const router = useRouter()
-const plans = ref([])
 const downloadUrl = 'http://download.yongxinyun.com/yxyxb/yxyxb.zip'
+const included = [
+  '文件备份',
+  'SQL Server、MySQL 数据库备份',
+  '移动硬盘、U 盘离线备份',
+  '直传客户自己的百度网盘、七牛云、阿里云、腾讯云、天翼云',
+  '服务期限 365 天'
+]
+const offered = [
+  { productNo: 'PERSONAL', name: '个人版', maxDevices: 3, listPrice: 36, salePrice: 36, promoActive: false, summary: '适合个人或少量电脑。一年内最多 3 台 Windows 电脑同时登录。' },
+  { productNo: 'STANDARD', name: '标准版', maxDevices: 10, listPrice: 98, salePrice: 98, promoActive: false, summary: '适合小型企业。一年内最多 10 台 Windows 电脑同时登录。' },
+  { productNo: 'PRO', name: '专业版', maxDevices: 50, listPrice: 198, salePrice: 198, promoActive: false, summary: '适合设备较多的企业。一年内最多 50 台 Windows 电脑同时登录。' }
+]
+const plans = ref(offered.map(row => ({ ...row })))
 
 onMounted(async () => {
-  const data = await get('/api/public/price')
-  if (data.ok) plans.value = data.plans || []
+  try {
+    const data = await get('/api/public/price')
+    if (!data.ok || !data.plans?.length) return
+    const summaryOf = Object.fromEntries(offered.map(row => [row.productNo, row.summary]))
+    plans.value = data.plans.map(plan => ({
+      ...plan,
+      summary: summaryOf[plan.productNo] || ('一年内最多 ' + plan.maxDevices + ' 台 Windows 电脑同时登录。')
+    }))
+  } catch {
+    /* 接口未启动时仍展示标价 */
+  }
 })
 
 async function buy(productNo) {
@@ -26,8 +47,9 @@ async function buy(productNo) {
         <img class="nav-logo" src="/images/logo.png" :alt="PRODUCT_DISPLAY_NAME" />
       </router-link>
       <nav>
-        <a href="#pricing">价格</a>
+        <a href="#goods">商品</a>
         <a href="#media">离线介质</a>
+        <a href="#cloud">云存储</a>
         <router-link to="/about">关于我们</router-link>
         <router-link to="/contact">联系我们</router-link>
         <a href="#download">下载</a>
@@ -43,9 +65,10 @@ async function buy(productNo) {
         <h1>本地、离线、自有云，三重备份</h1>
         <p class="lead">
           {{ PRODUCT_DISPLAY_NAME }}装在客户自己的 Windows 电脑上，无需额外服务器。
-          文件和数据库先备到本机磁盘，再拷到移动硬盘或 U 盘离线，也可直传到客户自己的百度网盘、七牛云。
+          文件和数据库先备到本机磁盘，再拷到移动硬盘或 U 盘离线，也可直传到客户自己的百度网盘、七牛云、阿里云、腾讯云、天翼云。
           我们不中转、不托管、不碰业务数据。
         </p>
+        <p class="sold">本页销售「{{ PRODUCT_DISPLAY_NAME }}」Windows 备份软件的年度使用授权。<a href="#goods">查看在售商品</a></p>
         <div class="cta">
           <a class="btn-yxy" :href="downloadUrl">下载客户端</a>
           <router-link class="btn-ghost" to="/register">申请账号</router-link>
@@ -56,24 +79,35 @@ async function buy(productNo) {
       </div>
     </section>
 
-    <section id="pricing" class="pricing">
+    <section id="goods" class="pricing">
       <div class="section-head">
-        <h2>选择适合你的设备档位</h2>
-        <p>功能相同，差别在可同时登录的设备数。活动促销期内最总以促销价结算。</p>
+        <h2>在售商品</h2>
+        <p>常州用心软件有限公司在本网站销售「{{ PRODUCT_DISPLAY_NAME }}」Windows 备份软件的年度使用授权。三个版本功能相同，差别是可同时登录的设备数。价格单位为人民币元，服务期限 365 天。有促销时按促销价结算，原价划线标出。</p>
       </div>
-      <div class="plans" v-if="plans.length">
+      <dl class="goods-note">
+        <div><dt>商品名称</dt><dd>{{ PRODUCT_DISPLAY_NAME }}软件使用授权</dd></div>
+        <div><dt>商品类型</dt><dd>计算机软件年度订阅</dd></div>
+        <div><dt>销售主体</dt><dd>常州用心软件有限公司</dd></div>
+        <div><dt>服务内容</dt><dd>文件备份；SQL Server、MySQL 数据库备份；备份到移动硬盘或 U 盘；直传客户自己的百度网盘、七牛云、阿里云、腾讯云、天翼云。软件安装在客户自己的 Windows 电脑上。我们不中转、不托管业务数据。</dd></div>
+        <div><dt>交付方式</dt><dd>在本网站在线支付。支付成功后下载 Windows 客户端，用购买账号登录，按所购版本开通设备数和 365 天使用期限。</dd></div>
+        <div><dt>售后</dt><dd>支付成功后 7 天内可申请退款，退款后对应授权失效。咨询电话 <a href="tel:4000519608">400-051-9608</a>，邮箱 market@yongxinyun.com。设备超过 50 台请来电按定制版开通。</dd></div>
+      </dl>
+      <div class="plans">
         <article v-for="plan in plans" :key="plan.productNo" class="plan">
-          <h3>{{ plan.name }}</h3>
-          <p class="devices">最多 {{ plan.maxDevices }} 台设备</p>
+          <h3>{{ PRODUCT_DISPLAY_NAME }} {{ plan.name }}</h3>
+          <p class="devices">最多 {{ plan.maxDevices }} 台设备 · 365 天</p>
+          <p class="summary">{{ plan.summary }}</p>
           <p class="price">
             <s v-if="plan.promoActive">¥{{ plan.listPrice }}</s>
             <strong>¥{{ plan.salePrice }}</strong>
             <span> / 年</span>
           </p>
+          <ul class="includes">
+            <li v-for="item in included" :key="item">{{ item }}</li>
+          </ul>
           <button class="btn-yxy" type="button" @click="buy(plan.productNo)">立即购买</button>
         </article>
       </div>
-      <p v-else class="plans-empty">价格加载中，或请确认接口已启动。</p>
     </section>
 
     <section id="value" class="value">
@@ -92,7 +126,7 @@ async function buy(productNo) {
         </li>
         <li>
           <strong>自有云盘在线备份</strong>
-          <span>可直传百度网盘、七牛云等客户自己的云账号。数据直传，我们不中转、不托管。</span>
+          <span>可直传百度网盘、七牛云、阿里云、腾讯云、天翼云，都是客户自己的云账号。数据直传，我们不中转、不托管。</span>
         </li>
         <li>
           <strong>数据主权归你</strong>
@@ -105,6 +139,39 @@ async function buy(productNo) {
         <li>
           <strong>三层一起用</strong>
           <span>本地、离线、自有云缺一不可。在线备份被一起加密时，离线盘仍是离开主机的那一份。</span>
+        </li>
+      </ul>
+    </section>
+
+    <section id="cloud" class="cloud">
+      <div class="section-head">
+        <h2>适配的云存储</h2>
+        <p>五家云存储已适配。云凭据只在客户端「云备份」页配置，任务里勾选服务商，备份包就从客户电脑直传到客户自己的云账号。</p>
+      </div>
+      <ul class="cloud-list">
+        <li>
+          <strong>七牛云</strong>
+          <span>对象存储。填空间名和 AccessKey/SecretKey，即可直传。</span>
+        </li>
+        <li>
+          <strong>阿里云 OSS</strong>
+          <span>对象存储。填桶名和访问密钥，即可直传。</span>
+        </li>
+        <li>
+          <strong>腾讯云 COS</strong>
+          <span>对象存储。填桶名和访问密钥，即可直传。</span>
+        </li>
+        <li>
+          <strong>天翼云 OOS</strong>
+          <span>对象存储。填桶名和访问密钥，即可直传。</span>
+        </li>
+        <li>
+          <strong>百度网盘</strong>
+          <span>个人网盘。扫码或帐号密码授权，备份进「我的应用数据 / 用心云循备」。</span>
+        </li>
+        <li>
+          <strong>直传且可控</strong>
+          <span>4MB 分片、断点续传；上行限速与并行数可调；保存前可一键测试连接。我们不中转、不托管。</span>
         </li>
       </ul>
     </section>
@@ -137,8 +204,8 @@ async function buy(productNo) {
       <article class="shot reverse">
         <div class="shot-copy">
           <p class="eyebrow">自有云盘</p>
-          <h2>百度网盘、七牛云，数据直传</h2>
-          <p>用客户自己的云账号。备份从电脑直接传到云盘，我们不中转、不托管、不碰业务数据。</p>
+          <h2>五家云存储，数据直传</h2>
+          <p>百度网盘、七牛云、阿里云、腾讯云、天翼云，用客户自己的云账号。备份从电脑直接传到云端，我们不中转、不托管、不碰业务数据。</p>
         </div>
         <img src="/images/product5.png" alt="云备份配置" />
       </article>
@@ -259,12 +326,20 @@ async function buy(productNo) {
   font-weight: 700;
 }
 .lead {
-  margin: 0 0 24px;
+  margin: 0 0 12px;
   max-width: 34em;
   line-height: 1.75;
   font-size: 15px;
   color: var(--c-text);
 }
+.sold {
+  margin: 0 0 24px;
+  max-width: 34em;
+  line-height: 1.7;
+  font-weight: 600;
+  color: var(--c-title);
+}
+.sold a { color: #DC0606; }
 .cta { display: flex; flex-wrap: wrap; gap: 12px; }
 .btn-ghost {
   display: inline-flex;
@@ -341,7 +416,27 @@ async function buy(productNo) {
 .plan .price { margin: 0 0 18px; }
 .plan .price s { margin-right: 8px; color: var(--c-text-muted); }
 .plan .price strong { font-size: 28px; color: #DC0606; }
-.plans-empty { max-width: 1180px; margin: 0 auto; padding: 0 24px; color: var(--c-text-muted); }
+.plan .summary { margin: 0 0 12px; line-height: 1.65; }
+.includes {
+  margin: 0 0 18px;
+  padding-left: 18px;
+  line-height: 1.7;
+}
+.goods-note {
+  max-width: 1180px;
+  margin: 0 auto 28px;
+  padding: 0 24px;
+  display: grid;
+  gap: 10px;
+}
+.goods-note div {
+  display: grid;
+  grid-template-columns: 88px 1fr;
+  gap: 12px;
+}
+.goods-note dt { margin: 0; font-weight: 700; color: var(--c-title); }
+.goods-note dd { margin: 0; line-height: 1.7; }
+.goods-note a { color: #DC0606; }
 
 .value-list {
   max-width: 1180px;
@@ -370,6 +465,34 @@ async function buy(productNo) {
 .value-list li:nth-child(1) { animation-delay: 0.05s; }
 .value-list li:nth-child(2) { animation-delay: 0.1s; }
 .value-list li:nth-child(3) { animation-delay: 0.15s; }
+
+.cloud { padding: 8px 0 40px; }
+.cloud-list {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 0 24px;
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+.cloud-list li {
+  display: grid;
+  gap: 6px;
+  padding: 18px;
+  text-align: left;
+  background: #fff;
+  border: 1px solid var(--c-border);
+  border-radius: 4px;
+}
+.cloud-list strong {
+  font-size: 16px;
+  color: var(--c-title);
+}
+.cloud-list span {
+  line-height: 1.65;
+  color: var(--c-text);
+}
 
 .shots {
   max-width: 1180px;
@@ -456,13 +579,17 @@ footer a { color: #fff; }
   .shot.reverse .shot-copy,
   .shot.reverse img { order: initial; }
   .plans,
-  .value-list { grid-template-columns: 1fr; }
+  .value-list,
+  .cloud-list { grid-template-columns: 1fr; }
   .hero { padding-top: 12px; }
   .nav { padding-inline: 16px; }
   .section-head,
   .plans,
+  .goods-note,
   .value-list,
+  .cloud-list,
   .shots { padding-inline: 16px; }
+  .goods-note div { grid-template-columns: 1fr; gap: 4px; }
   .download .btn-yxy { margin-left: 16px; }
 }
 </style>

@@ -354,7 +354,8 @@ namespace YxyXb.Client
                     "{\"token\":\"" + Escape(token)
                     + "\",\"deviceId\":\"" + Escape(DeviceId())
                     + "\",\"displayName\":\"" + Escape(DeviceDisplayName())
-                    + "\",\"note\":\"" + Escape(CustomerNote(db)) + "\"}");
+                    + "\",\"note\":\"" + Escape(CustomerNote(db))
+                    + "\",\"taskStatus\":\"" + Escape(CurrentTaskStatus(db)) + "\"}");
                 Save(email, body);
             }
             catch (Exception)
@@ -558,19 +559,20 @@ namespace YxyXb.Client
             var deviceLabel = Escape(DeviceDisplayName());
             var deviceId = Escape(DeviceId());
             var note = Escape(CustomerNote(null));
+            var taskStatus = Escape(CurrentTaskStatus(null));
             if (string.IsNullOrEmpty(code))
             {
                 path = "/api/client/login";
                 json = "{\"email\":\"" + Escape(email) + "\",\"password\":\"" + Escape(password)
                     + "\",\"deviceId\":\"" + deviceId + "\",\"displayName\":\"" + deviceLabel
-                    + "\",\"note\":\"" + note + "\"}";
+                    + "\",\"note\":\"" + note + "\",\"taskStatus\":\"" + taskStatus + "\"}";
             }
             else
             {
                 path = "/api/client/login-code";
                 json = "{\"email\":\"" + Escape(email) + "\",\"code\":\"" + Escape(code)
                     + "\",\"deviceId\":\"" + deviceId + "\",\"displayName\":\"" + deviceLabel
-                    + "\",\"note\":\"" + note + "\"}";
+                    + "\",\"note\":\"" + note + "\",\"taskStatus\":\"" + taskStatus + "\"}";
             }
 
             var body = Post(path, json);
@@ -765,6 +767,30 @@ namespace YxyXb.Client
         private static string DeviceId()
         {
             return DeviceIdStore.CurrentId();
+        }
+
+        static string CurrentTaskStatus(SqliteDb db)
+        {
+            SqliteDb owned = null;
+            try
+            {
+                var source = db;
+                if (source == null)
+                {
+                    owned = SqliteDb.OpenDefault();
+                    source = owned;
+                }
+
+                return DeviceReport.TaskStatus(source, DateTime.UtcNow);
+            }
+            catch (Exception)
+            {
+                return "";
+            }
+            finally
+            {
+                if (owned != null) owned.Dispose();
+            }
         }
 
         static string CustomerNote(SqliteDb db)

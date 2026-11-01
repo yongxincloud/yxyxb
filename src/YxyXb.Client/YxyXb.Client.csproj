@@ -42,4 +42,21 @@
   <ItemGroup>
     <PackageReference Include="MaterialDesignThemes" Version="4.9.0" />
   </ItemGroup>
+  <Target Name="IncludeEmptyBak" AfterTargets="Build">
+    <MakeDir Directories="$(TargetDir)bak" />
+    <Touch Files="$(TargetDir)bak\.keep" AlwaysCreate="true" Condition="!Exists('$(TargetDir)bak\.keep')" />
+  </Target>
+  <Target Name="IncludeEmptyBakPublish" AfterTargets="ComputeFilesToPublish">
+    <PropertyGroup>
+      <_BakKeep>$(IntermediateOutputPath)bak\.keep</_BakKeep>
+    </PropertyGroup>
+    <MakeDir Directories="$(IntermediateOutputPath)bak" />
+    <Touch Files="$(_BakKeep)" AlwaysCreate="true" Condition="!Exists('$(_BakKeep)')" />
+    <ItemGroup>
+      <ResolvedFileToPublish Include="$(_BakKeep)">
+        <RelativePath>bak/.keep</RelativePath>
+        <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      </ResolvedFileToPublish>
+    </ItemGroup>
+  </Target>
 </Project>

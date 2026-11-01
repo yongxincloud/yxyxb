@@ -12,3 +12,12 @@ test('portal device page saves a note about who uses the computer', () => {
   expect(view).toContain('v-model="row.note"')
   expect(view).toContain('maxlength="40"')
 })
+
+test('portal device page shows last report time, task status, and wan ip', () => {
+  expect(view).toContain('最近上报')
+  expect(view).toContain('row.lastSeenAt')
+  expect(view).toContain('任务状态')
+  expect(view).toContain('row.taskStatus')
+  expect(view).toContain('广域网 IP')
+  expect(view).toContain('row.wanIp')
+})

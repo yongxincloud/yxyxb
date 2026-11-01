@@ -44,6 +44,14 @@ public sealed class SiteMaintenance : BackgroundService
                 });
             }
         }
+        try
+        {
+            var mailSvc = scope.ServiceProvider.GetRequiredService<MailSettingsService>();
+            var notices = scope.ServiceProvider.GetRequiredService<ExpiryNoticeService>();
+            var mail = await mailSvc.LoadAsync();
+            await notices.SendDueAsync(db, mail, now, (to, subject, body) => MailSettingsService.SendAsync(mail, to, subject, body));
+        }
+        catch { }
         await db.SaveChangesAsync();
     }
 }

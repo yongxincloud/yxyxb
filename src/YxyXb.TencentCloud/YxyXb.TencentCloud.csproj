@@ -6,5 +6,6 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\YxyXb.Contracts\YxyXb.Contracts.csproj" />
+    <ProjectReference Include="..\YxyXb.Core\YxyXb.Core.csproj" />
   </ItemGroup>
 </Project>

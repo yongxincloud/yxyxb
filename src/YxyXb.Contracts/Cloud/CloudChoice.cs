@@ -38,6 +38,21 @@ namespace YxyXb.Contracts.Cloud
                 return "七牛云";
             }
 
+            if (string.Equals(provider, CloudProviders.Aliyun, StringComparison.OrdinalIgnoreCase))
+            {
+                return "阿里云";
+            }
+
+            if (string.Equals(provider, CloudProviders.Tencent, StringComparison.OrdinalIgnoreCase))
+            {
+                return "腾讯云";
+            }
+
+            if (string.Equals(provider, CloudProviders.Ctyun, StringComparison.OrdinalIgnoreCase))
+            {
+                return "天翼云";
+            }
+
             return provider ?? "";
         }
     }

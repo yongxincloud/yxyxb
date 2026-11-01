@@ -40,6 +40,12 @@ namespace YxyXb.Contracts.Dto
 
         public int BaiduRetainDays { get; set; }
 
+        public int AliyunRetainDays { get; set; }
+
+        public int TencentRetainDays { get; set; }
+
+        public int CtyunRetainDays { get; set; }
+
         public bool PurgeLocal { get; set; }
 
         public bool PurgeNetwork { get; set; }
@@ -49,6 +55,12 @@ namespace YxyXb.Contracts.Dto
         public bool PurgeQiniu { get; set; }
 
         public bool PurgeBaidu { get; set; }
+
+        public bool PurgeAliyun { get; set; }
+
+        public bool PurgeTencent { get; set; }
+
+        public bool PurgeCtyun { get; set; }
 
         public string PurgeTime { get; set; }
 

@@ -1,8 +1,11 @@
 using System;
 using System.IO;
+using YxyXb.Aliyun;
 using YxyXb.Baidu;
 using YxyXb.Qiniu;
+using YxyXb.TencentCloud;
 using YxyXb.Contracts.Cloud;
+using YxyXb.Ctyun;
 using YxyXb.Contracts.Dto;
 using YxyXb.Core;
 using YxyXb.Core.Cloud;
@@ -49,6 +52,33 @@ namespace YxyXb.Cloud
                 };
             }
 
+            var ctyun = storage as CtyunStorage;
+            if (ctyun != null)
+            {
+                ctyun.OnLog = delegate(string line)
+                {
+                    LogStore.Add(db, "ctyun", "auto", SliceResult(line), Path.GetFileName(localPath), line);
+                };
+            }
+
+            var tencent = storage as TencentCloudStorage;
+            if (tencent != null)
+            {
+                tencent.OnLog = delegate(string line)
+                {
+                    LogStore.Add(db, "tencent", "auto", SliceResult(line), Path.GetFileName(localPath), line);
+                };
+            }
+
+            var aliyun = storage as AliyunStorage;
+            if (aliyun != null)
+            {
+                aliyun.OnLog = delegate(string line)
+                {
+                    LogStore.Add(db, "aliyun", "auto", SliceResult(line), Path.GetFileName(localPath), line);
+                };
+            }
+
             try
             {
                 storage.Upload(localPath, remoteKey);
@@ -63,6 +93,21 @@ namespace YxyXb.Cloud
                 if (qiniu != null)
                 {
                     qiniu.OnLog = null;
+                }
+
+                if (ctyun != null)
+                {
+                    ctyun.OnLog = null;
+                }
+
+                if (tencent != null)
+                {
+                    tencent.OnLog = null;
+                }
+
+                if (aliyun != null)
+                {
+                    aliyun.OnLog = null;
                 }
             }
         }
@@ -129,6 +174,13 @@ namespace YxyXb.Cloud
             if (string.Equals(provider, CloudProviders.Baidu, StringComparison.OrdinalIgnoreCase))
             {
                 return account.IsBaiduReady;
+            }
+
+            if (string.Equals(provider, CloudProviders.Aliyun, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(provider, CloudProviders.Tencent, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(provider, CloudProviders.Ctyun, StringComparison.OrdinalIgnoreCase))
+            {
+                return account.IsObjectReady;
             }
 
             return account.IsReady;

@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <RootNamespace>YxyXb.Aliyun</RootNamespace>
+    <AssemblyName>YxyXb.Aliyun</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\YxyXb.Contracts\YxyXb.Contracts.csproj" />
+    <ProjectReference Include="..\YxyXb.Core\YxyXb.Core.csproj" />
+  </ItemGroup>
+</Project>

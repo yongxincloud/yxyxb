@@ -5,7 +5,7 @@ namespace YxyXb.Api.Services;
 
 public sealed record DeviceOccupyResult(bool Ok, string? ErrorCode, string? Error, int DeviceCount, int? MaxDevices);
 
-public sealed record DeviceRow(string DeviceId, string? DisplayName, string? Note, DateTime FirstSeenAt, DateTime LastSeenAt);
+public sealed record DeviceRow(string DeviceId, string? DisplayName, string? Note, DateTime FirstSeenAt, DateTime LastSeenAt, string? WanIp, string? TaskStatus);
 
 public sealed class DeviceRegistryService
 {
@@ -24,7 +24,9 @@ public sealed class DeviceRegistryService
         int? maxDevices,
         bool enforceLimit,
         string? displayName = null,
-        string? note = null)
+        string? note = null,
+        string? wanIp = null,
+        string? taskStatus = null)
     {
         if (string.IsNullOrWhiteSpace(deviceId))
             return new DeviceOccupyResult(false, "DEVICE_ID_REQUIRED", "缺少设备标识", 0, maxDevices);
@@ -42,6 +44,7 @@ public sealed class DeviceRegistryService
             existing.LastSeenAt = now;
             if (!string.IsNullOrWhiteSpace(displayName)) existing.DisplayName = displayName.Trim();
             ApplyNote(existing, note);
+            ApplyReport(existing, wanIp, taskStatus);
             await _db.SaveChangesAsync();
             return new DeviceOccupyResult(true, null, null, active.Count, maxDevices);
         }
@@ -57,10 +60,11 @@ public sealed class DeviceRegistryService
             existing.FirstSeenAt = now;
             if (!string.IsNullOrWhiteSpace(displayName)) existing.DisplayName = displayName.Trim();
             ApplyNote(existing, note);
+            ApplyReport(existing, wanIp, taskStatus);
         }
         else
         {
-            _db.AccountDevices.Add(new AccountDevice
+            var created = new AccountDevice
             {
                 AccountId = accountId,
                 DeviceId = id,
@@ -69,7 +73,9 @@ public sealed class DeviceRegistryService
                 FirstSeenAt = now,
                 LastSeenAt = now,
                 Status = 1
-            });
+            };
+            ApplyReport(created, wanIp, taskStatus);
+            _db.AccountDevices.Add(created);
         }
 
         await _db.SaveChangesAsync();
@@ -82,7 +88,7 @@ public sealed class DeviceRegistryService
         return await _db.AccountDevices
             .Where(x => x.AccountId == accountId && x.Status == 1)
             .OrderByDescending(x => x.LastSeenAt)
-            .Select(x => new DeviceRow(x.DeviceId, x.DisplayName, x.Note, x.FirstSeenAt, x.LastSeenAt))
+            .Select(x => new DeviceRow(x.DeviceId, x.DisplayName, x.Note, x.FirstSeenAt, x.LastSeenAt, x.WanIp, x.TaskStatus))
             .ToListAsync();
     }
 
@@ -101,6 +107,30 @@ public sealed class DeviceRegistryService
     {
         var text = NormalizeNote(note);
         if (text != null) row.Note = text;
+    }
+
+    static void ApplyReport(AccountDevice row, string? wanIp, string? taskStatus)
+    {
+        var ip = NormalizeWanIp(wanIp);
+        if (ip != null) row.WanIp = ip;
+        var status = NormalizeTaskStatus(taskStatus);
+        if (status != null) row.TaskStatus = status;
+    }
+
+    static string? NormalizeWanIp(string? wanIp)
+    {
+        if (string.IsNullOrWhiteSpace(wanIp)) return null;
+        var text = wanIp.Trim();
+        if (text.StartsWith("::ffff:", StringComparison.OrdinalIgnoreCase))
+            text = text.Substring(7);
+        return text.Length <= 45 ? text : text.Substring(0, 45);
+    }
+
+    static string? NormalizeTaskStatus(string? taskStatus)
+    {
+        if (string.IsNullOrWhiteSpace(taskStatus)) return null;
+        var text = taskStatus.Trim();
+        return text.Length <= 80 ? text : text.Substring(0, 80);
     }
 
     static string? NormalizeNote(string? note)

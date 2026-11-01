@@ -63,11 +63,17 @@ namespace YxyXb.Client.Pages
         private readonly CheckBox _purgeFtp;
         private readonly CheckBox _purgeQiniu;
         private readonly CheckBox _purgeBaidu;
+        private readonly CheckBox _purgeAliyun;
+        private readonly CheckBox _purgeTencent;
+        private readonly CheckBox _purgeCtyun;
         private readonly TextBox _retainLocal;
         private readonly TextBox _retainNetwork;
         private readonly TextBox _retainFtp;
         private readonly TextBox _retainQiniu;
         private readonly TextBox _retainBaidu;
+        private readonly TextBox _retainAliyun;
+        private readonly TextBox _retainTencent;
+        private readonly TextBox _retainCtyun;
         private readonly TimePicker _purgeTime;
 
         public SettingsPage(HostBootstrap boot)
@@ -139,11 +145,17 @@ namespace YxyXb.Client.Pages
             _purgeFtp = new CheckBox { Content = "删 FTP 过期 zip" };
             _purgeQiniu = new CheckBox { Content = "删七牛本产品过期对象" };
             _purgeBaidu = new CheckBox { Content = "删百度网盘本产品过期对象" };
+            _purgeAliyun = new CheckBox { Content = "删阿里云本产品过期对象" };
+            _purgeTencent = new CheckBox { Content = "删腾讯云本产品过期对象" };
+            _purgeCtyun = new CheckBox { Content = "删天翼云本产品过期对象" };
             _retainLocal = new TextBox { Text = "10" };
             _retainNetwork = new TextBox { Text = "10" };
             _retainFtp = new TextBox { Text = "10" };
             _retainQiniu = new TextBox { Text = "10" };
             _retainBaidu = new TextBox { Text = "10" };
+            _retainAliyun = new TextBox { Text = "10" };
+            _retainTencent = new TextBox { Text = "10" };
+            _retainCtyun = new TextBox { Text = "10" };
             _purgeTime = DateTimePick.TimeBox();
             _nameFileSid = NameCheck("客户标识");
             _nameFileTask = NameCheck("任务名");
@@ -188,7 +200,7 @@ namespace YxyXb.Client.Pages
             panel.Children.Add(row);
             panel.Children.Add(new TextBlock
             {
-                Text = "必填。请选择一个已经存在的文件夹。目录无效时不能最小化、退出或关闭。",
+                Text = "默认是程序所在目录下的 bak。请选择一个已经存在的文件夹。目录无效时不能最小化、退出或关闭。",
                 TextWrapping = TextWrapping.Wrap,
                 Margin = new Thickness(0, 4, 0, 8),
                 Foreground = (Brush)Application.Current.Resources["Muted"]
@@ -375,6 +387,15 @@ namespace YxyXb.Client.Pages
             panel.Children.Add(_purgeBaidu);
             panel.Children.Add(Label("百度保留天数"));
             panel.Children.Add(_retainBaidu);
+            panel.Children.Add(_purgeAliyun);
+            panel.Children.Add(Label("阿里云保留天数"));
+            panel.Children.Add(_retainAliyun);
+            panel.Children.Add(_purgeTencent);
+            panel.Children.Add(Label("腾讯云保留天数"));
+            panel.Children.Add(_retainTencent);
+            panel.Children.Add(_purgeCtyun);
+            panel.Children.Add(Label("天翼云保留天数"));
+            panel.Children.Add(_retainCtyun);
             panel.Children.Add(SaveButton(SavePurge));
             return panel;
         }
@@ -459,6 +480,12 @@ namespace YxyXb.Client.Pages
             _retainFtp.Text = (s.FtpRetainDays <= 0 ? 10 : s.FtpRetainDays).ToString();
             _retainQiniu.Text = (s.QiniuRetainDays <= 0 ? 10 : s.QiniuRetainDays).ToString();
             _retainBaidu.Text = (s.BaiduRetainDays <= 0 ? 10 : s.BaiduRetainDays).ToString();
+            _purgeAliyun.IsChecked = s.PurgeAliyun;
+            _purgeTencent.IsChecked = s.PurgeTencent;
+            _purgeCtyun.IsChecked = s.PurgeCtyun;
+            _retainAliyun.Text = (s.AliyunRetainDays <= 0 ? 10 : s.AliyunRetainDays).ToString();
+            _retainTencent.Text = (s.TencentRetainDays <= 0 ? 10 : s.TencentRetainDays).ToString();
+            _retainCtyun.Text = (s.CtyunRetainDays <= 0 ? 10 : s.CtyunRetainDays).ToString();
             DateTimePick.SetHmm(_purgeTime, string.IsNullOrEmpty(s.PurgeTime) ? "00:30" : s.PurgeTime);
             RefreshPreview();
         }
@@ -540,17 +567,23 @@ namespace YxyXb.Client.Pages
         private void SavePurge()
         {
             var s = SettingsStore.Get(_boot.Db);
-            int a, b, c, d, e;
+            int a, b, c, d, e, f, g, h;
             s.PurgeLocal = _purgeLocal.IsChecked == true;
             s.PurgeNetwork = _purgeNetwork.IsChecked == true;
             s.PurgeFtp = _purgeFtp.IsChecked == true;
             s.PurgeQiniu = _purgeQiniu.IsChecked == true;
             s.PurgeBaidu = _purgeBaidu.IsChecked == true;
+            s.PurgeAliyun = _purgeAliyun.IsChecked == true;
+            s.PurgeTencent = _purgeTencent.IsChecked == true;
+            s.PurgeCtyun = _purgeCtyun.IsChecked == true;
             s.LocalRetainDays = int.TryParse(_retainLocal.Text, out a) && a > 0 ? a : 10;
             s.NetworkRetainDays = int.TryParse(_retainNetwork.Text, out b) && b > 0 ? b : 10;
             s.FtpRetainDays = int.TryParse(_retainFtp.Text, out c) && c > 0 ? c : 10;
             s.QiniuRetainDays = int.TryParse(_retainQiniu.Text, out d) && d > 0 ? d : 10;
             s.BaiduRetainDays = int.TryParse(_retainBaidu.Text, out e) && e > 0 ? e : 10;
+            s.AliyunRetainDays = int.TryParse(_retainAliyun.Text, out f) && f > 0 ? f : 10;
+            s.TencentRetainDays = int.TryParse(_retainTencent.Text, out g) && g > 0 ? g : 10;
+            s.CtyunRetainDays = int.TryParse(_retainCtyun.Text, out h) && h > 0 ? h : 10;
             s.PurgeTime = DateTimePick.GetHmm(_purgeTime, "00:30");
             SettingsStore.Save(_boot.Db, s);
             MessageBox.Show(Window.GetWindow(this), "已保存。", "自动删除");

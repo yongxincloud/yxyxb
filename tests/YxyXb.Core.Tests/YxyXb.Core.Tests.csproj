@@ -11,6 +11,9 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\YxyXb.Core\YxyXb.Core.csproj" />
+    <ProjectReference Include="..\..\src\YxyXb.Aliyun\YxyXb.Aliyun.csproj" />
+    <ProjectReference Include="..\..\src\YxyXb.TencentCloud\YxyXb.TencentCloud.csproj" />
+    <ProjectReference Include="..\..\src\YxyXb.Ctyun\YxyXb.Ctyun.csproj" />
     <ProjectReference Include="..\..\src\YxyXb.Contracts\YxyXb.Contracts.csproj" />
   </ItemGroup>
 </Project>

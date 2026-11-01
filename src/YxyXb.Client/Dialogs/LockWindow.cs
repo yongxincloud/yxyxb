@@ -2,8 +2,12 @@ using System;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
+using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Effects;
 using System.Windows.Media.Imaging;
+using MaterialDesignThemes.Wpf;
 using YxyXb.Core;
 
 namespace YxyXb.Client.Dialogs
@@ -23,8 +27,8 @@ namespace YxyXb.Client.Dialogs
         {
             _expected = expected ?? "";
             Title = string.IsNullOrWhiteSpace(productName) ? AppPaths.ProductDisplayName : productName.Trim();
-            Width = 440;
-            Height = 260;
+            Width = 400;
+            Height = 470;
             Style = (Style)Application.Current.FindResource("YxyXbDialog");
             Background = (Brush)Application.Current.FindResource("PageBg");
             FontFamily = new FontFamily("Microsoft YaHei");
@@ -43,50 +47,139 @@ namespace YxyXb.Client.Dialogs
             {
             }
 
-            _box = new PasswordBox { Margin = new Thickness(0, 8, 0, 4) };
+            _box = new PasswordBox { FontSize = 14, Margin = new Thickness(0, 18, 0, 2) };
+            HintAssist.SetHint(_box, "请输入密码");
+
             _error = new TextBlock
             {
-                Foreground = new SolidColorBrush(Color.FromRgb(185, 28, 28)),
-                MinHeight = 18
+                Foreground = (Brush)Application.Current.FindResource("Danger"),
+                FontSize = 12,
+                MinHeight = 18,
+                HorizontalAlignment = HorizontalAlignment.Center
             };
 
-            var ok = new Button
-            {
-                Content = "进入",
-                Width = 96,
-                Height = 36,
-                IsDefault = true,
-                Margin = new Thickness(0, 0, 8, 0)
-            };
-            var cancel = new Button
-            {
-                Content = string.IsNullOrWhiteSpace(cancelText) ? "退出" : cancelText,
-                Width = 96,
-                Height = 36,
-                IsCancel = true
-            };
+            var ok = MakeButton("进入", true);
+            ok.IsDefault = true;
+            ok.Margin = new Thickness(0, 10, 0, 0);
             ok.Click += OnOk;
 
-            var buttons = new StackPanel
-            {
-                Orientation = Orientation.Horizontal,
-                HorizontalAlignment = HorizontalAlignment.Right,
-                Margin = new Thickness(0, 12, 0, 0)
-            };
-            buttons.Children.Add(ok);
-            buttons.Children.Add(cancel);
+            var cancel = MakeButton(string.IsNullOrWhiteSpace(cancelText) ? "退出" : cancelText, false);
+            cancel.IsCancel = true;
+            cancel.Margin = new Thickness(0, 6, 0, 0);
 
-            var panel = new StackPanel { Margin = new Thickness(16) };
+            var panel = new StackPanel();
+            panel.Children.Add(MakeLogo());
             panel.Children.Add(new TextBlock
             {
-                Text = "已设置本机锁定密码。输入正确后才能进入系统。",
-                TextWrapping = TextWrapping.Wrap
+                Text = Title,
+                FontSize = 18,
+                FontWeight = FontWeights.SemiBold,
+                Foreground = (Brush)Application.Current.FindResource("TitleText"),
+                HorizontalAlignment = HorizontalAlignment.Center,
+                Margin = new Thickness(0, 10, 0, 0)
+            });
+            panel.Children.Add(new TextBlock
+            {
+                Text = "已设置本机锁定密码，输入正确后才能进入系统。",
+                TextWrapping = TextWrapping.Wrap,
+                TextAlignment = TextAlignment.Center,
+                FontSize = 12,
+                Foreground = (Brush)Application.Current.FindResource("Muted"),
+                Margin = new Thickness(0, 6, 0, 0)
             });
             panel.Children.Add(_box);
             panel.Children.Add(_error);
-            panel.Children.Add(buttons);
-            Content = panel;
+            panel.Children.Add(ok);
+            panel.Children.Add(cancel);
+
+            var card = new Border
+            {
+                Width = 320,
+                Padding = new Thickness(28, 26, 28, 22),
+                CornerRadius = new CornerRadius(12),
+                Background = (Brush)Application.Current.FindResource("CardBg"),
+                BorderBrush = (Brush)Application.Current.FindResource("CardLine"),
+                BorderThickness = new Thickness(1),
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center,
+                Effect = new DropShadowEffect
+                {
+                    Color = Color.FromRgb(0x0F, 0x17, 0x2A),
+                    BlurRadius = 18,
+                    ShadowDepth = 0,
+                    Opacity = 0.14
+                },
+                Child = panel
+            };
+
+            var root = new Grid();
+            root.Children.Add(card);
+            Content = root;
             Loaded += delegate { _box.Focus(); };
+        }
+
+        private static Image MakeLogo()
+        {
+            var img = new Image
+            {
+                Width = 52,
+                Height = 52,
+                HorizontalAlignment = HorizontalAlignment.Center
+            };
+            try
+            {
+                img.Source = BitmapFrame.Create(new Uri("pack://application:,,,/Assets/logo.ico"));
+            }
+            catch (IOException)
+            {
+            }
+            catch (UriFormatException)
+            {
+            }
+
+            return img;
+        }
+
+        private static Button MakeButton(string text, bool primary)
+        {
+            var button = new Button
+            {
+                Content = text,
+                Height = 38,
+                FontSize = 14,
+                Cursor = Cursors.Hand,
+                BorderThickness = new Thickness(0),
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+                HorizontalContentAlignment = HorizontalAlignment.Center
+            };
+
+            var normal = primary
+                ? (Brush)Application.Current.FindResource("Accent")
+                : Brushes.Transparent;
+            var hover = primary
+                ? new SolidColorBrush(Color.FromRgb(0x15, 0x5E, 0x75))
+                : (Brush)Application.Current.FindResource("NavHover");
+            button.Background = normal;
+            button.Foreground = primary
+                ? Brushes.White
+                : (Brush)Application.Current.FindResource("Muted");
+
+            var template = new ControlTemplate(typeof(Button));
+            var border = new FrameworkElementFactory(typeof(Border));
+            border.SetValue(Border.BackgroundProperty, new TemplateBindingExtension(ButtonBase.BackgroundProperty));
+            border.SetValue(Border.CornerRadiusProperty, new CornerRadius(6));
+            var content = new FrameworkElementFactory(typeof(ContentPresenter));
+            content.SetValue(VerticalAlignmentProperty, VerticalAlignment.Center);
+            content.SetValue(HorizontalAlignmentProperty, HorizontalAlignment.Center);
+            border.AppendChild(content);
+            template.VisualTree = border;
+            var hoverTrigger = new Trigger { Property = UIElement.IsMouseOverProperty, Value = true };
+            hoverTrigger.Setters.Add(new Setter(Border.BackgroundProperty, hover, "border"));
+            border.Name = "border";
+            template.Triggers.Add(hoverTrigger);
+            button.Template = template;
+
+            return button;
         }
 
         private void OnOk(object sender, RoutedEventArgs e)
@@ -97,7 +190,7 @@ namespace YxyXb.Client.Dialogs
                 return;
             }
 
-            _error.Text = "密码不正确。";
+            _error.Text = "密码不正确，请重试。";
             _box.Clear();
             _box.Focus();
         }

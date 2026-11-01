@@ -39,7 +39,10 @@ namespace YxyXb.Core.Backup
                 || settings.PurgeNetwork
                 || settings.PurgeFtp
                 || settings.PurgeQiniu
-                || settings.PurgeBaidu;
+                || settings.PurgeBaidu
+                || settings.PurgeAliyun
+                || settings.PurgeTencent
+                || settings.PurgeCtyun;
         }
 
         public static bool ExecuteDue(SqliteDb db)
@@ -130,6 +133,21 @@ namespace YxyXb.Core.Backup
                     }
                 }
 
+                if (remote && settings.PurgeAliyun)
+                {
+                    PurgeCloud(db, settings, CloudProviders.Aliyun, "阿里云", settings.AliyunRetainDays, log, ref ok);
+                }
+
+                if (remote && settings.PurgeTencent)
+                {
+                    PurgeCloud(db, settings, CloudProviders.Tencent, "腾讯云", settings.TencentRetainDays, log, ref ok);
+                }
+
+                if (remote && settings.PurgeCtyun)
+                {
+                    PurgeCloud(db, settings, CloudProviders.Ctyun, "天翼云", settings.CtyunRetainDays, log, ref ok);
+                }
+
                 var logDays = settings.LogRetainDays < 1 ? 1 : settings.LogRetainDays;
                 var cut = DateTime.UtcNow.AddDays(-logDays);
                 var logRows = LogStore.DeleteOlderThan(db, cut);
@@ -144,6 +162,26 @@ namespace YxyXb.Core.Backup
             SettingsStore.MarkPurged(db, DateTime.UtcNow);
             LogStore.Add(db, "purge", "auto", ok ? "ok" : "error", "自动删除", log.ToString().Trim());
             return true;
+        }
+
+        private static void PurgeCloud(SqliteDb db, AppSettingsDto settings, string provider, string label, int retainDays, StringBuilder log, ref bool ok)
+        {
+            try
+            {
+                var prefix = CloudObjectKeys.ProductPrefix(settings.SoftwareId);
+                var days = retainDays <= 0 ? 10 : retainDays;
+                var older = DateTime.UtcNow.AddDays(-days);
+                var n = CloudRuntime.Require().DeleteExpired(db, provider, prefix, older, delegate(string key)
+                {
+                    LogStore.Add(db, "purge", "auto", "ok", label, "删除调用成功：" + key);
+                });
+                log.Append(" ").Append(label).Append("删除调用成功，共 ").Append(n).Append(" 个。");
+            }
+            catch (Exception ex)
+            {
+                ok = false;
+                log.Append(" ").Append(label).Append("删除失败：").Append(ex.Message).Append("。");
+            }
         }
     }
 }

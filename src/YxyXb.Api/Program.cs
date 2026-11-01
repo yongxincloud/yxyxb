@@ -46,6 +46,7 @@ builder.Services.AddScoped<IAlipayGateway, AlipayGateway>();
 builder.Services.AddScoped<OrderService>();
 builder.Services.AddSingleton<FakeEmailSender>();
 builder.Services.AddScoped<MailSettingsService>();
+builder.Services.AddScoped<ExpiryNoticeService>();
 builder.Services.AddScoped<IEmailSender, RoutingEmailSender>();
 builder.Services.AddHostedService<SiteMaintenance>();
 builder.Services.AddDbContext<WebDb>(o =>
@@ -125,6 +126,8 @@ using (var scope = app.Services.CreateScope())
         CREATE UNIQUE INDEX IF NOT EXISTS "IX_AccountDevices_Account_Device" ON "AccountDevices" ("AccountId", "DeviceId");
         """);
     AddColumn(db, "AccountDevices", "Note", "TEXT NULL");
+    AddColumn(db, "AccountDevices", "WanIp", "TEXT NULL");
+    AddColumn(db, "AccountDevices", "TaskStatus", "TEXT NULL");
     db.Database.ExecuteSqlRaw("""
         CREATE TABLE IF NOT EXISTS "AuthTokens" (
           "Id" INTEGER NOT NULL CONSTRAINT "PK_AuthTokens" PRIMARY KEY AUTOINCREMENT,
@@ -268,28 +271,45 @@ using (var scope = app.Services.CreateScope())
     AddColumn(db, "Customers", "InvoiceTaxNo", "TEXT NULL");
     AddColumn(db, "Customers", "InvoiceEmail", "TEXT NULL");
     AddColumn(db, "Customers", "InvoiceLicense", "TEXT NULL");
+    db.Database.ExecuteSqlRaw("""
+        CREATE TABLE IF NOT EXISTS "ExpiryNoticeLogs" (
+          "Id" INTEGER NOT NULL CONSTRAINT "PK_ExpiryNoticeLogs" PRIMARY KEY AUTOINCREMENT,
+          "CustomerId" INTEGER NOT NULL,
+          "SentDay" TEXT NOT NULL,
+          "CreatedAt" TEXT NOT NULL
+        );
+        CREATE UNIQUE INDEX IF NOT EXISTS "IX_ExpiryNoticeLogs_CustomerId_SentDay" ON "ExpiryNoticeLogs" ("CustomerId", "SentDay");
+        """);
     AddColumn(db, "AdminUsers", "Email", "TEXT NULL");
     db.Database.ExecuteSqlRaw("""CREATE UNIQUE INDEX IF NOT EXISTS "IX_AdminUsers_Email" ON "AdminUsers" ("Email");""");
     var username = app.Configuration["Admin:Username"];
     var password = app.Configuration["Admin:Password"];
     var adminEmail = AccountService.Norm(app.Configuration["Admin:Email"]);
+    var resetPassword = app.Configuration.GetValue("Admin:ResetPassword", false);
     if (string.IsNullOrWhiteSpace(username)) username = VendorController.DefaultAdminUser;
     if (string.IsNullOrWhiteSpace(password)) password = VendorController.DefaultAdminPassword;
+    var hasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher>();
     if (!db.AdminUsers.Any())
     {
         db.AdminUsers.Add(new AdminUser
         {
             Username = username.Trim(),
-            PasswordHash = scope.ServiceProvider.GetRequiredService<IPasswordHasher>().Hash(password),
+            PasswordHash = hasher.Hash(password),
             Email = string.IsNullOrEmpty(adminEmail) ? null : adminEmail,
             CreatedAt = DateTime.UtcNow
         });
         db.SaveChanges();
     }
-    else if (!string.IsNullOrEmpty(adminEmail))
+    else
     {
         var admin = db.AdminUsers.SingleOrDefault(x => x.Username == username.Trim());
-        if (admin != null && string.IsNullOrEmpty(admin.Email))
+        if (admin != null && resetPassword)
+        {
+            admin.PasswordHash = hasher.Hash(password);
+            if (!string.IsNullOrEmpty(adminEmail)) admin.Email = adminEmail;
+            db.SaveChanges();
+        }
+        else if (admin != null && !string.IsNullOrEmpty(adminEmail) && string.IsNullOrEmpty(admin.Email))
         {
             admin.Email = adminEmail;
             db.SaveChanges();

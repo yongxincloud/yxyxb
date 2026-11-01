@@ -21,6 +21,15 @@ namespace YxyXb.Client.Pages
         private readonly StackPanel _form;
         private readonly StackPanel _qiniuPanel;
         private readonly StackPanel _baiduPanel;
+        private readonly StackPanel _objectPanel;
+        private readonly TextBlock _objectBucketLabel;
+        private readonly TextBlock _objectZoneLabel;
+        private readonly ComboBox _objectRegion;
+        private readonly TextBox _objectEndpoint;
+        private readonly TextBox _objectBucket;
+        private readonly TextBox _objectAk;
+        private readonly PasswordBox _objectSk;
+        private readonly TextBlock _objectMasked;
         private readonly CheckBox _enabled;
         private readonly TextBox _bucket;
         private readonly TextBox _ak;
@@ -43,7 +52,7 @@ namespace YxyXb.Client.Pages
             var root = new DockPanel { Margin = new Thickness(8) };
             var title = new TextBlock
             {
-                Text = "云凭据只在本页配置。百度用授权，七牛用空间密钥。任务里只勾选服务商。腾讯云 / 天翼云本期不可保存。",
+                Text = "云凭据只在本页配置。百度用授权，七牛用空间密钥，阿里云 / 腾讯云 / 天翼云用桶名和密钥。任务里只勾选服务商。",
                 TextWrapping = TextWrapping.Wrap,
                 Margin = new Thickness(0, 0, 0, 8)
             };
@@ -56,9 +65,10 @@ namespace YxyXb.Client.Pages
 
             _list = new ListBox { Margin = new Thickness(0, 0, 12, 0) };
             _list.Items.Add(new ListBoxItem { Content = "七牛云", Tag = CloudProviders.Qiniu });
+            _list.Items.Add(new ListBoxItem { Content = "阿里云", Tag = CloudProviders.Aliyun });
+            _list.Items.Add(new ListBoxItem { Content = "腾讯云", Tag = CloudProviders.Tencent });
+            _list.Items.Add(new ListBoxItem { Content = "天翼云", Tag = CloudProviders.Ctyun });
             _list.Items.Add(new ListBoxItem { Content = "百度网盘", Tag = CloudProviders.Baidu });
-            _list.Items.Add(new ListBoxItem { Content = "腾讯云（后续）", Tag = CloudProviders.Tencent });
-            _list.Items.Add(new ListBoxItem { Content = "天翼云（后续）", Tag = CloudProviders.Ctyun });
             _list.SelectionChanged += List_OnChanged;
             Grid.SetColumn(_list, 0);
             split.Children.Add(_list);
@@ -105,9 +115,29 @@ namespace YxyXb.Client.Pages
             authBar.Children.Add(_authPwdBtn);
             authBar.Children.Add(_authLogoutBtn);
             _baiduPanel.Children.Add(authBar);
+            _objectPanel = new StackPanel();
+            _objectBucketLabel = Label("桶名");
+            _objectZoneLabel = Label("地域");
+            _objectRegion = new ComboBox();
+            _objectEndpoint = new TextBox();
+            _objectBucket = new TextBox();
+            _objectAk = new TextBox();
+            _objectSk = new PasswordBox();
+            _objectMasked = new TextBlock { Margin = new Thickness(0, 4, 0, 8) };
+            _objectPanel.Children.Add(_objectBucketLabel);
+            _objectPanel.Children.Add(_objectBucket);
+            _objectPanel.Children.Add(Label("AccessKey"));
+            _objectPanel.Children.Add(_objectAk);
+            _objectPanel.Children.Add(_objectMasked);
+            _objectPanel.Children.Add(Label("SecretKey（留空则保留已保存的）"));
+            _objectPanel.Children.Add(_objectSk);
+            _objectPanel.Children.Add(_objectZoneLabel);
+            _objectPanel.Children.Add(_objectRegion);
+            _objectPanel.Children.Add(_objectEndpoint);
             _form.Children.Add(_enabled);
             _form.Children.Add(_qiniuPanel);
             _form.Children.Add(_baiduPanel);
+            _form.Children.Add(_objectPanel);
             _form.Children.Add(Label("上行限速（KB/s，上传用，0 表示不限）"));
             _form.Children.Add(_minKbps);
             _form.Children.Add(Label("下行限速（KB/s，下载用，0 表示不限）"));
@@ -146,14 +176,22 @@ namespace YxyXb.Client.Pages
             return string.Equals(_provider, CloudProviders.Baidu, StringComparison.OrdinalIgnoreCase);
         }
 
+        private bool IsObject()
+        {
+            return string.Equals(_provider, CloudProviders.Aliyun, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(_provider, CloudProviders.Tencent, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(_provider, CloudProviders.Ctyun, StringComparison.OrdinalIgnoreCase);
+        }
+
         private void List_OnChanged(object sender, SelectionChangedEventArgs e)
         {
             var item = _list.SelectedItem as ListBoxItem;
             _provider = item != null && item.Tag != null ? item.Tag.ToString() : CloudProviders.Qiniu;
-            var live = IsQiniu() || IsBaidu();
+            var live = IsQiniu() || IsBaidu() || IsObject();
             _form.IsEnabled = live;
             _qiniuPanel.Visibility = IsQiniu() ? Visibility.Visible : Visibility.Collapsed;
             _baiduPanel.Visibility = IsBaidu() ? Visibility.Visible : Visibility.Collapsed;
+            _objectPanel.Visibility = IsObject() ? Visibility.Visible : Visibility.Collapsed;
             if (!live)
             {
                 _hint.Text = "该服务商后续开通，不能保存、不能被任务选中。";
@@ -177,8 +215,14 @@ namespace YxyXb.Client.Pages
                 return;
             }
 
-            _hint.Text = "扫码或帐号密码二选一。点对应按钮后打开授权窗，成功会自动关闭。已授权时可点「注销」再换其它百度账号。文件进入「我的应用数据 / 用心云循备」。控制台回调须与本机一致；改完约 1 小时生效。";
-            ShowBaiduStatus(CloudAccountStore.Get(_boot.Db, CloudProviders.Baidu));
+            if (IsBaidu())
+            {
+                _hint.Text = "扫码或帐号密码二选一。点对应按钮后打开授权窗，成功会自动关闭。已授权时可点「注销」再换其它百度账号。文件进入「我的应用数据 / 用心云循备」。控制台回调须与本机一致；改完约 1 小时生效。";
+                ShowBaiduStatus(CloudAccountStore.Get(_boot.Db, CloudProviders.Baidu));
+                return;
+            }
+
+            ShowObjectForm();
         }
 
         private void ShowBaiduStatus(CloudAccountDto acc)
@@ -195,6 +239,124 @@ namespace YxyXb.Client.Pages
                 var name = string.IsNullOrEmpty(acc.DisplayName) ? "已授权" : CloudMask.Mask(acc.DisplayName);
                 _baiduStatus.Text = "已授权账号 " + name + "。可注销后换号，或再扫码/帐号密码重新授权。";
             }
+        }
+
+        private void ShowObjectForm()
+        {
+            var acc = CloudAccountStore.Get(_boot.Db, _provider);
+            _enabled.IsChecked = acc.Enabled;
+            _objectBucket.Text = acc.Bucket ?? "";
+            _objectAk.Text = acc.AccessKey ?? "";
+            _objectSk.Password = "";
+            _objectMasked.Text = string.IsNullOrEmpty(acc.AccessKey) ? "尚未保存密钥。" : "已保存 AK：" + acc.MaskedAccessKey;
+            _objectRegion.Items.Clear();
+            _objectEndpoint.Visibility = Visibility.Collapsed;
+            _objectRegion.Visibility = Visibility.Visible;
+
+            if (string.Equals(_provider, CloudProviders.Aliyun, StringComparison.OrdinalIgnoreCase))
+            {
+                _hint.Text = "填写你自己的阿里云桶名 / AccessKey / SecretKey。产品不提供统一桶。测试只访问所填的这一个桶。请关闭桶的版本控制。";
+                _objectBucketLabel.Text = "桶名";
+                _objectZoneLabel.Text = "地域";
+                FillRegions(CloudRegions.Aliyun, acc.Zone);
+            }
+            else if (string.Equals(_provider, CloudProviders.Tencent, StringComparison.OrdinalIgnoreCase))
+            {
+                _hint.Text = "填写你自己的腾讯云桶名（带 APPID，如 backup-1250000000）/ SecretId / SecretKey。产品不提供统一桶。测试只访问所填的这一个桶。请关闭桶的版本控制。";
+                _objectBucketLabel.Text = "桶名（带 APPID）";
+                _objectZoneLabel.Text = "地域";
+                FillRegions(CloudRegions.Tencent, acc.Zone);
+            }
+            else
+            {
+                _hint.Text = "填写你自己的天翼云桶名 / AccessKey / SecretKey。产品不提供统一桶。测试只访问所填的这一个桶。请关闭桶的版本控制。Endpoint 从控制台复制（如 jiangsu-10.zos.ctyun.cn）。";
+                _objectBucketLabel.Text = "桶名";
+                _objectZoneLabel.Text = "Endpoint";
+                _objectRegion.Visibility = Visibility.Collapsed;
+                _objectEndpoint.Visibility = Visibility.Visible;
+                _objectEndpoint.Text = acc.Zone ?? "";
+            }
+        }
+
+        private void FillRegions(CloudRegion[] regions, string current)
+        {
+            var selected = 0;
+            for (var i = 0; i < regions.Length; i++)
+            {
+                _objectRegion.Items.Add(new ComboBoxItem { Content = regions[i].Label, Tag = regions[i].Id });
+                if (!string.IsNullOrEmpty(current) && string.Equals(regions[i].Id, current, StringComparison.OrdinalIgnoreCase))
+                {
+                    selected = i;
+                }
+            }
+
+            if (!string.IsNullOrEmpty(current) && selected == 0)
+            {
+                var found = false;
+                for (var i = 0; i < regions.Length; i++)
+                {
+                    if (string.Equals(regions[i].Id, current, StringComparison.OrdinalIgnoreCase))
+                    {
+                        found = true;
+                        break;
+                    }
+                }
+
+                if (!found && regions.Length > 0 && regions[regions.Length - 1].Id == "")
+                {
+                    selected = regions.Length - 1;
+                }
+            }
+
+            _objectRegion.SelectedIndex = selected;
+            var isCustom = selected == regions.Length - 1 && regions[selected].Id == "";
+            _objectEndpoint.Visibility = isCustom ? Visibility.Visible : Visibility.Collapsed;
+            _objectRegion.SelectionChanged += delegate
+            {
+                var item = _objectRegion.SelectedItem as ComboBoxItem;
+                var custom = item != null && item.Tag != null && item.Tag.ToString() == "";
+                _objectEndpoint.Visibility = custom ? Visibility.Visible : Visibility.Collapsed;
+            };
+            if (isCustom)
+            {
+                _objectEndpoint.Text = current;
+            }
+        }
+
+        private string ObjectZone()
+        {
+            if (string.Equals(_provider, CloudProviders.Ctyun, StringComparison.OrdinalIgnoreCase))
+            {
+                return CloudEndpoints.Host(_objectEndpoint.Text);
+            }
+
+            var item = _objectRegion.SelectedItem as ComboBoxItem;
+            var id = item != null && item.Tag != null ? item.Tag.ToString() : "";
+            if (id == "")
+            {
+                return CloudEndpoints.Host(_objectEndpoint.Text);
+            }
+
+            return id;
+        }
+
+        private CloudAccountDto ReadObjectForm(CloudAccountDto old)
+        {
+            var sk = _objectSk.Password;
+            if (string.IsNullOrEmpty(sk) && old != null)
+            {
+                sk = old.SecretKey;
+            }
+
+            return new CloudAccountDto
+            {
+                Provider = _provider,
+                Enabled = _enabled.IsChecked == true,
+                Bucket = (_objectBucket.Text ?? "").Trim(),
+                AccessKey = (_objectAk.Text ?? "").Trim(),
+                SecretKey = sk,
+                Zone = ObjectZone()
+            };
         }
 
         private void LogoutBaidu_OnClick(object sender, RoutedEventArgs e)
@@ -267,9 +429,9 @@ namespace YxyXb.Client.Pages
 
         private void Save_OnClick(object sender, RoutedEventArgs e)
         {
-            if (!IsQiniu() && !IsBaidu())
+            if (!IsQiniu() && !IsBaidu() && !IsObject())
             {
-                MessageBox.Show(Window.GetWindow(this), "腾讯云 / 天翼云后续开通，不能保存。", "云备份");
+                MessageBox.Show(Window.GetWindow(this), "该服务商后续开通，不能保存。", "云备份");
                 return;
             }
 
@@ -292,6 +454,23 @@ namespace YxyXb.Client.Pages
                 return;
             }
 
+            if (IsObject())
+            {
+                var oldObj = CloudAccountStore.Get(_boot.Db, _provider);
+                var obj = ReadObjectForm(oldObj);
+                if (string.IsNullOrEmpty(obj.Zone))
+                {
+                    MessageBox.Show(Window.GetWindow(this), "请填写地域或 Endpoint。", "云备份");
+                    return;
+                }
+
+                CloudAccountStore.Save(_boot.Db, obj);
+                SaveUploadOptions(minKbps, maxKbps, parallel);
+                _objectMasked.Text = "已保存 AK：" + obj.MaskedAccessKey;
+                MessageBox.Show(Window.GetWindow(this), "已保存。", "云备份");
+                return;
+            }
+
             var baidu = CloudAccountStore.Get(_boot.Db, CloudProviders.Baidu);
             baidu.Provider = CloudProviders.Baidu;
             baidu.Enabled = _enabled.IsChecked == true;
@@ -303,7 +482,7 @@ namespace YxyXb.Client.Pages
 
         private void Test_OnClick(object sender, RoutedEventArgs e)
         {
-            if (!IsQiniu() && !IsBaidu())
+            if (!IsQiniu() && !IsBaidu() && !IsObject())
             {
                 MessageBox.Show(Window.GetWindow(this), "该服务商后续开通。", "云备份");
                 return;
@@ -317,6 +496,19 @@ namespace YxyXb.Client.Pages
                     var acc = ReadQiniuForm(old);
                     CloudAccountStore.Save(_boot.Db, acc);
                     CloudStorageFactory.Create(CloudProviders.Qiniu, acc).TestConnection();
+                }
+                else if (IsObject())
+                {
+                    var oldObj = CloudAccountStore.Get(_boot.Db, _provider);
+                    var obj = ReadObjectForm(oldObj);
+                    if (string.IsNullOrEmpty(obj.Zone))
+                    {
+                        MessageBox.Show(Window.GetWindow(this), "请填写地域或 Endpoint。", "云备份");
+                        return;
+                    }
+
+                    CloudAccountStore.Save(_boot.Db, obj);
+                    CloudStorageFactory.Create(_provider, obj).TestConnection();
                 }
                 else
                 {

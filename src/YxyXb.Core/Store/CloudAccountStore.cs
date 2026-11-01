@@ -22,7 +22,7 @@ namespace YxyXb.Core.Store
                 {
                     Provider = provider,
                     Enabled = false,
-                    Zone = "z0"
+                    Zone = IsQiniu(provider) ? "z0" : ""
                 };
             }
 
@@ -31,7 +31,7 @@ namespace YxyXb.Core.Store
                 ?? new CloudAccountDto();
             fields.Provider = Convert.ToString(row["provider"]);
             fields.Enabled = Convert.ToInt32(row["enabled"]) != 0;
-            if (string.IsNullOrEmpty(fields.Zone))
+            if (string.IsNullOrEmpty(fields.Zone) && IsQiniu(fields.Provider))
             {
                 fields.Zone = "z0";
             }
@@ -51,7 +51,7 @@ namespace YxyXb.Core.Store
                 Bucket = account.Bucket,
                 AccessKey = account.AccessKey,
                 SecretKey = account.SecretKey,
-                Zone = string.IsNullOrEmpty(account.Zone) ? "z0" : account.Zone,
+                Zone = NormalizeZone(account.Provider, account.Zone),
                 AccessToken = account.AccessToken,
                 RefreshToken = account.RefreshToken,
                 TokenExpiryUtc = account.TokenExpiryUtc,
@@ -78,6 +78,28 @@ namespace YxyXb.Core.Store
                     new SQLiteParameter("@f", (object)json ?? DBNull.Value),
                     new SQLiteParameter("@p", account.Provider));
             }
+        }
+
+        private static bool IsQiniu(string provider)
+        {
+            return string.Equals(provider, CloudProviders.Qiniu, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static string NormalizeZone(string provider, string zone)
+        {
+            if (IsQiniu(provider))
+            {
+                return string.IsNullOrEmpty(zone) ? "z0" : zone;
+            }
+
+            if (string.Equals(provider, CloudProviders.Aliyun, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(provider, CloudProviders.Tencent, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(provider, CloudProviders.Ctyun, StringComparison.OrdinalIgnoreCase))
+            {
+                return CloudEndpoints.Host(zone);
+            }
+
+            return zone ?? "";
         }
 
         public static bool IsQiniuReady(SqliteDb db)
@@ -114,6 +136,21 @@ namespace YxyXb.Core.Store
             if (IsBaiduReady(db))
             {
                 list.Add(CloudProviders.Baidu);
+            }
+
+            if (Get(db, CloudProviders.Aliyun).IsObjectReady)
+            {
+                list.Add(CloudProviders.Aliyun);
+            }
+
+            if (Get(db, CloudProviders.Tencent).IsObjectReady)
+            {
+                list.Add(CloudProviders.Tencent);
+            }
+
+            if (Get(db, CloudProviders.Ctyun).IsObjectReady)
+            {
+                list.Add(CloudProviders.Ctyun);
             }
 
             return list;

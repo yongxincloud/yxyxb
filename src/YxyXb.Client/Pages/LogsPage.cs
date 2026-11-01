@@ -70,7 +70,7 @@ namespace YxyXb.Client.Pages
             {
                 var keep = grid.SelectedIndex;
                 var rows = slice
-                    ? Wrap(LogStore.ListAny(boot.Db, new[] { "baidu", "qiniu" }, 300))
+                    ? Wrap(LogStore.ListAny(boot.Db, new[] { "baidu", "qiniu", "aliyun", "tencent", "ctyun" }, 300))
                     : Wrap(LogStore.List(boot.Db, type, 300));
                 grid.ItemsSource = rows;
                 if (rows.Count == 0)
@@ -113,7 +113,7 @@ namespace YxyXb.Client.Pages
 
                 if (slice)
                 {
-                    LogStore.DeleteAny(boot.Db, new[] { "baidu", "qiniu" });
+                    LogStore.DeleteAny(boot.Db, new[] { "baidu", "qiniu", "aliyun", "tencent", "ctyun" });
                 }
                 else
                 {
@@ -177,6 +177,18 @@ namespace YxyXb.Client.Pages
             return new TabItem { Header = header, Content = root };
         }
 
+        private static string SourceLabel(string type)
+        {
+            switch (type)
+            {
+                case "qiniu": return "七牛";
+                case "aliyun": return "阿里云";
+                case "tencent": return "腾讯云";
+                case "ctyun": return "天翼云";
+                default: return "百度";
+            }
+        }
+
         private static List<LogRow> Wrap(IList<LogEntryDto> list)
         {
             var rows = new List<LogRow>();
@@ -187,7 +199,7 @@ namespace YxyXb.Client.Pages
                 rows.Add(new LogRow
                 {
                     CreatedLocal = item.CreatedUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss"),
-                    Source = item.Type == "qiniu" ? "七牛" : "百度",
+                    Source = SourceLabel(item.Type),
                     TaskName = item.TaskName,
                     Result = item.Result == "ok" ? "成功" : "失败",
                     Mode = item.Mode == "auto" ? "自动" : "手动",

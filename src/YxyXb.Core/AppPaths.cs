@@ -17,7 +17,7 @@ namespace YxyXb.Core
 
         public const string DatabaseFileName = "yxyxb.db";
 
-        public const string ReleaseVersion = "1.0.0";
+        public const string ReleaseVersion = "1.1.0";
 
         public const string UpdateManifestUrl = "http://download.yongxinyun.com/yxyxb/version.json";
 
@@ -68,19 +68,16 @@ namespace YxyXb.Core
             get { return Path.Combine(DataDirectory, "qiniu-upload"); }
         }
 
-        public const string DefaultBakDirectory = @"D:\yxyxb\bak";
+        public const string LegacyFixedBakDirectory = @"D:\yxyxb\bak";
+
+        public static string DefaultBakDirectory
+        {
+            get { return Path.Combine(InstallDirectory, "bak"); }
+        }
 
         public static string BakDirectory
         {
-            get
-            {
-                if (!string.IsNullOrEmpty(_rootOverride))
-                {
-                    return Path.Combine(_rootOverride, "bak");
-                }
-
-                return DefaultBakDirectory;
-            }
+            get { return DefaultBakDirectory; }
         }
 
         public static bool DirectoryExists(string path)
@@ -106,9 +103,12 @@ namespace YxyXb.Core
 
         public static bool IsDefaultBak(string path)
         {
-            var left = (path ?? "").Trim().TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-            var right = DefaultBakDirectory.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-            return string.Equals(left, right, StringComparison.OrdinalIgnoreCase);
+            return SameDirectory(path, DefaultBakDirectory);
+        }
+
+        public static bool IsLegacyFixedBak(string path)
+        {
+            return SameDirectory(path, LegacyFixedBakDirectory);
         }
 
         public static string DisplayBakPath(string configured)
@@ -116,15 +116,22 @@ namespace YxyXb.Core
             var path = (configured ?? "").Trim();
             if (path.Length == 0)
             {
-                return DirectoryExists(DefaultBakDirectory) ? DefaultBakDirectory : "";
+                return DefaultBakDirectory;
             }
 
-            if (IsDefaultBak(path) && !DirectoryExists(path))
+            if (IsLegacyFixedBak(path) && !DirectoryExists(path))
             {
-                return "";
+                return DefaultBakDirectory;
             }
 
             return path;
+        }
+
+        private static bool SameDirectory(string left, string right)
+        {
+            var a = (left ?? "").Trim().TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            var b = (right ?? "").Trim().TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            return string.Equals(a, b, StringComparison.OrdinalIgnoreCase);
         }
 
         public static bool HasValidBakPath(string configured)
@@ -163,6 +170,7 @@ namespace YxyXb.Core
             Directory.CreateDirectory(DataDirectory);
             Directory.CreateDirectory(BaiduUploadDirectory);
             Directory.CreateDirectory(QiniuUploadDirectory);
+            Directory.CreateDirectory(BakDirectory);
         }
     }
 }

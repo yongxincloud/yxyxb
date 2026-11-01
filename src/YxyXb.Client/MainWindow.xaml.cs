@@ -174,7 +174,7 @@ namespace YxyXb.Client
         private void RefreshLoginButton()
         {
             var session = SiteLogin.Load();
-            BtnLogin.Content = session.LoggedIn && !session.DeviceLimited ? "已登录" : "登录";
+            TxtLogin.Text = session.LoggedIn && !session.DeviceLimited ? "已登录" : "登录";
         }
 
         private void Drag_OnDown(object sender, MouseButtonEventArgs e)
@@ -300,15 +300,15 @@ namespace YxyXb.Client
                     PageHost.Content = Licensed(key) ? (object)new CloudPage(_boot) : LockedPage();
                     break;
                 case "instances":
-                    TxtTitle.Text = "实例";
+                    TxtTitle.Text = "库实例";
                     PageHost.Content = Licensed(key) ? (object)new InstancesPage(_boot) : LockedPage();
                     break;
                 case "logs":
-                    TxtTitle.Text = "日志";
+                    TxtTitle.Text = "操作日志";
                     PageHost.Content = new LogsPage(_boot);
                     break;
                 case "restore":
-                    TxtTitle.Text = "恢复";
+                    TxtTitle.Text = "实例恢复";
                     PageHost.Content = Licensed(key) ? (object)new RestorePage(_boot) : LockedPage();
                     break;
                 case "devices":

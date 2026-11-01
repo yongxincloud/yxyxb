@@ -1,4 +1,5 @@
 using System;
+using YxyXb.Aliyun;
 using YxyXb.Baidu;
 using YxyXb.Contracts.Cloud;
 using YxyXb.Contracts.Dto;
@@ -39,14 +40,37 @@ namespace YxyXb.Cloud
                 return baidu;
             }
 
+            if (string.Equals(providerKey, CloudProviders.Aliyun, StringComparison.OrdinalIgnoreCase))
+            {
+                var aliyun = new AliyunStorage();
+                if (account != null)
+                {
+                    aliyun.Configure(account);
+                }
+
+                return aliyun;
+            }
+
             if (string.Equals(providerKey, CloudProviders.Tencent, StringComparison.OrdinalIgnoreCase))
             {
-                return new TencentCloudStorage();
+                var tencent = new TencentCloudStorage();
+                if (account != null)
+                {
+                    tencent.Configure(account);
+                }
+
+                return tencent;
             }
 
             if (string.Equals(providerKey, CloudProviders.Ctyun, StringComparison.OrdinalIgnoreCase))
             {
-                return new CtyunStorage();
+                var ctyun = new CtyunStorage();
+                if (account != null)
+                {
+                    ctyun.Configure(account);
+                }
+
+                return ctyun;
             }
 
             throw new NotSupportedException("未知云服务商：" + providerKey);

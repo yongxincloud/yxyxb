@@ -28,6 +28,12 @@ namespace YxyXb.Core.Data
             Add(db, "settings", "purge_baidu", "INTEGER NOT NULL DEFAULT 0");
             Add(db, "settings", "upload_parallel", "INTEGER NOT NULL DEFAULT 1");
             Add(db, "settings", "log_retain_days", "INTEGER NOT NULL DEFAULT 30");
+            Add(db, "settings", "aliyun_retain_days", "INTEGER NOT NULL DEFAULT 10");
+            Add(db, "settings", "tencent_retain_days", "INTEGER NOT NULL DEFAULT 10");
+            Add(db, "settings", "ctyun_retain_days", "INTEGER NOT NULL DEFAULT 10");
+            Add(db, "settings", "purge_aliyun", "INTEGER NOT NULL DEFAULT 0");
+            Add(db, "settings", "purge_tencent", "INTEGER NOT NULL DEFAULT 0");
+            Add(db, "settings", "purge_ctyun", "INTEGER NOT NULL DEFAULT 0");
             Add(db, "file_tasks", "run_lock_utc", "TEXT");
             Add(db, "mssql_tasks", "run_lock_utc", "TEXT");
             Add(db, "mysql_tasks", "run_lock_utc", "TEXT");

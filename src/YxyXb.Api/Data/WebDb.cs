@@ -25,6 +25,7 @@ public sealed class WebDb : DbContext
     public DbSet<SystemConfigRow> Configs => Set<SystemConfigRow>();
     public DbSet<ProviderApply> ProviderApplies => Set<ProviderApply>();
     public DbSet<InvoiceApply> InvoiceApplies => Set<InvoiceApply>();
+    public DbSet<ExpiryNoticeLog> ExpiryNoticeLogs => Set<ExpiryNoticeLog>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -47,5 +48,7 @@ public sealed class WebDb : DbContext
         b.Entity<PaymentRecord>().HasIndex(x => x.TradeNo).IsUnique();
         b.Entity<SystemConfigRow>().HasIndex(x => x.CfgKey).IsUnique();
         b.Entity<InvoiceApply>().HasIndex(x => x.ApplyNo).IsUnique();
+        b.Entity<ExpiryNoticeLog>().ToTable("ExpiryNoticeLogs");
+        b.Entity<ExpiryNoticeLog>().HasIndex(x => new { x.CustomerId, x.SentDay }).IsUnique();
     }
 }

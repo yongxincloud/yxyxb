@@ -1,4 +1,5 @@
 using System;
+using YxyXb.Contracts.Cloud;
 
 namespace YxyXb.Contracts.Dto
 {
@@ -43,6 +44,18 @@ namespace YxyXb.Contracts.Dto
         public bool IsBaiduReady
         {
             get { return Enabled && !string.IsNullOrWhiteSpace(RefreshToken); }
+        }
+
+        public bool IsObjectReady
+        {
+            get
+            {
+                return Enabled
+                    && !string.IsNullOrWhiteSpace(Bucket)
+                    && !string.IsNullOrWhiteSpace(AccessKey)
+                    && !string.IsNullOrWhiteSpace(SecretKey)
+                    && CloudEndpoints.Host(Zone).Length > 0;
+            }
         }
     }
 

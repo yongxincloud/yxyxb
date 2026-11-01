@@ -40,6 +40,15 @@ async function kick(deviceId) {
   await load()
 }
 
+function whenText(value) {
+  if (!value) return '—'
+  const d = new Date(value)
+  if (Number.isNaN(d.getTime())) return String(value)
+  const pad = n => String(n).padStart(2, '0')
+  return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate())
+    + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes())
+}
+
 onMounted(load)
 </script>
 
@@ -55,6 +64,9 @@ onMounted(load)
           <div>
             <strong>{{ row.displayName || '未上报名称' }}</strong>
             <span class="muted">设备 ID：{{ row.deviceId }}</span>
+            <span class="muted">最近上报：{{ whenText(row.lastSeenAt) }}</span>
+            <span class="muted">任务状态：{{ row.taskStatus || '—' }}</span>
+            <span class="muted">广域网 IP：{{ row.wanIp || '—' }}</span>
             <span class="muted" v-if="row.displayName">格式：电脑名 · MAC · Windows 用户</span>
           </div>
           <button class="btn-ghost" type="button" @click="kick(row.deviceId)">踢出</button>

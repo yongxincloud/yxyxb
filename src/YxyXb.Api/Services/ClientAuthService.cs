@@ -41,24 +41,24 @@ public sealed class ClientAuthService
         _time = time;
     }
 
-    public async Task<ClientSession> LoginPasswordAsync(string? email, string? password, string? deviceId, string? ip, string? displayName = null, string? note = null)
+    public async Task<ClientSession> LoginPasswordAsync(string? email, string? password, string? deviceId, string? ip, string? displayName = null, string? note = null, string? taskStatus = null)
     {
         var auth = await _accounts.LoginPasswordAsync(email, password, ip);
         if (!auth.Ok || auth.AccountId == null) return Fail(auth.Error);
-        return await IssueAsync(auth.AccountId.Value, deviceId, displayName, note);
+        return await IssueAsync(auth.AccountId.Value, deviceId, displayName, note, ip, taskStatus);
     }
 
-    public async Task<ClientSession> LoginCodeAsync(string? email, string? code, string? deviceId, string? ip, string? displayName = null, string? note = null)
+    public async Task<ClientSession> LoginCodeAsync(string? email, string? code, string? deviceId, string? ip, string? displayName = null, string? note = null, string? taskStatus = null)
     {
         var auth = await _accounts.LoginCodeAsync(email, code, ip);
         if (!auth.Ok || auth.AccountId == null) return Fail(auth.Error);
-        return await IssueAsync(auth.AccountId.Value, deviceId, displayName, note);
+        return await IssueAsync(auth.AccountId.Value, deviceId, displayName, note, ip, taskStatus);
     }
 
-    public Task<ClientSession> VerifyAsync(string? token, string? deviceId, string? displayName = null, string? note = null) =>
-        RefreshAsync(token, deviceId, displayName, note);
+    public Task<ClientSession> VerifyAsync(string? token, string? deviceId, string? displayName = null, string? note = null, string? wanIp = null, string? taskStatus = null) =>
+        RefreshAsync(token, deviceId, displayName, note, wanIp, taskStatus);
 
-    public Task<ClientSession> RenewAsync(string? token) => RefreshAsync(token, null, null);
+    public Task<ClientSession> RenewAsync(string? token, string? wanIp = null) => RefreshAsync(token, null, null, null, wanIp);
 
     public async Task<long?> ResolveAccountIdAsync(string? rawToken)
     {
@@ -79,7 +79,7 @@ public sealed class ClientAuthService
         return (authEnd.Value - now).TotalDays > 30 ? 30 : GraceDays;
     }
 
-    async Task<ClientSession> RefreshAsync(string? rawToken, string? deviceId, string? displayName, string? note = null)
+    async Task<ClientSession> RefreshAsync(string? rawToken, string? deviceId, string? displayName, string? note = null, string? wanIp = null, string? taskStatus = null)
     {
         var row = await FindLiveAsync(rawToken);
         if (row == null) return Fail("登录已失效");
@@ -89,10 +89,10 @@ public sealed class ClientAuthService
             await RevokeAccountAsync(row.AccountId);
             return Fail("登录已失效");
         }
-        return await IssueAsync(account.Id, deviceId ?? row.DeviceId, displayName, note);
+        return await IssueAsync(account.Id, deviceId ?? row.DeviceId, displayName, note, wanIp, taskStatus);
     }
 
-    async Task<ClientSession> IssueAsync(long accountId, string? deviceId, string? displayName = null, string? note = null)
+    async Task<ClientSession> IssueAsync(long accountId, string? deviceId, string? displayName = null, string? note = null, string? wanIp = null, string? taskStatus = null)
     {
         if (string.IsNullOrWhiteSpace(deviceId))
             return Fail("缺少设备标识", "DEVICE_ID_REQUIRED");
@@ -121,7 +121,7 @@ public sealed class ClientAuthService
             enforceLimit = !trial && maxDevices != null;
         }
 
-        var occupy = await _devices.TryOccupyAsync(accountId, deviceId, maxDevices, enforceLimit, NormalizeDisplayName(displayName), note);
+        var occupy = await _devices.TryOccupyAsync(accountId, deviceId, maxDevices, enforceLimit, NormalizeDisplayName(displayName), note, wanIp, taskStatus);
         if (!occupy.Ok)
         {
             if (occupy.ErrorCode == "DEVICE_LIMIT")

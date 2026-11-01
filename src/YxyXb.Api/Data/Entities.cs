@@ -67,6 +67,8 @@ public sealed class AccountDevice
     public string? Note { get; set; }
     public DateTime FirstSeenAt { get; set; }
     public DateTime LastSeenAt { get; set; }
+    public string? WanIp { get; set; }
+    public string? TaskStatus { get; set; }
     public int Status { get; set; } = 1;
     public DateTime? KickedAt { get; set; }
 }
@@ -267,4 +269,12 @@ public sealed class Provider
     public DateTime? EffectiveAt { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
+}
+
+public sealed class ExpiryNoticeLog
+{
+    public long Id { get; set; }
+    public long CustomerId { get; set; }
+    public string SentDay { get; set; } = "";
+    public DateTime CreatedAt { get; set; }
 }

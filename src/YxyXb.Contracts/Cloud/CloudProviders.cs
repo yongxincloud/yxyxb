@@ -4,6 +4,7 @@ namespace YxyXb.Contracts.Cloud
     {
         public const string Qiniu = "qiniu";
         public const string Baidu = "baidu";
+        public const string Aliyun = "aliyun";
         public const string Tencent = "tencent";
         public const string Ctyun = "ctyun";
     }

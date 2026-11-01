@@ -6,9 +6,9 @@ using YxyXb.Api.Services;
 
 namespace YxyXb.Api.Controllers;
 
-public sealed record ClientLoginBody(string? Email, string? Password, string? DeviceId, string? DisplayName, string? Note);
-public sealed record ClientCodeBody(string? Email, string? Code, string? DeviceId, string? DisplayName, string? Note);
-public sealed record ClientVerifyBody(string? Token, string? DeviceId, string? DisplayName, string? Note);
+public sealed record ClientLoginBody(string? Email, string? Password, string? DeviceId, string? DisplayName, string? Note, string? TaskStatus);
+public sealed record ClientCodeBody(string? Email, string? Code, string? DeviceId, string? DisplayName, string? Note, string? TaskStatus);
+public sealed record ClientVerifyBody(string? Token, string? DeviceId, string? DisplayName, string? Note, string? TaskStatus);
 public sealed record ClientRenewBody(string? Token);
 public sealed record ClientDevicesBody(string? Token);
 public sealed record ClientKickBody(string? Token, string? DeviceId);
@@ -29,19 +29,19 @@ public sealed class ClientController : ControllerBase
 
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] ClientLoginBody body) =>
-        ToResult(await _clients.LoginPasswordAsync(body.Email, body.Password, body.DeviceId, ClientIp(), body.DisplayName, body.Note));
+        ToResult(await _clients.LoginPasswordAsync(body.Email, body.Password, body.DeviceId, ClientIp(), body.DisplayName, body.Note, body.TaskStatus));
 
     [HttpPost("login-code")]
     public async Task<IActionResult> LoginCode([FromBody] ClientCodeBody body) =>
-        ToResult(await _clients.LoginCodeAsync(body.Email, body.Code, body.DeviceId, ClientIp(), body.DisplayName, body.Note));
+        ToResult(await _clients.LoginCodeAsync(body.Email, body.Code, body.DeviceId, ClientIp(), body.DisplayName, body.Note, body.TaskStatus));
 
     [HttpPost("verify")]
     public async Task<IActionResult> Verify([FromBody] ClientVerifyBody body) =>
-        ToResult(await _clients.VerifyAsync(body.Token, body.DeviceId, body.DisplayName, body.Note));
+        ToResult(await _clients.VerifyAsync(body.Token, body.DeviceId, body.DisplayName, body.Note, ClientIp(), body.TaskStatus));
 
     [HttpPost("renew")]
     public async Task<IActionResult> Renew([FromBody] ClientRenewBody body) =>
-        ToResult(await _clients.RenewAsync(body.Token));
+        ToResult(await _clients.RenewAsync(body.Token, ClientIp()));
 
     [HttpPost("devices")]
     public async Task<IActionResult> Devices([FromBody] ClientDevicesBody body)
@@ -116,6 +116,23 @@ public sealed class ClientController : ControllerBase
         var env = HttpContext.RequestServices.GetRequiredService<IHostEnvironment>();
         if (env.IsEnvironment("Testing") && Request.Headers.TryGetValue("X-Test-Ip", out var testIp))
             return testIp.ToString();
-        return HttpContext.Connection.RemoteIpAddress?.ToString();
+        var forwarded = Request.Headers["X-Forwarded-For"].ToString();
+        if (!string.IsNullOrWhiteSpace(forwarded))
+        {
+            var first = forwarded.Split(',')[0].Trim();
+            if (first.Length > 0) return CleanIp(first);
+        }
+        var realIp = Request.Headers["X-Real-IP"].ToString();
+        if (!string.IsNullOrWhiteSpace(realIp)) return CleanIp(realIp);
+        return CleanIp(HttpContext.Connection.RemoteIpAddress?.ToString());
+    }
+
+    static string? CleanIp(string? ip)
+    {
+        if (string.IsNullOrWhiteSpace(ip)) return null;
+        var text = ip.Trim();
+        if (text.StartsWith("::ffff:", StringComparison.OrdinalIgnoreCase))
+            text = text.Substring(7);
+        return text;
     }
 }

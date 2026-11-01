@@ -67,7 +67,7 @@ namespace YxyXb.Client.Pages
             {
                 var text = SliceLog.ReadRecent(AppPaths.DataDirectory, 20000);
                 _box.Text = string.IsNullOrEmpty(text)
-                    ? "等待分片日志… 若长时间为空，确认任务勾选了七牛云或百度网盘。"
+                    ? "等待分片日志… 若长时间为空，确认任务勾选了七牛云、百度网盘、阿里云、腾讯云或天翼云。"
                     : text;
                 _box.ScrollToEnd();
             }

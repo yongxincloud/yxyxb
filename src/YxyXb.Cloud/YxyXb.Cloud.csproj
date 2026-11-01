@@ -8,6 +8,7 @@
     <ProjectReference Include="..\YxyXb.Core\YxyXb.Core.csproj" />
     <ProjectReference Include="..\YxyXb.Contracts\YxyXb.Contracts.csproj" />
     <ProjectReference Include="..\YxyXb.Qiniu\YxyXb.Qiniu.csproj" />
+    <ProjectReference Include="..\YxyXb.Aliyun\YxyXb.Aliyun.csproj" />
     <ProjectReference Include="..\YxyXb.Baidu\YxyXb.Baidu.csproj" />
     <ProjectReference Include="..\YxyXb.TencentCloud\YxyXb.TencentCloud.csproj" />
     <ProjectReference Include="..\YxyXb.Ctyun\YxyXb.Ctyun.csproj" />

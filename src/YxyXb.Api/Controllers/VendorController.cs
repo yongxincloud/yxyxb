@@ -23,6 +23,8 @@ public sealed record ProductUpdateBody(
     int? SortOrder,
     int? Status);
 public sealed record AssignBody(string? ProviderNo);
+public sealed record ProviderStatusBody(int Status);
+public sealed record ProviderLevelBody(long LevelId);
 public sealed record VendorLoginBody(string? Username, string? Password);
 public sealed record VendorLoginCodeBody(string? Email, string? Code);
 public sealed record VendorSendCodeBody(string? Email, string? Scene);
@@ -38,7 +40,7 @@ public sealed class VendorController : ControllerBase
     public const string VendorKey = "yxy-vendor";
     public const string VendorScheme = "YxyVendor";
     public const string DefaultAdminUser = "admin";
-    public const string DefaultAdminPassword = "Admin@yxy123";
+    public const string DefaultAdminPassword = "Admin@yxxt123";
     public const string LoginScene = "vendor-login";
     public const string ResetScene = "vendor-reset";
     private readonly WebDb _db;
@@ -854,6 +856,60 @@ public sealed class VendorController : ControllerBase
             Action = "delete",
             BeforeValue = email,
             AfterValue = "",
+            CreatedAt = now
+        });
+        await _db.SaveChangesAsync();
+        return Ok(new { ok = true });
+    }
+
+    [HttpPost("providers/{id:long}/status")]
+    public async Task<IActionResult> SetProviderStatus(long id, [FromBody] ProviderStatusBody body)
+    {
+        if (!Vendor()) return NotFound();
+        if (body.Status is not (0 or 1))
+            return BadRequest(new { ok = false, error = "状态只能是启用或停用" });
+        var provider = await _db.Providers.SingleOrDefaultAsync(x => x.Id == id);
+        if (provider == null) return BadRequest(new { ok = false, error = "服务商不存在" });
+        if (provider.Status == 2)
+            return BadRequest(new { ok = false, error = "已解约的服务商不能改状态" });
+        if (provider.Status == body.Status) return Ok(new { ok = true });
+        var before = provider.Status;
+        var now = DateTime.UtcNow;
+        provider.Status = body.Status;
+        provider.UpdatedAt = now;
+        _db.OperationLogs.Add(new OperationLog
+        {
+            Module = "provider",
+            Action = body.Status == 1 ? "enable" : "disable",
+            BeforeValue = provider.ProviderNo + ":" + before,
+            AfterValue = provider.ProviderNo + ":" + body.Status,
+            CreatedAt = now
+        });
+        await _db.SaveChangesAsync();
+        return Ok(new { ok = true });
+    }
+
+    [HttpPost("providers/{id:long}/level")]
+    public async Task<IActionResult> SetProviderLevel(long id, [FromBody] ProviderLevelBody body)
+    {
+        if (!Vendor()) return NotFound();
+        var provider = await _db.Providers.SingleOrDefaultAsync(x => x.Id == id);
+        if (provider == null) return BadRequest(new { ok = false, error = "服务商不存在" });
+        if (provider.Status == 2)
+            return BadRequest(new { ok = false, error = "已解约的服务商不能改等级" });
+        var level = await _db.ProviderLevels.SingleOrDefaultAsync(x => x.Id == body.LevelId && x.Status == 1);
+        if (level == null) return BadRequest(new { ok = false, error = "等级不存在" });
+        if (provider.LevelId == level.Id) return Ok(new { ok = true });
+        var before = provider.LevelId;
+        var now = DateTime.UtcNow;
+        provider.LevelId = level.Id;
+        provider.UpdatedAt = now;
+        _db.OperationLogs.Add(new OperationLog
+        {
+            Module = "provider",
+            Action = "level",
+            BeforeValue = provider.ProviderNo + ":" + before,
+            AfterValue = provider.ProviderNo + ":" + level.Id,
             CreatedAt = now
         });
         await _db.SaveChangesAsync();

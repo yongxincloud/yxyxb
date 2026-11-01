@@ -44,7 +44,7 @@ export const router = createRouter({
       component: HomeView,
       meta: {
         title: '用心云循备｜三重备份与勒索病毒的防范',
-        description: '用心云循备提供本地磁盘、移动硬盘或 U 盘离线、百度网盘与七牛云三重备份，用于勒索病毒的防范。数据直传客户自己的云账号，不中转、不托管。',
+        description: '常州用心软件有限公司销售用心云·循备软件年度使用授权：个人版 36 元/年（3 台）、标准版 98 元/年（10 台）、专业版 198 元/年（50 台）。含文件备份、数据库备份、离线介质和自有云盘直传。',
         keywords: homeKeywords
       }
     },

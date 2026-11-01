@@ -50,7 +50,7 @@ npm run build
 
 编辑 `C:\yxyxb\api\appsettings.json`：
 
-1. 把 `Admin:Password` 改成强密码。这个密码只在第一次启动、库里还没有管理员时写入。启动后再改文件，不会改掉已经存在的管理员。
+1. 把 `Admin:Password` 改成强密码。这个密码只在第一次启动、库里还没有管理员时写入。启动后再改文件，默认不会改掉已经存在的管理员。若要把现有 `admin` 改回配置里的密码，把 `Admin:ResetPassword` 设为 `true`，重启接口，登录成功后再改回 `false`。
 2. 把数据库改成绝对路径：`"Web": "Data Source=C:\\yxyxb\\data\\yxyxb-api.db"`。接口以 Windows 服务运行时，工作目录是 `System32`，相对路径会把库建错地方。
 
 账号名保持 `admin`。
