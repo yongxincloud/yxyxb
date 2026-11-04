@@ -102,7 +102,14 @@ namespace YxyXb.Client.Dialogs
             panel.Children.Add(_cycle);
             panel.Children.Add(Label("间隔"));
             panel.Children.Add(_interval);
-            panel.Children.Add(Label("分卷上限（GB，0=使用系统设置）"));
+            var partSizeLabel = Label("分卷上限（GB）");
+            partSizeLabel.ToolTip = "0 表示使用系统设置中的分卷大小";
+            ToolTipService.SetInitialShowDelay(partSizeLabel, 200);
+            ToolTipService.SetShowDuration(partSizeLabel, 10000);
+            panel.Children.Add(partSizeLabel);
+            _partSize.ToolTip = "0 表示使用系统设置中的分卷大小";
+            ToolTipService.SetInitialShowDelay(_partSize, 200);
+            ToolTipService.SetShowDuration(_partSize, 10000);
             panel.Children.Add(_partSize);
             panel.Children.Add(Label("下次执行"));
             panel.Children.Add(DateTimePick.Combine(_nextDate, _nextTime));
