@@ -201,7 +201,7 @@ namespace YxyXb.Client.Pages
                     CreatedLocal = item.CreatedUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss"),
                     Source = SourceLabel(item.Type),
                     TaskName = item.TaskName,
-                    Result = item.Result == "ok" ? "成功" : "失败",
+                    Result = ResultLabel(item.Result),
                     Mode = item.Mode == "auto" ? "自动" : "手动",
                     Message = message,
                     Preview = Preview(message)
@@ -220,6 +220,16 @@ namespace YxyXb.Client.Pages
 
             var text = message.Replace('\r', ' ').Replace('\n', ' ');
             return text.Length <= 80 ? text : text.Substring(0, 80) + "…";
+        }
+
+        private static string ResultLabel(string result)
+        {
+            if (result == "ok")
+            {
+                return "成功";
+            }
+
+            return result == "warn" ? "警告" : "失败";
         }
 
         private sealed class LogRow

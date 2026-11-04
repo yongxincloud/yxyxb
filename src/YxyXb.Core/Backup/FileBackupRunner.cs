@@ -50,7 +50,7 @@ namespace YxyXb.Core.Backup
                 return "已提交，但没有写到日志。请到「日志 → 文件备份」查看。";
             }
 
-            return (entry.Result == "ok" ? "执行成功。" : "执行失败。") + " " + entry.Message;
+            return BackupRunSummary.ManualMessage(entry.Result) + " " + entry.Message;
         }
 
         public static void ExecuteOne(SqliteDb db, FileTaskDto task)
@@ -63,6 +63,9 @@ namespace YxyXb.Core.Backup
             var now = DateTime.UtcNow;
             var log = new StringBuilder();
             var ok = false;
+            var mailOk = true;
+            var mailAttempted = false;
+            var stats = new BackupRunStats();
             string zipPath = null;
             string tempRoot = null;
             try
@@ -83,9 +86,16 @@ namespace YxyXb.Core.Backup
                     throw new InvalidOperationException("源路径不能回环到备份目录。");
                 }
 
-                var skipped = new List<string>();
-                var files = SourceWalker.WalkLocal(sourceRoot, skipped);
-                log.Append("文件 ").Append(files.Count).Append("，跳过 ").Append(skipped.Count).Append("。");
+                var scan = SourceWalker.ScanLocal(sourceRoot);
+                var files = scan.Files;
+                stats = scan.Stats;
+                log.Append("发现 ").Append(stats.DiscoveredFiles)
+                    .Append("，打包 ").Append(stats.PackedFiles)
+                    .Append("，跳过 ").Append(stats.SkippedFiles).Append("。");
+                for (var i = 0; i < scan.DirectoryErrors.Count; i++)
+                {
+                    log.Append(" 目录无法读取：").Append(scan.DirectoryErrors[i]).Append("。");
+                }
 
                 var fingerprintFiles = new List<FingerprintFile>();
                 for (var i = 0; i < files.Count; i++)
@@ -203,9 +213,48 @@ namespace YxyXb.Core.Backup
                         });
                 }
 
-                if (!DistChannel.Finish(db, task.DoEmail, task.DoDeleteNow, task.Name, new List<string> { zipPath }, distOk, log))
+                var archiveBytes = File.Exists(zipPath) ? new FileInfo(zipPath).Length : 0;
+                log.Append(" 源 ").Append(BackupRunSummary.FormatBytes(stats.SourceBytes))
+                    .Append("，压缩后 ").Append(BackupRunSummary.FormatBytes(archiveBytes)).Append("。");
+
+                var dataOk = distOk && stats.SkippedFiles == 0;
+                var smtp = SettingsStore.GetXfer<SmtpSettingsDto>(db, "smtp");
+                if (MailUtil.ShouldSend(smtp, task.DoEmail, dataOk))
                 {
-                    throw new InvalidOperationException(log.ToString());
+                    mailAttempted = true;
+                    try
+                    {
+                        MailUtil.SendResult(
+                            smtp,
+                            task.Name,
+                            dataOk,
+                            log.ToString(),
+                            settings.SoftwareId,
+                            BackupRunSummary.ToMailStats(stats, archiveBytes, track, distOk));
+                        log.Append(" 已发邮件。");
+                    }
+                    catch (Exception ex)
+                    {
+                        mailOk = false;
+                        log.Append(" 邮件失败：").Append(ex.Message).Append("。");
+                        NetFail.NoteKept(log, ex);
+                    }
+                }
+
+                if (!dataOk)
+                {
+                    throw new InvalidOperationException(stats.SkippedFiles > 0
+                        ? "存在无法读取的文件，本次备份失败。"
+                        : "已启用的数据通道未全部成功。");
+                }
+
+                if (task.DoDeleteNow && !PendingFiles.TryDeleteZip(zipPath))
+                {
+                    throw new InvalidOperationException("已成功的备份无法立即删除本地包。");
+                }
+                if (task.DoDeleteNow)
+                {
+                    log.Append(" 已立即删本地包。");
                 }
 
                 if (!string.IsNullOrEmpty(task.PostProgram) && File.Exists(task.PostProgram))
@@ -221,11 +270,21 @@ namespace YxyXb.Core.Backup
             catch (Exception ex)
             {
                 log.Append(" 失败：").Append(ex.Message);
-                if (MailUtil.ShouldSend(SettingsStore.GetXfer<SmtpSettingsDto>(db, "smtp"), task.DoEmail, false))
+                var smtp = SettingsStore.GetXfer<SmtpSettingsDto>(db, "smtp");
+                if (!mailAttempted && MailUtil.ShouldSend(smtp, task.DoEmail, false))
                 {
                     try
                     {
-                        MailUtil.SendResult(SettingsStore.GetXfer<SmtpSettingsDto>(db, "smtp"), task.Name, false, log.ToString(), SettingsStore.Get(db).SoftwareId);
+                        var archiveBytes = !string.IsNullOrEmpty(zipPath) && File.Exists(zipPath)
+                            ? new FileInfo(zipPath).Length
+                            : 0;
+                        MailUtil.SendResult(
+                            smtp,
+                            task.Name,
+                            false,
+                            log.ToString(),
+                            SettingsStore.Get(db).SoftwareId,
+                            BackupRunSummary.ToMailStats(stats, archiveBytes, false, false));
                     }
                     catch
                     {
@@ -236,7 +295,13 @@ namespace YxyXb.Core.Backup
             {
                 TryDeleteDir(tempRoot);
                 FileTaskStore.MarkResult(db, task, ok, now);
-                LogStore.Add(db, "file", string.IsNullOrEmpty(mode) ? "auto" : mode, ok ? "ok" : "error", task.Name, log.ToString());
+                LogStore.Add(
+                    db,
+                    "file",
+                    string.IsNullOrEmpty(mode) ? "auto" : mode,
+                    BackupRunSummary.ResultCode(ok, mailOk),
+                    task.Name,
+                    log.ToString());
             }
         }
 
