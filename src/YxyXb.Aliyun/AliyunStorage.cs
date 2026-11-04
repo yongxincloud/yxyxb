@@ -72,6 +72,19 @@ namespace YxyXb.Aliyun
             ObjectUpload.Run(localPath, remoteKey, new Api(this), OnLog, null);
         }
 
+        public CloudObjectInfo Stat(string remoteKey)
+        {
+            Require();
+            var reply = Send("HEAD", remoteKey, null, "", null, null);
+            Ensure(reply);
+            return new CloudObjectInfo
+            {
+                Size = reply.ContentLength,
+                Checksum = reply.ETag,
+                ChecksumKind = "ETag"
+            };
+        }
+
         public int DeleteExpired(string prefix, DateTime olderThanUtc, Action<string> onDeleted)
         {
             Require();
@@ -95,7 +108,7 @@ namespace YxyXb.Aliyun
                 for (var i = 0; i < page.Items.Count; i++)
                 {
                     var item = page.Items[i];
-                    if (item.Key == null || !item.Key.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
+                    if (item.Key == null || !CloudObjectKeys.IsPackageObject(item.Key))
                     {
                         continue;
                     }

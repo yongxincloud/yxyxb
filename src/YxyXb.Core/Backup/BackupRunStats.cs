@@ -22,13 +22,29 @@ namespace YxyXb.Core.Backup
             bool uploadEnabled,
             bool uploadOk)
         {
+            return ToMailStats(stats, archiveBytes, uploadEnabled, uploadOk, 1, uploadOk ? 1 : 0);
+        }
+
+        public static MailRunStats ToMailStats(
+            BackupRunStats stats,
+            long archiveBytes,
+            bool uploadEnabled,
+            bool uploadOk,
+            int packageCount,
+            int uploadedCount)
+        {
             var value = stats ?? new BackupRunStats();
+            if (packageCount < 1)
+            {
+                packageCount = 1;
+            }
             var fileStats = "发现 " + value.DiscoveredFiles
                 + "，打包 " + value.PackedFiles
                 + "，跳过 " + value.SkippedFiles;
             var packageStats = !uploadEnabled
-                ? "共 1 个包，未启用数据上传"
-                : "共 1 个包，上传成功 " + (uploadOk ? "1/1" : "0/1");
+                ? "共 " + packageCount + " 个" + (packageCount > 1 ? "分卷" : "包") + "，未启用数据上传"
+                : "共 " + packageCount + " 个" + (packageCount > 1 ? "分卷" : "包")
+                    + "，上传成功 " + uploadedCount + "/" + packageCount;
             var uploadedBytes = uploadEnabled && uploadOk ? archiveBytes : 0;
             var sizeStats = "源 " + FormatBytes(value.SourceBytes)
                 + "，压缩后 " + FormatBytes(archiveBytes)
@@ -49,6 +65,35 @@ namespace YxyXb.Core.Backup
             }
 
             return mailOk ? "ok" : "warn";
+        }
+
+        public static MailRunStats ToDatabaseMailStats(
+            BackupRunStats stats,
+            long archiveBytes,
+            bool uploadEnabled,
+            bool uploadOk,
+            int packageCount,
+            int uploadedCount)
+        {
+            var value = stats ?? new BackupRunStats();
+            if (packageCount < 1)
+            {
+                packageCount = 1;
+            }
+
+            return new MailRunStats
+            {
+                FileStats = "数据库 " + value.DiscoveredFiles
+                    + "，导出 " + value.PackedFiles
+                    + "，跳过 " + value.SkippedFiles,
+                PackageStats = !uploadEnabled
+                    ? "共 " + packageCount + " 个" + (packageCount > 1 ? "分卷" : "包") + "，未启用数据上传"
+                    : "共 " + packageCount + " 个" + (packageCount > 1 ? "分卷" : "包")
+                        + "，上传成功 " + uploadedCount + "/" + packageCount,
+                SizeStats = "源 " + FormatBytes(value.SourceBytes)
+                    + "，压缩后 " + FormatBytes(archiveBytes)
+                    + "，已上传 " + FormatBytes(uploadEnabled && uploadOk ? archiveBytes : 0)
+            };
         }
 
         public static string ManualMessage(string result)

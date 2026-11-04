@@ -54,6 +54,20 @@ namespace YxyXb.Core.Transfer
             }
         }
 
+        public static void VerifyFile(FtpSettingsDto settings, string localFile, string remoteFileName)
+        {
+            var dir = string.IsNullOrEmpty(settings.RemoteDir) ? "/" : settings.RemoteDir;
+            var remote = CombineRemote(dir, remoteFileName);
+            var request = Create(settings, remote, WebRequestMethods.Ftp.GetFileSize);
+            using (var response = (FtpWebResponse)request.GetResponse())
+            {
+                if (response.ContentLength != new FileInfo(localFile).Length)
+                {
+                    throw new InvalidOperationException("FTP 远端文件大小不一致。");
+                }
+            }
+        }
+
         public static int DeleteOldZips(FtpSettingsDto settings, int days, DateTime utcNow)
         {
             if (settings == null || string.IsNullOrEmpty(settings.Host) || days < 1)
@@ -92,7 +106,8 @@ namespace YxyXb.Core.Transfer
                     continue;
                 }
 
-                if (!name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
+                if (!name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase)
+                    && !name.EndsWith(".manifest.json", StringComparison.OrdinalIgnoreCase))
                 {
                     continue;
                 }

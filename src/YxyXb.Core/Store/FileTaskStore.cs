@@ -51,9 +51,9 @@ namespace YxyXb.Core.Store
         public static long Insert(SqliteDb db, FileTaskDto task)
         {
             db.Execute(
-                @"INSERT INTO file_tasks (name,enabled,source_kind,source_path,retry_minutes,sort_order,cycle_kind,cycle_interval,
+                @"INSERT INTO file_tasks (name,enabled,source_kind,source_path,retry_minutes,sort_order,cycle_kind,cycle_interval,part_size_bytes,
                   next_run_utc,do_network,do_ftp,do_cloud,cloud_provider,do_delete_now,do_email,post_program,created_utc)
-                  VALUES (@name,@en,@sk,@sp,@rm,@so,@ck,@ci,@nr,@dn,@df,@dc,@cp,@dd,@de,@pp,@utc)",
+                  VALUES (@name,@en,@sk,@sp,@rm,@so,@ck,@ci,@ps,@nr,@dn,@df,@dc,@cp,@dd,@de,@pp,@utc)",
                 Params(task, true));
             var id = db.ExecuteScalar("SELECT last_insert_rowid()");
             return Convert.ToInt64(id);
@@ -63,7 +63,7 @@ namespace YxyXb.Core.Store
         {
             db.Execute(
                 @"UPDATE file_tasks SET name=@name, enabled=@en, source_kind=@sk, source_path=@sp, retry_minutes=@rm,
-                  sort_order=@so, cycle_kind=@ck, cycle_interval=@ci, next_run_utc=@nr, do_network=@dn, do_ftp=@df,
+                  sort_order=@so, cycle_kind=@ck, cycle_interval=@ci, part_size_bytes=@ps, next_run_utc=@nr, do_network=@dn, do_ftp=@df,
                   do_cloud=@dc, cloud_provider=@cp, do_delete_now=@dd, do_email=@de, post_program=@pp
                   WHERE id=@id",
                 new SQLiteParameter("@name", task.Name),
@@ -74,6 +74,7 @@ namespace YxyXb.Core.Store
                 new SQLiteParameter("@so", task.SortOrder),
                 new SQLiteParameter("@ck", task.CycleKind ?? "day"),
                 new SQLiteParameter("@ci", task.CycleInterval < 1 ? 1 : task.CycleInterval),
+                new SQLiteParameter("@ps", PackageLimits.NormalizeTask(task.PartSizeBytes)),
                 new SQLiteParameter("@nr", task.NextRunUtc.HasValue ? (object)task.NextRunUtc.Value.ToString("o") : DBNull.Value),
                 new SQLiteParameter("@dn", task.DoNetwork ? 1 : 0),
                 new SQLiteParameter("@df", task.DoFtp ? 1 : 0),
@@ -155,6 +156,7 @@ namespace YxyXb.Core.Store
                 SortOrder = Convert.ToInt32(row["sort_order"]),
                 CycleKind = Convert.ToString(row["cycle_kind"]),
                 CycleInterval = Convert.ToInt32(row["cycle_interval"]),
+                PartSizeBytes = PackageLimits.NormalizeTask(Convert.ToInt64(row["part_size_bytes"])),
                 NextRunUtc = ParseTime(row["next_run_utc"]),
                 LastRunUtc = ParseTime(row["last_run_utc"]),
                 RunCount = Convert.ToInt32(row["run_count"]),
@@ -191,6 +193,7 @@ namespace YxyXb.Core.Store
                 new SQLiteParameter("@so", task.SortOrder),
                 new SQLiteParameter("@ck", task.CycleKind ?? "day"),
                 new SQLiteParameter("@ci", task.CycleInterval < 1 ? 1 : task.CycleInterval),
+                new SQLiteParameter("@ps", PackageLimits.NormalizeTask(task.PartSizeBytes)),
                 new SQLiteParameter("@nr", task.NextRunUtc.HasValue ? (object)task.NextRunUtc.Value.ToString("o") : DBNull.Value),
                 new SQLiteParameter("@dn", task.DoNetwork ? 1 : 0),
                 new SQLiteParameter("@df", task.DoFtp ? 1 : 0),

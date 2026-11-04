@@ -62,6 +62,23 @@ namespace YxyXb.Core.Tests
         }
 
         [Test]
+        public void Stat_HeadObject_ReturnsLengthAndEtag()
+        {
+            var fake = new FakeTransport
+            {
+                Reply = new AliyunReply { Status = 200, ContentLength = 32, ETag = "\"etag\"" }
+            };
+            var storage = Ready(fake);
+
+            var info = storage.Stat("dir/a.zip");
+
+            Assert.That(fake.Last.Method, Is.EqualTo("HEAD"));
+            Assert.That(fake.Last.Resource, Is.EqualTo("/backup/dir/a.zip"));
+            Assert.That(info.Size, Is.EqualTo(32));
+            Assert.That(info.Checksum, Is.EqualTo("\"etag\""));
+        }
+
+        [Test]
         public void Upload_SmallFileSetsPrivateAclAndNoStorageClass()
         {
             var path = TempFile(32);
@@ -158,6 +175,7 @@ namespace YxyXb.Core.Tests
                                 + "<Contents><Key>pre/old.zip</Key><LastModified>2020-01-01T00:00:00.000Z</LastModified></Contents>"
                                 + "<Contents><Key>pre/new.zip</Key><LastModified>2030-01-01T00:00:00.000Z</LastModified></Contents>"
                                 + "<Contents><Key>pre/note.txt</Key><LastModified>2020-01-01T00:00:00.000Z</LastModified></Contents>"
+                                + "<Contents><Key>pre/old.manifest.json</Key><LastModified>2020-01-01T00:00:00.000Z</LastModified></Contents>"
                                 + "</ListBucketResult>"
                         };
                     }
@@ -184,7 +202,7 @@ namespace YxyXb.Core.Tests
             {
                 storage.DeleteExpired("pre/", new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc), deleted.Add);
             });
-            Assert.That(deleted, Is.EqualTo(new[] { "pre/old.zip" }));
+            Assert.That(deleted, Is.EqualTo(new[] { "pre/old.zip", "pre/old.manifest.json" }));
             Assert.That(page, Is.EqualTo(2));
         }
 

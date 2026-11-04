@@ -104,6 +104,35 @@ namespace YxyXb.Core.Tests
             }
         }
 
+        [Test]
+        public void ExecuteOne_OversizedArchive_CreatesVolumesAndManifest()
+        {
+            var large = Path.Combine(_source, "large.bin");
+            using (var stream = File.Create(large))
+            {
+                stream.SetLength(65L * 1024 * 1024);
+            }
+
+            using (var db = NewDb())
+            {
+                var settings = SettingsStore.Get(db);
+                settings.ZipLevel = 0;
+                settings.PartSizeBytes = PackageLimits.MinimumBytes;
+                SettingsStore.Save(db, settings);
+
+                var task = InsertTask(db);
+                task.PartSizeBytes = PackageLimits.MinimumBytes;
+                FileBackupRunner.ExecuteOne(db, task, "manual");
+
+                var entry = LogStore.LatestForTask(db, "file", task.Name);
+                Assert.That(entry.Result, Is.EqualTo("ok"));
+                Assert.That(Directory.GetFiles(_bak, "*.part*.zip", SearchOption.AllDirectories),
+                    Has.Length.GreaterThanOrEqualTo(2));
+                Assert.That(Directory.GetFiles(_bak, "*.manifest.json", SearchOption.AllDirectories),
+                    Has.Length.EqualTo(1));
+            }
+        }
+
         private SqliteDb NewDb()
         {
             var db = new SqliteDb(Path.Combine(_root, "data", "test.db"));

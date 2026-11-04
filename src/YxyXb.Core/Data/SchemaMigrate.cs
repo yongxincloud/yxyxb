@@ -7,6 +7,7 @@ namespace YxyXb.Core.Data
         public static void Apply(SqliteDb db)
         {
             Add(db, "settings", "zip_level", "INTEGER NOT NULL DEFAULT 5");
+            Add(db, "settings", "part_size_bytes", "INTEGER NOT NULL DEFAULT 4294967296");
             Add(db, "settings", "zip_password_protected", "TEXT");
             Add(db, "settings", "start_with_windows", "INTEGER NOT NULL DEFAULT 0");
             Add(db, "settings", "close_to_tray", "INTEGER NOT NULL DEFAULT 0");
@@ -40,6 +41,9 @@ namespace YxyXb.Core.Data
             Add(db, "file_tasks", "pending_json", "TEXT");
             Add(db, "mssql_tasks", "pending_json", "TEXT");
             Add(db, "mysql_tasks", "pending_json", "TEXT");
+            Add(db, "file_tasks", "part_size_bytes", "INTEGER NOT NULL DEFAULT 0");
+            Add(db, "mssql_tasks", "part_size_bytes", "INTEGER NOT NULL DEFAULT 0");
+            Add(db, "mysql_tasks", "part_size_bytes", "INTEGER NOT NULL DEFAULT 0");
         }
 
         private static void Add(SqliteDb db, string table, string column, string decl)

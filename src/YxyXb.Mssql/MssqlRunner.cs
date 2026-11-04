@@ -51,7 +51,7 @@ namespace YxyXb.Mssql
                 return "已提交，但没有写到日志。请到「日志 → 数据库备份」查看。";
             }
 
-            return (entry.Result == "ok" ? "执行成功。" : "执行失败。") + " " + entry.Message;
+            return BackupRunSummary.ManualMessage(entry.Result) + " " + entry.Message;
         }
 
         public static void ExecuteOne(SqliteDb db, MssqlTaskDto task, string mode)
@@ -60,6 +60,9 @@ namespace YxyXb.Mssql
             var log = new StringBuilder();
             var ok = false;
             var zips = new List<string>();
+            var stats = new BackupRunStats();
+            var mailOk = true;
+            var mailAttempted = false;
             try
             {
                 var instance = MssqlInstanceStore.GetById(db, task.InstanceId);
@@ -79,7 +82,8 @@ namespace YxyXb.Mssql
                     throw new InvalidOperationException("没有可备份的用户库。");
                 }
 
-                log.Append("库 ").Append(dbs.Count).Append(" 个。");
+                stats.DiscoveredFiles = dbs.Count;
+                log.Append("数据库 ").Append(dbs.Count).Append(" 个。");
                 var names = new string[dbs.Count];
                 for (var i = 0; i < dbs.Count; i++)
                 {
@@ -127,62 +131,96 @@ namespace YxyXb.Mssql
                 {
                     var dbName = names[i];
                     var existing = FindItem(record, dbName);
-                    if (existing != null && File.Exists(existing.ZipPath))
+                    if (existing != null && PendingFiles.PackageExists(existing, File.Exists))
                     {
                         log.Append(" 沿用未传完的包 ").Append(Path.GetFileName(existing.ZipPath));
-                        zips.Add(existing.ZipPath);
+                        if (!string.IsNullOrEmpty(existing.ZipPath)) zips.Add(existing.ZipPath);
+                        stats.PackedFiles++;
                         continue;
                     }
 
-                    if (work == null)
-                    {
-                        work = PrepareWorkDir(bakRoot);
-                    }
-
-                    var bakFile = Path.Combine(work, SafeFile(dbName) + ".bak");
-                    if (File.Exists(bakFile))
-                    {
-                        File.Delete(bakFile);
-                    }
-
-                    BackupToWorkFile(instance, dbName, bakFile, bakRoot);
-                    var flags = settings.NameFlags == 0 ? NameParts.DefaultFlags : settings.NameFlags;
-                    var parts = NameParts.FromFlags(flags);
-                    var folder = BackupNaming.MssqlFolder(bakRoot, settings.SoftwareId, task.Name, instance.Name, parts);
-                    var zipPath = Path.Combine(folder, BackupNaming.MssqlZipName(settings.SoftwareId, task.Name, dbName, now, parts));
-                    var files = new List<SourceFile>
-                    {
-                        new SourceFile { FullPath = bakFile, RelativePath = Path.GetFileName(bakFile) }
-                    };
                     try
                     {
-                        ZipPacker.Pack(files, zipPath, settings.ZipPassword, settings.ZipLevel);
-                    }
-                    catch (Exception)
-                    {
-                        PendingFiles.TryDeleteZip(zipPath);
-                        throw;
-                    }
+                        if (work == null)
+                        {
+                            work = PrepareWorkDir(bakRoot);
+                        }
 
-                    zips.Add(zipPath);
-                    TryDelete(bakFile);
-                    log.Append(" ").Append(dbName).Append("→").Append(Path.GetFileName(zipPath));
-                    log.Append(string.IsNullOrEmpty(settings.ZipPassword) ? "。" : "，已用压缩密码。");
-                    var packed = new PendingItem
-                    {
-                        Key = dbName,
-                        ZipPath = zipPath,
-                        Fingerprint = "",
-                        ZipLevel = settings.ZipLevel,
-                        PasswordSha256 = passwordHash
-                    };
-                    PendingBackup.Upsert(record, packed);
-                    if (track)
-                    {
-                        var json = PendingBackup.ToJson(record);
-                        MssqlTaskStore.SavePending(db, task.Id, json);
-                        task.PendingJson = json;
+                        var bakFile = Path.Combine(work, SafeFile(dbName) + ".bak");
+                        if (File.Exists(bakFile))
+                        {
+                            File.Delete(bakFile);
+                        }
+
+                        BackupToWorkFile(instance, dbName, bakFile, bakRoot);
+                        var flags = settings.NameFlags == 0 ? NameParts.DefaultFlags : settings.NameFlags;
+                        var parts = NameParts.FromFlags(flags);
+                        var folder = BackupNaming.MssqlFolder(bakRoot, settings.SoftwareId, task.Name, instance.Name, parts);
+                        var zipPath = Path.Combine(folder, BackupNaming.MssqlZipName(settings.SoftwareId, task.Name, dbName, now, parts));
+                        var files = new List<SourceFile>
+                        {
+                            new SourceFile { FullPath = bakFile, RelativePath = Path.GetFileName(bakFile) }
+                        };
+                        try
+                        {
+                            ZipPacker.Pack(files, zipPath, settings.ZipPassword, settings.ZipLevel);
+                        }
+                        catch (Exception)
+                        {
+                            PendingFiles.TryDeleteZip(zipPath);
+                            throw;
+                        }
+
+                        zips.Add(zipPath);
+                        TryDelete(bakFile);
+                        var archiveBytes = new FileInfo(zipPath).Length;
+                        log.Append(" ").Append(dbName).Append("→").Append(Path.GetFileName(zipPath));
+                        log.Append(string.IsNullOrEmpty(settings.ZipPassword) ? "。" : "，已用压缩密码。");
+                        var packed = new PendingItem
+                        {
+                            Key = dbName,
+                            ZipPath = zipPath,
+                            Fingerprint = "",
+                            ZipLevel = settings.ZipLevel,
+                            PasswordSha256 = passwordHash,
+                            ArchiveBytes = archiveBytes
+                        };
+                        var split = PackageSplitter.Split(
+                            zipPath,
+                            task.Name,
+                            PackageLimits.Resolve(settings.PartSizeBytes, task.PartSizeBytes),
+                            new BackupRunStats
+                            {
+                                DiscoveredFiles = 1,
+                                PackedFiles = 1,
+                                SourceBytes = archiveBytes
+                            },
+                            delegate { return PackageManifestCodec.NewBackupId(now); });
+                        if (split != null)
+                        {
+                            File.Delete(zipPath);
+                            PendingFiles.SetSplitItem(packed, split, stats);
+                        }
+                        stats.PackedFiles++;
+                        PendingBackup.Upsert(record, packed);
+                        record.RunStats = stats;
+                        if (track)
+                        {
+                            var json = PendingBackup.ToJson(record);
+                            MssqlTaskStore.SavePending(db, task.Id, json);
+                            task.PendingJson = json;
+                        }
                     }
+                    catch (Exception ex)
+                    {
+                        stats.SkippedFiles++;
+                        log.Append(" ").Append(dbName).Append(" 导出失败：").Append(ex.Message).Append("。");
+                    }
+                }
+
+                if (record != null)
+                {
+                    record.RunStats = stats;
                 }
 
                 if (!track)
@@ -230,9 +268,22 @@ namespace YxyXb.Mssql
                     }
                 }
 
-                if (!DistChannel.Finish(db, task.DoEmail, task.DoDeleteNow, task.Name, zips, distOk, log))
+                var finish = DistChannel.FinishPackages(
+                    db,
+                    task.DoEmail,
+                    task.DoDeleteNow,
+                    task.Name,
+                    record.Items,
+                    distOk,
+                    stats,
+                    log);
+                mailAttempted = finish.MailAttempted;
+                mailOk = finish.MailOk;
+                if (!finish.DataOk)
                 {
-                    throw new InvalidOperationException(log.ToString());
+                    throw new InvalidOperationException(stats.SkippedFiles > 0
+                        ? "存在导出失败的数据库，本次备份失败。"
+                        : "已启用的数据通道未全部成功。");
                 }
 
                 MssqlTaskStore.SavePending(db, task.Id, null);
@@ -242,11 +293,17 @@ namespace YxyXb.Mssql
             catch (Exception ex)
             {
                 log.Append(" 失败：").Append(ex.Message);
-                if (MailUtil.ShouldSend(SettingsStore.GetXfer<SmtpSettingsDto>(db, "smtp"), task.DoEmail, false))
+                if (!mailAttempted && MailUtil.ShouldSend(SettingsStore.GetXfer<SmtpSettingsDto>(db, "smtp"), task.DoEmail, false))
                 {
                     try
                     {
-                        MailUtil.SendResult(SettingsStore.GetXfer<SmtpSettingsDto>(db, "smtp"), task.Name, false, log.ToString(), SettingsStore.Get(db).SoftwareId);
+                        MailUtil.SendResult(
+                            SettingsStore.GetXfer<SmtpSettingsDto>(db, "smtp"),
+                            task.Name,
+                            false,
+                            log.ToString(),
+                            SettingsStore.Get(db).SoftwareId,
+                            BackupRunSummary.ToDatabaseMailStats(stats, 0, false, false, 1, 0));
                     }
                     catch
                     {
@@ -256,7 +313,8 @@ namespace YxyXb.Mssql
             finally
             {
                 MssqlTaskStore.MarkResult(db, task, ok, now);
-                LogStore.Add(db, "mssql", string.IsNullOrEmpty(mode) ? "auto" : mode, ok ? "ok" : "error", task.Name, log.ToString());
+                LogStore.Add(db, "mssql", string.IsNullOrEmpty(mode) ? "auto" : mode,
+                    BackupRunSummary.ResultCode(ok, mailOk), task.Name, log.ToString());
             }
         }
 

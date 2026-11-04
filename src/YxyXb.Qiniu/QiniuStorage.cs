@@ -78,6 +78,27 @@ namespace YxyXb.Qiniu
             });
         }
 
+        public CloudObjectInfo Stat(string remoteKey)
+        {
+            var acc = Require();
+            var encoded = QiniuHttp.UrlSafeBase64(acc.Bucket + ":" + (remoteKey ?? ""));
+            var path = "/stat/" + encoded;
+            var auth = QiniuHttp.ManageToken(acc.AccessKey, acc.SecretKey, path, null);
+            var json = QiniuHttp.RequestJson("GET", "https://rs.qiniu.com" + path, auth, null, null);
+            var value = QiniuHttp.FromJson<QiniuStatResult>(json);
+            if (value == null)
+            {
+                throw new InvalidOperationException("七牛没有返回对象状态。");
+            }
+
+            return new CloudObjectInfo
+            {
+                Size = value.fsize,
+                Checksum = value.hash,
+                ChecksumKind = "qiniu-etag"
+            };
+        }
+
         private void Note(string localPath, string message)
         {
             try
@@ -137,7 +158,7 @@ namespace YxyXb.Qiniu
                     }
 
                     // 只删过期 zip；不以「目录前缀」为删除对象
-                    if (!item.key.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
+                    if (!CloudObjectKeys.IsPackageObject(item.key))
                     {
                         continue;
                     }
@@ -213,5 +234,12 @@ namespace YxyXb.Qiniu
 
             return _account;
         }
+    }
+
+    internal sealed class QiniuStatResult
+    {
+        public long fsize { get; set; }
+
+        public string hash { get; set; }
     }
 }

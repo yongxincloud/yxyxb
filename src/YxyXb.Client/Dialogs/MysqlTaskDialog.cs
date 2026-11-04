@@ -6,6 +6,7 @@ using MaterialDesignThemes.Wpf;
 using YxyXb.Contracts.Cloud;
 using YxyXb.Contracts.Dto;
 using YxyXb.Core.Store;
+using YxyXb.Core.Backup;
 
 namespace YxyXb.Client.Dialogs
 {
@@ -20,6 +21,7 @@ namespace YxyXb.Client.Dialogs
         private readonly TextBox _dbs = new TextBox { Margin = new Thickness(0, 0, 0, 8) };
         private readonly ComboBox _cycle = new ComboBox { Margin = new Thickness(0, 0, 0, 8) };
         private readonly TextBox _interval = new TextBox { Text = "1", Margin = new Thickness(0, 0, 0, 8) };
+        private readonly TextBox _partSize = new TextBox { Text = "0", Margin = new Thickness(0, 0, 0, 8) };
         private readonly DatePicker _nextDate = DateTimePick.DateBox();
         private readonly TimePicker _nextTime = DateTimePick.TimeBox();
         private readonly CheckBox _enabled = new CheckBox { Content = "启用", IsChecked = true, Margin = new Thickness(0, 0, 0, 8) };
@@ -59,6 +61,9 @@ namespace YxyXb.Client.Dialogs
                 _name.Text = existing.Name;
                 _dbs.Text = existing.SelectedDbs ?? "";
                 _interval.Text = existing.CycleInterval.ToString();
+                _partSize.Text = existing.PartSizeBytes <= 0
+                    ? "0"
+                    : ((double)existing.PartSizeBytes / 1073741824d).ToString("0.###", System.Globalization.CultureInfo.InvariantCulture);
                 _enabled.IsChecked = existing.Enabled;
                 _network.IsChecked = existing.DoNetwork;
                 _ftp.IsChecked = existing.DoFtp;
@@ -97,6 +102,8 @@ namespace YxyXb.Client.Dialogs
             panel.Children.Add(_cycle);
             panel.Children.Add(Label("间隔"));
             panel.Children.Add(_interval);
+            panel.Children.Add(Label("分卷上限（GB，0=跟随全局）"));
+            panel.Children.Add(_partSize);
             panel.Children.Add(Label("下次执行"));
             panel.Children.Add(DateTimePick.Combine(_nextDate, _nextTime));
             panel.Children.Add(_enabled);
@@ -130,6 +137,25 @@ namespace YxyXb.Client.Dialogs
             }
 
             var inst = _instance.SelectedItem as MysqlInstanceDto;
+            double partGib;
+            if (!double.TryParse((_partSize.Text ?? "").Trim(), System.Globalization.NumberStyles.Float,
+                System.Globalization.CultureInfo.InvariantCulture, out partGib) || partGib < 0)
+            {
+                MessageBox.Show(this, "分卷上限必须大于等于 0。", "校验");
+                return;
+            }
+
+            long partBytes;
+            try
+            {
+                partBytes = partGib == 0 ? 0 : PackageLimits.NormalizeTask((long)Math.Round(partGib * 1073741824d));
+            }
+            catch (ArgumentOutOfRangeException)
+            {
+                MessageBox.Show(this, "分卷上限必须在 64 MiB 到 1 TiB 之间；0 表示跟随全局。", "校验");
+                return;
+            }
+
             var task = new MysqlTaskDto
             {
                 Id = _editId,
@@ -141,6 +167,7 @@ namespace YxyXb.Client.Dialogs
                 RetryMinutes = 30,
                 CycleKind = TagOf(_cycle, "day"),
                 CycleInterval = interval,
+                PartSizeBytes = partBytes,
                 NextRunUtc = DateTime.SpecifyKind(nextLocal, DateTimeKind.Local).ToUniversalTime(),
                 DoNetwork = _network.IsChecked == true,
                 DoFtp = _ftp.IsChecked == true,

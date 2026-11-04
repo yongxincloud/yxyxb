@@ -28,6 +28,7 @@
                         <RowDefinition Height="48"/>
                         <RowDefinition Height="48"/>
                         <RowDefinition Height="48"/>
+                        <RowDefinition Height="48"/>
                     </Grid.RowDefinitions>
                     <TextBlock Text="名称" VerticalAlignment="Center"/>
                     <TextBox x:Name="TxtName" Grid.Column="1" Grid.ColumnSpan="2" Margin="0,4"/>
@@ -45,6 +46,8 @@
                     <TextBlock Text="排序" Grid.Row="4" VerticalAlignment="Center"/>
                     <TextBox x:Name="TxtSort" Grid.Row="4" Grid.Column="1" Grid.ColumnSpan="2" Text="0" Margin="0,4"/>
                     <CheckBox x:Name="ChkEnabled" Grid.Row="5" Grid.Column="1" Content="启用" IsChecked="True" VerticalAlignment="Center"/>
+                    <TextBlock Text="分卷上限(GB)" Grid.Row="6" VerticalAlignment="Center"/>
+                    <TextBox x:Name="TxtPartSize" Grid.Row="6" Grid.Column="1" Grid.ColumnSpan="2" Text="0" Margin="0,4"/>
                 </Grid>
             </TabItem>
             <TabItem Header="计划周期">

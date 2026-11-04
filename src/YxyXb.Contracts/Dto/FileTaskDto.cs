@@ -28,6 +28,8 @@ namespace YxyXb.Contracts.Dto
 
         public int RunCount { get; set; }
 
+        public long PartSizeBytes { get; set; }
+
         public bool DoNetwork { get; set; }
 
         public bool DoFtp { get; set; }

@@ -55,6 +55,9 @@ namespace YxyXb.Client.Dialogs
             TxtRetry.Text = existing.RetryMinutes.ToString(CultureInfo.InvariantCulture);
             TxtSort.Text = existing.SortOrder.ToString(CultureInfo.InvariantCulture);
             TxtInterval.Text = existing.CycleInterval.ToString(CultureInfo.InvariantCulture);
+            TxtPartSize.Text = existing.PartSizeBytes <= 0
+                ? "0"
+                : ((double)existing.PartSizeBytes / 1073741824d).ToString("0.###", CultureInfo.InvariantCulture);
             TxtPost.Text = existing.PostProgram ?? "";
             ChkEnabled.IsChecked = existing.Enabled;
             ChkNetwork.IsChecked = existing.DoNetwork;
@@ -124,6 +127,24 @@ namespace YxyXb.Client.Dialogs
                 return;
             }
 
+            double partGib;
+            if (!double.TryParse((TxtPartSize.Text ?? "").Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out partGib) || partGib < 0)
+            {
+                MessageBox.Show(this, "分卷上限必须大于等于 0。", "校验", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            long partBytes;
+            try
+            {
+                partBytes = partGib == 0 ? 0 : PackageLimits.NormalizeTask((long)Math.Round(partGib * 1073741824d));
+            }
+            catch (ArgumentOutOfRangeException)
+            {
+                MessageBox.Show(this, "分卷上限必须在 64 MiB 到 1 TiB 之间；0 表示跟随全局。", "校验", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
             var task = new FileTaskDto
             {
                 Id = _editId,
@@ -135,6 +156,7 @@ namespace YxyXb.Client.Dialogs
                 SortOrder = sort,
                 CycleKind = SelectedTag(CmbCycle),
                 CycleInterval = interval,
+                PartSizeBytes = partBytes,
                 NextRunUtc = DateTime.SpecifyKind(nextLocal, DateTimeKind.Local).ToUniversalTime(),
                 DoNetwork = ChkNetwork.IsChecked == true,
                 DoFtp = ChkFtp.IsChecked == true,

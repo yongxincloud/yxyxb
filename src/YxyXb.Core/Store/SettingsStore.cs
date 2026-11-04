@@ -1,6 +1,7 @@
 using System;
 using System.Data.SQLite;
 using YxyXb.Contracts.Dto;
+using YxyXb.Core.Backup;
 using YxyXb.Core.Data;
 using YxyXb.Core.Security;
 
@@ -19,6 +20,7 @@ namespace YxyXb.Core.Store
                     SoftwareId = AppPaths.ProductPathName,
                     NameFlags = NameParts.DefaultFlags,
                     ZipLevel = 5,
+                    PartSizeBytes = PackageLimits.DefaultBytes,
                     Theme = "light",
                     LocalRetainDays = 10,
                     PurgeTime = "00:30",
@@ -34,6 +36,7 @@ namespace YxyXb.Core.Store
                 SoftwareId = Convert.ToString(row["software_id"]),
                 NameFlags = GetInt(row, "name_flags", NameParts.DefaultFlags),
                 ZipLevel = GetInt(row, "zip_level", 5),
+                PartSizeBytes = PackageLimits.NormalizeGlobal(GetLong(row, "part_size_bytes", PackageLimits.DefaultBytes)),
                 UploadMinKbps = GetInt(row, "upload_min_kbps", 0),
                 UploadMaxKbps = GetInt(row, "upload_max_kbps", 0),
                 UploadParallel = ClampParallel(GetInt(row, "upload_parallel", 1)),
@@ -73,7 +76,7 @@ namespace YxyXb.Core.Store
             }
 
             db.Execute(
-                @"UPDATE settings SET bak_path=@bak, software_id=@sid, name_flags=@nf, zip_level=@zl, upload_min_kbps=@umin, upload_max_kbps=@umax, upload_parallel=@upar, zip_password_protected=@zp,
+                @"UPDATE settings SET bak_path=@bak, software_id=@sid, name_flags=@nf, zip_level=@zl, part_size_bytes=@ps, upload_min_kbps=@umin, upload_max_kbps=@umax, upload_parallel=@upar, zip_password_protected=@zp,
                   start_with_windows=@sw, close_to_tray=@ct, theme=@theme, lock_password_protected=@lp, engine_advanced=@ea,
                   local_retain_days=@rd, network_retain_days=@nrd, ftp_retain_days=@frd, qiniu_retain_days=@qrd, baidu_retain_days=@brd,
                   aliyun_retain_days=@ard, tencent_retain_days=@trd, ctyun_retain_days=@crd,
@@ -83,6 +86,7 @@ namespace YxyXb.Core.Store
                 new SQLiteParameter("@sid", string.IsNullOrEmpty(settings.SoftwareId) ? AppPaths.ProductPathName : settings.SoftwareId),
                 new SQLiteParameter("@nf", settings.NameFlags == 0 ? NameParts.DefaultFlags : settings.NameFlags),
                 new SQLiteParameter("@zl", settings.ZipLevel),
+                new SQLiteParameter("@ps", PackageLimits.NormalizeGlobal(settings.PartSizeBytes)),
                 new SQLiteParameter("@umin", settings.UploadMinKbps < 0 ? 0 : settings.UploadMinKbps),
                 new SQLiteParameter("@umax", settings.UploadMaxKbps < 0 ? 0 : settings.UploadMaxKbps),
                 new SQLiteParameter("@upar", ClampParallel(settings.UploadParallel)),
@@ -177,6 +181,16 @@ namespace YxyXb.Core.Store
             }
 
             return Convert.ToInt32(row[col]);
+        }
+
+        private static long GetLong(System.Data.DataRow row, string col, long fallback)
+        {
+            if (!row.Table.Columns.Contains(col) || row[col] == DBNull.Value)
+            {
+                return fallback;
+            }
+
+            return Convert.ToInt64(row[col]);
         }
 
         private static string GetStr(System.Data.DataRow row, string col)

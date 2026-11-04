@@ -145,6 +145,75 @@ namespace YxyXb.Core.Backup
             throw new InvalidOperationException("压缩包内没有找到可用的库备份文件（.bak / .sql）。");
         }
 
+        public static void ExtractAllSafe(string zipPath, string password, string destinationDirectory)
+        {
+            if (string.IsNullOrWhiteSpace(zipPath) || !File.Exists(zipPath))
+            {
+                throw new FileNotFoundException("找不到备份包。", zipPath);
+            }
+
+            if (string.IsNullOrWhiteSpace(destinationDirectory))
+            {
+                throw new ArgumentException("destinationDirectory");
+            }
+
+            Directory.CreateDirectory(destinationDirectory);
+            var root = Path.GetFullPath(destinationDirectory)
+                .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+                + Path.DirectorySeparatorChar;
+            using (var stream = File.OpenRead(LongPath.Qualify(zipPath)))
+            using (var zip = new ZipInputStream(stream))
+            {
+                if (!string.IsNullOrEmpty(password))
+                {
+                    zip.Password = password;
+                }
+
+                var buffer = new byte[81920];
+                ZipEntry entry;
+                while ((entry = zip.GetNextEntry()) != null)
+                {
+                    var relative = (entry.Name ?? "").Replace('/', Path.DirectorySeparatorChar);
+                    if (relative.Length == 0)
+                    {
+                        continue;
+                    }
+
+                    var destination = Path.GetFullPath(Path.Combine(destinationDirectory, relative));
+                    if (!destination.StartsWith(root, StringComparison.OrdinalIgnoreCase))
+                    {
+                        throw new InvalidOperationException("压缩包路径越界：" + entry.Name);
+                    }
+
+                    if (entry.IsDirectory)
+                    {
+                        Directory.CreateDirectory(destination);
+                        continue;
+                    }
+
+                    var parent = Path.GetDirectoryName(destination);
+                    if (!string.IsNullOrEmpty(parent))
+                    {
+                        Directory.CreateDirectory(parent);
+                    }
+
+                    if (File.Exists(destination))
+                    {
+                        throw new InvalidOperationException("压缩包包含重复文件：" + entry.Name);
+                    }
+
+                    using (var output = File.Create(LongPath.Qualify(destination)))
+                    {
+                        int read;
+                        while ((read = zip.Read(buffer, 0, buffer.Length)) > 0)
+                        {
+                            output.Write(buffer, 0, read);
+                        }
+                    }
+                }
+            }
+        }
+
         private static string[] NormalizeExts(string[] extensions)
         {
             if (extensions == null || extensions.Length == 0)

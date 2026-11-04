@@ -36,6 +36,8 @@ namespace YxyXb.Aliyun
         public string Body { get; set; }
 
         public string ETag { get; set; }
+
+        public long ContentLength { get; set; }
     }
 
     public interface IAliyunTransport
@@ -153,7 +155,8 @@ namespace YxyXb.Aliyun
             {
                 Status = (int)response.StatusCode,
                 Body = text,
-                ETag = response.Headers["ETag"]
+                ETag = response.Headers["ETag"],
+                ContentLength = response.ContentLength
             };
         }
 

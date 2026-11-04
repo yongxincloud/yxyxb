@@ -16,6 +16,8 @@ namespace YxyXb.Contracts.Cloud
 
         void Upload(string localPath, string remoteKey);
 
+        CloudObjectInfo Stat(string remoteKey);
+
         int DeleteExpired(string prefix, DateTime olderThanUtc, Action<string> onDeleted);
     }
 }

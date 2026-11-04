@@ -66,6 +66,7 @@ namespace YxyXb.Core.Backup
             var mailOk = true;
             var mailAttempted = false;
             var stats = new BackupRunStats();
+            var archiveBytes = 0L;
             string zipPath = null;
             string tempRoot = null;
             try
@@ -127,6 +128,11 @@ namespace YxyXb.Core.Backup
                     TryDeleteDir(tempRoot);
                     tempRoot = null;
                     zipPath = decision.Keep[0].ZipPath;
+                    archiveBytes = decision.Keep[0].ArchiveBytes;
+                    if (archiveBytes <= 0 && !string.IsNullOrEmpty(zipPath) && File.Exists(zipPath))
+                    {
+                        archiveBytes = new FileInfo(zipPath).Length;
+                    }
                     log.Append(" 沿用未传完的包 ").Append(zipPath);
                 }
                 else
@@ -153,6 +159,7 @@ namespace YxyXb.Core.Backup
                         PendingFiles.TryDeleteZip(zipPath);
                         throw;
                     }
+                    archiveBytes = new FileInfo(zipPath).Length;
 
                     log.Append(" 产出 ").Append(zipPath);
                     log.Append(string.IsNullOrEmpty(settings.ZipPassword) ? "。" : "，已用压缩密码。");
@@ -167,8 +174,22 @@ namespace YxyXb.Core.Backup
                         ZipPath = zipPath,
                         Fingerprint = fingerprint,
                         ZipLevel = settings.ZipLevel,
-                        PasswordSha256 = passwordHash
+                        PasswordSha256 = passwordHash,
+                        ArchiveBytes = archiveBytes
                     };
+                    var limit = PackageLimits.Resolve(settings.PartSizeBytes, task.PartSizeBytes);
+                    var split = PackageSplitter.Split(
+                        zipPath,
+                        task.Name,
+                        limit,
+                        stats,
+                        delegate { return PackageManifestCodec.NewBackupId(now); });
+                    if (split != null)
+                    {
+                        File.Delete(zipPath);
+                        PendingFiles.SetSplitItem(packed, split, stats);
+                        log.Append(" 已生成分卷 ").Append(split.PartPaths.Length).Append(" 个。");
+                    }
                     if (record == null)
                     {
                         record = new PendingRecord();
@@ -177,6 +198,7 @@ namespace YxyXb.Core.Backup
                     record.SourceKind = task.SourceKind ?? "local";
                     record.SourcePath = task.SourcePath ?? "";
                     record.CycleUntilUtc = null;
+                    record.RunStats = stats;
                     record.Items = new[] { packed };
                     if (track)
                     {
@@ -213,11 +235,14 @@ namespace YxyXb.Core.Backup
                         });
                 }
 
-                var archiveBytes = File.Exists(zipPath) ? new FileInfo(zipPath).Length : 0;
                 log.Append(" 源 ").Append(BackupRunSummary.FormatBytes(stats.SourceBytes))
                     .Append("，压缩后 ").Append(BackupRunSummary.FormatBytes(archiveBytes)).Append("。");
 
                 var dataOk = distOk && stats.SkippedFiles == 0;
+                var packageItem = decision.Reuse ? decision.Keep[0] : record.Items[0];
+                var packageCount = packageItem.UploadFiles == null || packageItem.UploadFiles.Length == 0
+                    ? 1
+                    : Math.Max(1, packageItem.UploadFiles.Length - 1);
                 var smtp = SettingsStore.GetXfer<SmtpSettingsDto>(db, "smtp");
                 if (MailUtil.ShouldSend(smtp, task.DoEmail, dataOk))
                 {
@@ -230,7 +255,9 @@ namespace YxyXb.Core.Backup
                             dataOk,
                             log.ToString(),
                             settings.SoftwareId,
-                            BackupRunSummary.ToMailStats(stats, archiveBytes, track, distOk));
+                            BackupRunSummary.ToMailStats(
+                                stats, archiveBytes, track, distOk,
+                                packageCount, distOk ? packageCount : 0));
                         log.Append(" 已发邮件。");
                     }
                     catch (Exception ex)
@@ -248,7 +275,7 @@ namespace YxyXb.Core.Backup
                         : "已启用的数据通道未全部成功。");
                 }
 
-                if (task.DoDeleteNow && !PendingFiles.TryDeleteZip(zipPath))
+                if (task.DoDeleteNow && !PendingFiles.TryDeletePackage(packageItem))
                 {
                     throw new InvalidOperationException("已成功的备份无法立即删除本地包。");
                 }
@@ -275,7 +302,7 @@ namespace YxyXb.Core.Backup
                 {
                     try
                     {
-                        var archiveBytes = !string.IsNullOrEmpty(zipPath) && File.Exists(zipPath)
+                        archiveBytes = !string.IsNullOrEmpty(zipPath) && File.Exists(zipPath)
                             ? new FileInfo(zipPath).Length
                             : 0;
                         MailUtil.SendResult(
