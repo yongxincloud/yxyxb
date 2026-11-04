@@ -172,10 +172,10 @@ namespace YxyXb.Core.Tests
                         {
                             Status = 200,
                             Body = "<ListBucketResult><IsTruncated>true</IsTruncated><NextMarker>m2</NextMarker>"
-                                + "<Contents><Key>pre/old.zip</Key><LastModified>2020-01-01T00:00:00.000Z</LastModified></Contents>"
-                                + "<Contents><Key>pre/new.zip</Key><LastModified>2030-01-01T00:00:00.000Z</LastModified></Contents>"
+                                + "<Contents><Key>pre/b1/old.zip</Key><LastModified>2020-01-01T00:00:00.000Z</LastModified></Contents>"
+                                + "<Contents><Key>pre/b2/new.zip</Key><LastModified>2030-01-01T00:00:00.000Z</LastModified></Contents>"
                                 + "<Contents><Key>pre/note.txt</Key><LastModified>2020-01-01T00:00:00.000Z</LastModified></Contents>"
-                                + "<Contents><Key>pre/old.manifest.json</Key><LastModified>2020-01-01T00:00:00.000Z</LastModified></Contents>"
+                                + "<Contents><Key>pre/b1/old.manifest.json</Key><LastModified>2020-01-01T00:00:00.000Z</LastModified></Contents>"
                                 + "</ListBucketResult>"
                         };
                     }
@@ -189,7 +189,7 @@ namespace YxyXb.Core.Tests
                     };
                 }
 
-                if (call.Resource.IndexOf("stamp", StringComparison.Ordinal) >= 0 || call.Resource.EndsWith("db_20200102-030405.zip", StringComparison.Ordinal))
+                if (call.Resource.EndsWith("old.manifest.json", StringComparison.Ordinal))
                 {
                     return new AliyunReply { Status = 500 };
                 }
@@ -202,7 +202,7 @@ namespace YxyXb.Core.Tests
             {
                 storage.DeleteExpired("pre/", new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc), deleted.Add);
             });
-            Assert.That(deleted, Is.EqualTo(new[] { "pre/old.zip", "pre/old.manifest.json" }));
+            Assert.That(deleted, Is.EqualTo(new[] { "pre/b1/old.zip" }));
             Assert.That(page, Is.EqualTo(2));
         }
 

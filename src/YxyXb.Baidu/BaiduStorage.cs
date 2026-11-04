@@ -238,6 +238,7 @@ namespace YxyXb.Baidu
             var ser = new JavaScriptSerializer();
             var deleted = 0;
             var start = 0;
+            var objects = new Dictionary<string, DateTime>(StringComparer.Ordinal);
             for (var guard = 0; guard < 200; guard++)
             {
                 var url = "https://pan.baidu.com/rest/2.0/xpan/file?method=list"
@@ -277,24 +278,7 @@ namespace YxyXb.Baidu
                     {
                         time = FromUnix(item.server_mtime);
                     }
-
-                    if (time == DateTime.MinValue || time >= olderThanUtc)
-                    {
-                        continue;
-                    }
-
-                    var filelist = ser.Serialize(new[] { new Dictionary<string, string> { { "path", item.path } } });
-                    Api(
-                        "POST",
-                        "https://pan.baidu.com/rest/2.0/xpan/file?method=filemanager&opera=delete",
-                        Form("async", "0", "filelist", filelist),
-                        "application/x-www-form-urlencoded");
-                    if (onDeleted != null)
-                    {
-                        onDeleted(item.path);
-                    }
-
-                    deleted++;
+                    if (time != DateTime.MinValue) objects[item.path] = time;
                 }
 
                 if (page.list.Count < 1000)
@@ -303,6 +287,26 @@ namespace YxyXb.Baidu
                 }
 
                 start += page.list.Count;
+            }
+
+            var keys = new List<string>(objects.Keys);
+            for (var i = 0; i < keys.Count; i++)
+            {
+                if (!CloudObjectKeys.IsManifest(keys[i])) continue;
+                var unit = CloudPackageRetention.GetExpiredUnitFiles(keys[i], objects, olderThanUtc);
+                if (unit.Count == 0) continue;
+                var filelist = ser.Serialize(System.Linq.Enumerable.ToArray(
+                    System.Linq.Enumerable.Select(unit, key => new Dictionary<string, string> { { "path", key } })));
+                Api(
+                    "POST",
+                    "https://pan.baidu.com/rest/2.0/xpan/file?method=filemanager&opera=delete",
+                    Form("async", "0", "filelist", filelist),
+                    "application/x-www-form-urlencoded");
+                for (var j = 0; j < unit.Count; j++)
+                {
+                    deleted++;
+                    if (onDeleted != null) onDeleted(unit[j]);
+                }
             }
 
             return deleted;
