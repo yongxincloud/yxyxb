@@ -130,6 +130,7 @@ namespace YxyXb.Qiniu
             var marker = "";
             var guard = 0;
             var deleted = 0;
+            var objects = new Dictionary<string, DateTime>(StringComparer.Ordinal);
             while (guard < 200)
             {
                 guard++;
@@ -169,13 +170,10 @@ namespace YxyXb.Qiniu
                         time = ParseStampFromKey(item.key);
                     }
 
-                    if (time == DateTime.MinValue || time >= olderThanUtc)
+                    if (time != DateTime.MinValue)
                     {
-                        continue;
+                        objects[item.key] = time;
                     }
-
-                    DeleteOne(acc, item.key, onDeleted);
-                    deleted++;
                 }
 
                 if (string.IsNullOrEmpty(page.marker))
@@ -184,6 +182,18 @@ namespace YxyXb.Qiniu
                 }
 
                 marker = page.marker;
+            }
+
+            var keys = new List<string>(objects.Keys);
+            for (var i = 0; i < keys.Count; i++)
+            {
+                if (!CloudObjectKeys.IsManifest(keys[i])) continue;
+                var unit = CloudPackageRetention.GetExpiredUnitFiles(keys[i], objects, olderThanUtc);
+                for (var j = 0; j < unit.Count; j++)
+                {
+                    DeleteOne(acc, unit[j], onDeleted);
+                    deleted++;
+                }
             }
 
             return deleted;

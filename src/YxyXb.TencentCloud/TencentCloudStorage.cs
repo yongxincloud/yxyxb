@@ -90,6 +90,7 @@ namespace YxyXb.TencentCloud
             var marker = "";
             var guard = 0;
             var deleted = 0;
+            var objects = new Dictionary<string, DateTime>(StringComparer.Ordinal);
             while (guard < 200)
             {
                 guard++;
@@ -117,18 +118,7 @@ namespace YxyXb.TencentCloud
                     {
                         time = Stamp(item.Key);
                     }
-
-                    if (time == DateTime.MinValue || time >= olderThanUtc)
-                    {
-                        continue;
-                    }
-
-                    Ensure(Send("DELETE", item.Key, null, "", null, false));
-                    deleted++;
-                    if (onDeleted != null)
-                    {
-                        onDeleted(item.Key);
-                    }
+                    objects[item.Key] = time;
                 }
 
                 if (!page.Truncated || string.IsNullOrEmpty(page.NextMarker))
@@ -137,6 +127,23 @@ namespace YxyXb.TencentCloud
                 }
 
                 marker = page.NextMarker;
+            }
+
+            var keys = new List<string>(objects.Keys);
+            for (var i = 0; i < keys.Count; i++)
+            {
+                if (!CloudObjectKeys.IsManifest(keys[i]))
+                {
+                    continue;
+                }
+
+                var unit = CloudPackageRetention.GetExpiredUnitFiles(keys[i], objects, olderThanUtc);
+                for (var j = 0; j < unit.Count; j++)
+                {
+                    Ensure(Send("DELETE", unit[j], null, "", null, false));
+                    deleted++;
+                    if (onDeleted != null) onDeleted(unit[j]);
+                }
             }
 
             return deleted;
