@@ -166,6 +166,39 @@ namespace YxyXb.Baidu
             BaiduUploadCheckpoint.Delete(dataDir, full);
         }
 
+        public CloudObjectInfo Stat(string remoteKey)
+        {
+            RequireReady();
+            EnsureToken();
+            var cfg = Config();
+            var path = CloudObjectKeys.BaiduRemotePath(cfg.AppFolderName, remoteKey);
+            var dir = Path.GetDirectoryName(path).Replace('\\', '/');
+            var name = Path.GetFileName(path);
+            var url = "https://pan.baidu.com/rest/2.0/xpan/file?method=list"
+                + "&dir=" + Uri.EscapeDataString(dir)
+                + "&start=0&limit=1000";
+            var json = Api("GET", url, null, null);
+            var page = new JavaScriptSerializer().Deserialize<BaiduApiJson>(json) ?? new BaiduApiJson();
+            if (page.list != null)
+            {
+                for (var i = 0; i < page.list.Count; i++)
+                {
+                    var item = page.list[i];
+                    if (item != null && string.Equals(item.server_filename, name, StringComparison.Ordinal))
+                    {
+                        return new CloudObjectInfo
+                        {
+                            Size = item.size,
+                            Checksum = "",
+                            ChecksumKind = "baidu-size"
+                        };
+                    }
+                }
+            }
+
+            throw new InvalidOperationException("百度网盘远端文件不存在。");
+        }
+
         private void CreateRemote(string path, long size, string uploadId, string blockList)
         {
             var create = Form(
@@ -582,6 +615,8 @@ namespace YxyXb.Baidu
         public string server_filename { get; set; }
 
         public long server_mtime { get; set; }
+
+        public long size { get; set; }
 
         /// <summary>百度 list：0=文件，1=目录。</summary>
         public int isdir { get; set; }

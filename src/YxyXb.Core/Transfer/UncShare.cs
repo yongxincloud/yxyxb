@@ -66,6 +66,26 @@ namespace YxyXb.Core.Transfer
             }
         }
 
+        public static void VerifyFile(UncSettingsDto settings, string localFile, string remoteFileName)
+        {
+            if (settings == null || string.IsNullOrEmpty(settings.Path))
+            {
+                throw new InvalidOperationException("未配置网络传输路径。");
+            }
+
+            Connect(settings);
+            var dest = Path.Combine(settings.Path, remoteFileName);
+            if (!File.Exists(dest))
+            {
+                throw new InvalidOperationException("网络共享远端文件不存在。");
+            }
+
+            if (new FileInfo(dest).Length != new FileInfo(localFile).Length)
+            {
+                throw new InvalidOperationException("网络共享远端文件大小不一致。");
+            }
+        }
+
         public static IDisposable ConnectScope(UncSettingsDto settings)
         {
             Connect(settings);

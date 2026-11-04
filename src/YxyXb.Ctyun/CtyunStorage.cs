@@ -71,6 +71,19 @@ namespace YxyXb.Ctyun
             ObjectUpload.Run(localPath, remoteKey, new Api(this), OnLog, null);
         }
 
+        public CloudObjectInfo Stat(string remoteKey)
+        {
+            Require();
+            var reply = Send("HEAD", remoteKey, null, "", null, false);
+            Ensure(reply);
+            return new CloudObjectInfo
+            {
+                Size = reply.ContentLength,
+                Checksum = reply.ETag,
+                ChecksumKind = "ETag"
+            };
+        }
+
         public int DeleteExpired(string prefix, DateTime olderThanUtc, Action<string> onDeleted)
         {
             Require();

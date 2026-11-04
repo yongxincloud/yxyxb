@@ -112,6 +112,12 @@ namespace YxyXb.Cloud
             }
         }
 
+        public void Verify(SqliteDb db, string provider, string localPath, string remoteKey)
+        {
+            var info = CreateReady(db, provider).Stat(remoteKey);
+            RemoteObjectVerifier.EnsureSameSize(localPath, info);
+        }
+
         public int DeleteExpired(SqliteDb db, string provider, string prefix, DateTime olderThanUtc, Action<string> onDeleted)
         {
             return CreateReady(db, provider).DeleteExpired(prefix, olderThanUtc, onDeleted);

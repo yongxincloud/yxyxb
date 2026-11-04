@@ -62,6 +62,23 @@ namespace YxyXb.Core.Tests
         }
 
         [Test]
+        public void Stat_HeadObject_ReturnsLengthAndEtag()
+        {
+            var fake = new FakeTransport
+            {
+                Reply = new AliyunReply { Status = 200, ContentLength = 32, ETag = "\"etag\"" }
+            };
+            var storage = Ready(fake);
+
+            var info = storage.Stat("dir/a.zip");
+
+            Assert.That(fake.Last.Method, Is.EqualTo("HEAD"));
+            Assert.That(fake.Last.Resource, Is.EqualTo("/backup/dir/a.zip"));
+            Assert.That(info.Size, Is.EqualTo(32));
+            Assert.That(info.Checksum, Is.EqualTo("\"etag\""));
+        }
+
+        [Test]
         public void Upload_SmallFileSetsPrivateAclAndNoStorageClass()
         {
             var path = TempFile(32);

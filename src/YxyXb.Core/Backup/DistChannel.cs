@@ -24,6 +24,7 @@ namespace YxyXb.Core.Backup
                 {
                     var unc = SettingsStore.GetXfer<UncSettingsDto>(db, "unc");
                     UncShare.CopyFile(unc, zipPath, Path.GetFileName(zipPath), up);
+                    UncShare.VerifyFile(unc, zipPath, Path.GetFileName(zipPath));
                     log.Append(" 网络传输成功。");
                 }
                 catch (Exception ex)
@@ -40,6 +41,7 @@ namespace YxyXb.Core.Backup
                 {
                     var ftp = SettingsStore.GetXfer<FtpSettingsDto>(db, "ftp");
                     FtpUtil.UploadFile(ftp, zipPath, Path.GetFileName(zipPath), up);
+                    FtpUtil.VerifyFile(ftp, zipPath, Path.GetFileName(zipPath));
                     log.Append(" FTP 成功。");
                 }
                 catch (Exception ex)
@@ -66,6 +68,7 @@ namespace YxyXb.Core.Backup
                 var key = CloudObjectKeys.ForZip(settings.SoftwareId, kind, taskName, zipPath);
                 var use = string.IsNullOrWhiteSpace(provider) ? CloudProviders.Qiniu : provider;
                 CloudRuntime.Require().Upload(db, use, zipPath, key);
+                CloudRuntime.Require().Verify(db, use, zipPath, key);
                 log.Append(" 云上传成功 ").Append(key).Append("。");
                 if (string.Equals(use, CloudProviders.Baidu, StringComparison.OrdinalIgnoreCase)
                     || string.Equals(use, CloudProviders.Qiniu, StringComparison.OrdinalIgnoreCase))
