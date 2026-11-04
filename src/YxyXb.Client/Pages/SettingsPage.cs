@@ -334,7 +334,7 @@ namespace YxyXb.Client.Pages
             panel.Children.Add(_smtpFooter);
             panel.Children.Add(new TextBlock
             {
-                Text = "可用 {任务}、{结果}、{时间}、{详情}、{客户标识}。客户标识取自「综合设置」。标题或内容留空时用默认句式。结尾写在正文最后，留空则不附加。",
+                Text = "可用 {任务}、{结果}、{时间}、{详情}、{客户标识}、{文件统计}、{包统计}、{大小统计}。客户标识取自「综合设置」。标题或内容留空时用默认句式。结尾写在正文最后，留空则不附加。",
                 TextWrapping = TextWrapping.Wrap,
                 Margin = new Thickness(0, 8, 0, 0)
             });
