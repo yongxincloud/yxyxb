@@ -99,6 +99,7 @@ namespace YxyXb.Client.Pages
                     _mssqlTarget.Text = GuessDbName(_mssqlFile.Text);
                 }
             })));
+            form.Children.Add(FolderPickerButton(_mssqlFile, "选择 M-SQL 分卷目录"));
             _mssqlTarget = new TextBox { Height = 28 };
             form.Children.Add(Labeled("目标库名", _mssqlTarget));
             _mssqlPwd = new TextBox { Height = 28 };
@@ -139,6 +140,7 @@ namespace YxyXb.Client.Pages
                     _mysqlTarget.Text = GuessDbName(_mysqlFile.Text);
                 }
             })));
+            form.Children.Add(FolderPickerButton(_mysqlFile, "选择 MySQL 分卷目录"));
             _mysqlTarget = new TextBox { Height = 28 };
             form.Children.Add(Labeled("目标库名", _mysqlTarget));
             _mysqlPwd = new TextBox { Height = 28 };
@@ -233,7 +235,7 @@ namespace YxyXb.Client.Pages
             }
 
             var path = (_mssqlFile.Text ?? "").Trim();
-            if (path.Length == 0 || !File.Exists(path))
+            if (path.Length == 0 || (!File.Exists(path) && !Directory.Exists(path)))
             {
                 MessageBox.Show(Window.GetWindow(this), "请选择有效的备份文件。", "恢复");
                 return;
@@ -261,7 +263,12 @@ namespace YxyXb.Client.Pages
             _mssqlRun.IsEnabled = false;
             _mssqlStatus.Text = "正在恢复…";
             if (!_job.TryStart(
-                delegate { return MssqlRestore.Restore(instance, path, pwd, target, replace); },
+                delegate
+                {
+                    return Directory.Exists(path)
+                        ? MssqlRestore.RestoreDirectory(instance, path, pwd, target, replace)
+                        : MssqlRestore.Restore(instance, path, pwd, target, replace);
+                },
                 delegate(string result, Exception error)
                 {
                     Dispatcher.BeginInvoke(new Action(delegate
@@ -294,7 +301,7 @@ namespace YxyXb.Client.Pages
             }
 
             var path = (_mysqlFile.Text ?? "").Trim();
-            if (path.Length == 0 || !File.Exists(path))
+            if (path.Length == 0 || (!File.Exists(path) && !Directory.Exists(path)))
             {
                 MessageBox.Show(Window.GetWindow(this), "请选择有效的备份文件。", "恢复");
                 return;
@@ -322,7 +329,12 @@ namespace YxyXb.Client.Pages
             _mysqlRun.IsEnabled = false;
             _mysqlStatus.Text = "正在恢复…";
             if (!_job.TryStart(
-                delegate { return MysqlRestore.Restore(instance, path, pwd, target, replace); },
+                delegate
+                {
+                    return Directory.Exists(path)
+                        ? MysqlRestore.RestoreDirectory(instance, path, pwd, target, replace)
+                        : MysqlRestore.Restore(instance, path, pwd, target, replace);
+                },
                 delegate(string result, Exception error)
                 {
                     Dispatcher.BeginInvoke(new Action(delegate
@@ -421,6 +433,20 @@ namespace YxyXb.Client.Pages
             row.Children.Add(browse);
             row.Children.Add(box);
             return row;
+        }
+
+        private static UIElement FolderPickerButton(TextBox box, string label)
+        {
+            return Btn(label, delegate
+            {
+                using (var dialog = new System.Windows.Forms.FolderBrowserDialog())
+                {
+                    if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+                    {
+                        box.Text = dialog.SelectedPath;
+                    }
+                }
+            });
         }
 
         private static Button Btn(string text, RoutedEventHandler click)

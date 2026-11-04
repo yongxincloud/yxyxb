@@ -39,6 +39,24 @@ namespace YxyXb.Core.Tests
             Assert.That(BackupRunSummary.ManualMessage("warn"), Is.EqualTo("执行成功，通知发送失败。"));
             Assert.That(BackupRunSummary.ManualMessage("error"), Is.EqualTo("执行失败。"));
         }
+
+        [Test]
+        public void DatabaseMailStats_UseExportLanguage()
+        {
+            var stats = new BackupRunStats
+            {
+                DiscoveredFiles = 3,
+                PackedFiles = 2,
+                SkippedFiles = 1,
+                SourceBytes = 4096
+            };
+
+            var mail = BackupRunSummary.ToDatabaseMailStats(stats, 2048, true, false, 2, 1);
+
+            Assert.That(mail.FileStats, Is.EqualTo("数据库 3，导出 2，跳过 1"));
+            Assert.That(mail.PackageStats, Is.EqualTo("共 2 个分卷，上传成功 1/2"));
+            Assert.That(mail.SizeStats, Does.Contain("源 4.0 KB"));
+        }
     }
 }
 

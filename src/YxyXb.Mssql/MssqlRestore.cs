@@ -8,6 +8,31 @@ namespace YxyXb.Mssql
 {
     public static class MssqlRestore
     {
+        public static string RestoreDirectory(
+            MssqlInstanceDto instance,
+            string packageDirectory,
+            string zipPassword,
+            string targetDb,
+            bool replaceExisting)
+        {
+            var work = Path.Combine(Path.GetTempPath(), "yxy-mssql-assemble-" + Guid.NewGuid().ToString("N"));
+            try
+            {
+                var zip = PackageSplitter.Assemble(packageDirectory, work);
+                return Restore(instance, zip, zipPassword, targetDb, replaceExisting);
+            }
+            finally
+            {
+                try
+                {
+                    if (Directory.Exists(work)) Directory.Delete(work, true);
+                }
+                catch (IOException)
+                {
+                }
+            }
+        }
+
         public static string Restore(MssqlInstanceDto instance, string packagePath, string zipPassword, string targetDb, bool replaceExisting)
         {
             if (instance == null) throw new ArgumentNullException("instance");

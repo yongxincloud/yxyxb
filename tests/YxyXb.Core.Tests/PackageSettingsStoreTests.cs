@@ -36,6 +36,36 @@ namespace YxyXb.Core.Tests
                     };
                     task.Id = FileTaskStore.Insert(db, task);
                     Assert.That(FileTaskStore.GetById(db, task.Id).PartSizeBytes, Is.EqualTo(2L << 30));
+
+                    var mssql = new MssqlTaskDto
+                    {
+                        Name = "MSSQL",
+                        InstanceId = 1,
+                        Enabled = true,
+                        DbScope = "user",
+                        RetryMinutes = 5,
+                        CycleKind = "day",
+                        CycleInterval = 1,
+                        NextRunUtc = DateTime.UtcNow,
+                        PartSizeBytes = 3L << 30
+                    };
+                    mssql.Id = MssqlTaskStore.Insert(db, mssql);
+                    Assert.That(MssqlTaskStore.GetById(db, mssql.Id).PartSizeBytes, Is.EqualTo(3L << 30));
+
+                    var mysql = new MysqlTaskDto
+                    {
+                        Name = "MySQL",
+                        InstanceId = 1,
+                        Enabled = true,
+                        DbScope = "user",
+                        RetryMinutes = 5,
+                        CycleKind = "day",
+                        CycleInterval = 1,
+                        NextRunUtc = DateTime.UtcNow,
+                        PartSizeBytes = 4L << 30
+                    };
+                    mysql.Id = MysqlTaskStore.Insert(db, mysql);
+                    Assert.That(MysqlTaskStore.GetById(db, mysql.Id).PartSizeBytes, Is.EqualTo(4L << 30));
                 }
             }
             finally

@@ -67,6 +67,35 @@ namespace YxyXb.Core.Backup
             return mailOk ? "ok" : "warn";
         }
 
+        public static MailRunStats ToDatabaseMailStats(
+            BackupRunStats stats,
+            long archiveBytes,
+            bool uploadEnabled,
+            bool uploadOk,
+            int packageCount,
+            int uploadedCount)
+        {
+            var value = stats ?? new BackupRunStats();
+            if (packageCount < 1)
+            {
+                packageCount = 1;
+            }
+
+            return new MailRunStats
+            {
+                FileStats = "数据库 " + value.DiscoveredFiles
+                    + "，导出 " + value.PackedFiles
+                    + "，跳过 " + value.SkippedFiles,
+                PackageStats = !uploadEnabled
+                    ? "共 " + packageCount + " 个" + (packageCount > 1 ? "分卷" : "包") + "，未启用数据上传"
+                    : "共 " + packageCount + " 个" + (packageCount > 1 ? "分卷" : "包")
+                        + "，上传成功 " + uploadedCount + "/" + packageCount,
+                SizeStats = "源 " + FormatBytes(value.SourceBytes)
+                    + "，压缩后 " + FormatBytes(archiveBytes)
+                    + "，已上传 " + FormatBytes(uploadEnabled && uploadOk ? archiveBytes : 0)
+            };
+        }
+
         public static string ManualMessage(string result)
         {
             if (result == "warn")
