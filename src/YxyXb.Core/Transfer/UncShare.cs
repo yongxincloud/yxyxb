@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.IO;
 using System.Runtime.InteropServices;
 using YxyXb.Contracts.Dto;
+using YxyXb.Core.Backup;
 
 namespace YxyXb.Core.Transfer
 {
@@ -124,6 +125,22 @@ namespace YxyXb.Core.Transfer
 
             var cutoff = utcNow.AddDays(-days);
             var n = 0;
+            try
+            {
+                var units = Directory.GetDirectories(settings.Path, "*.split-*", SearchOption.AllDirectories);
+                for (var i = 0; i < units.Length; i++)
+                {
+                    if (BackupUnitPurge.IsExpiredUnit(units[i], cutoff)
+                        && BackupUnitPurge.DeleteLocalUnit(units[i]))
+                    {
+                        n++;
+                    }
+                }
+            }
+            catch (IOException)
+            {
+            }
+
             // 与本机一致：递归扫子目录，避免日后改成嵌套路径漏删
             string[] files;
             try
@@ -138,6 +155,10 @@ namespace YxyXb.Core.Transfer
             for (var i = 0; i < files.Length; i++)
             {
                 var path = files[i];
+                if (path.IndexOf(".split-", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    continue;
+                }
                 if (path.IndexOf("_mssql_work", StringComparison.OrdinalIgnoreCase) >= 0)
                 {
                     continue;

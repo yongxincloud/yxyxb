@@ -107,7 +107,7 @@ namespace YxyXb.Ctyun
                 for (var i = 0; i < page.Items.Count; i++)
                 {
                     var item = page.Items[i];
-                    if (item.Key == null || !item.Key.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
+                    if (item.Key == null || !CloudObjectKeys.IsPackageObject(item.Key))
                     {
                         continue;
                     }

@@ -106,7 +106,8 @@ namespace YxyXb.Core.Transfer
                     continue;
                 }
 
-                if (!name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
+                if (!name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase)
+                    && !name.EndsWith(".manifest.json", StringComparison.OrdinalIgnoreCase))
                 {
                     continue;
                 }

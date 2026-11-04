@@ -267,7 +267,7 @@ namespace YxyXb.Baidu
                     }
 
                     // 只删过期 zip 文件，其它文件类型一律保留
-                    if (!item.path.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
+                    if (!CloudObjectKeys.IsPackageObject(item.path))
                     {
                         continue;
                     }

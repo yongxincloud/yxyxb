@@ -14,6 +14,26 @@ namespace YxyXb.Core.Backup
 
             var cutoff = utcNow.AddDays(-days);
             var n = 0;
+            try
+            {
+                var units = Directory.GetDirectories(bakRoot, "*.split-*", SearchOption.AllDirectories);
+                Array.Sort(units, delegate(string a, string b)
+                {
+                    return b.Length.CompareTo(a.Length);
+                });
+                for (var i = 0; i < units.Length; i++)
+                {
+                    if (BackupUnitPurge.IsExpiredUnit(units[i], cutoff)
+                        && BackupUnitPurge.DeleteLocalUnit(units[i]))
+                    {
+                        n++;
+                    }
+                }
+            }
+            catch (IOException)
+            {
+            }
+
             string[] files;
             try
             {
@@ -27,6 +47,10 @@ namespace YxyXb.Core.Backup
             for (var i = 0; i < files.Length; i++)
             {
                 var path = files[i];
+                if (path.IndexOf(".split-", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    continue;
+                }
                 if (path.IndexOf("_mssql_work", StringComparison.OrdinalIgnoreCase) >= 0)
                 {
                     continue;

@@ -158,7 +158,7 @@ namespace YxyXb.Qiniu
                     }
 
                     // 只删过期 zip；不以「目录前缀」为删除对象
-                    if (!item.key.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
+                    if (!CloudObjectKeys.IsPackageObject(item.key))
                     {
                         continue;
                     }

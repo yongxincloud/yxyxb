@@ -24,6 +24,23 @@ namespace YxyXb.Contracts.Cloud
             return "/apps/" + folder + "/" + key;
         }
 
+        public static bool IsPackageObject(string key)
+        {
+            if (string.IsNullOrEmpty(key))
+            {
+                return false;
+            }
+
+            return key.EndsWith(".zip", System.StringComparison.OrdinalIgnoreCase)
+                || key.EndsWith(".manifest.json", System.StringComparison.OrdinalIgnoreCase);
+        }
+
+        public static bool IsManifest(string key)
+        {
+            return !string.IsNullOrEmpty(key)
+                && key.EndsWith(".manifest.json", System.StringComparison.OrdinalIgnoreCase);
+        }
+
         private static string Safe(string text)
         {
             var chars = Path.GetInvalidFileNameChars();
