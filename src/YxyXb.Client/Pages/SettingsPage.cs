@@ -168,6 +168,7 @@ namespace YxyXb.Client.Pages
             _nameDirKind = NameCheck("备份类型（文件备份 / 库备份）");
             _nameDirInstance = NameCheck("实例名（仅数据库任务）");
             _nameDirTask = NameCheck("任务名");
+            ApplyTooltips();
 
             tabs.Items.Add(new TabItem { Header = "备份存储", Content = StorageTab() });
             tabs.Items.Add(new TabItem { Header = "备份命名", Content = NamingTab() });
@@ -178,6 +179,61 @@ namespace YxyXb.Client.Pages
             tabs.Items.Add(new TabItem { Header = "综合设置", Content = GeneralTab() });
             Content = tabs;
             Loaded += delegate { Load(); };
+        }
+
+        private void ApplyTooltips()
+        {
+            UiHelp.Tip(_nameFileSid, "在备份文件名中加入客户标识，便于区分不同客户的数据。");
+            UiHelp.Tip(_nameDirSid, "在备份目录层级中加入客户标识，便于按客户归档。");
+            UiHelp.Tip(_bak, "备份包、分卷和清单写入此目录。目录必须已存在，不能与源文件夹相同或互相包含。");
+            UiHelp.Tip(_zipLevel, "ZIP 压缩等级 0–9。0 最快且不压缩，9 体积最小但耗时最长。");
+            UiHelp.Tip(_partSize, "全局单个分卷上限，单位 GiB。任务中的分卷上限填 0 时使用此值。");
+            UiHelp.Tip(_zipPwd, "可选 ZIP 密码。密码保存在本机加密配置中，不会写入日志。");
+            UiHelp.Tip(_softwareId, "客户标识，用于生成默认文件名和云端对象前缀。自动删除只会处理该前缀下的对象。");
+            UiHelp.Tip(_startWin, "登录 Windows 后自动启动客户端。");
+            UiHelp.Tip(_tray, "关闭主窗口时隐藏到系统托盘，任务引擎继续运行。");
+            UiHelp.Tip(_lockPwd, "本机界面锁定密码。留空表示下次打开无需输入密码。");
+            UiHelp.Tip(_logRetain, "超过指定天数的操作日志会被自动清理；不会删除备份包。");
+            UiHelp.Tip(_theme, "选择客户端界面主题，保存后立即应用。");
+            UiHelp.Tip(_uncPath, "网络共享目录，建议填写 \\\\服务器\\共享\\路径。");
+            UiHelp.Tip(_uncDomain, "访问共享所需的域，可留空。");
+            UiHelp.Tip(_uncUser, "访问共享所需的用户名，可留空以使用当前 Windows 身份。");
+            UiHelp.Tip(_uncPwd, "共享密码，保存在本机加密配置中。");
+            UiHelp.Tip(_ftpHost, "FTP 服务器主机名或 IP 地址。");
+            UiHelp.Tip(_ftpPort, "FTP 端口，常用 21。");
+            UiHelp.Tip(_ftpUser, "FTP 登录用户名。");
+            UiHelp.Tip(_ftpPwd, "FTP 密码，保存在本机加密配置中。");
+            UiHelp.Tip(_ftpDir, "FTP 上传目录。使用 / 表示服务器默认根目录。");
+            UiHelp.Tip(_ftpPassive, "推荐开启。服务器位于防火墙或 NAT 后通常需要被动模式。");
+            UiHelp.Tip(_smtpHost, "发送任务通知邮件的 SMTP 服务器地址。");
+            UiHelp.Tip(_smtpPort, "SMTP 端口，常用 25、465 或 587。");
+            UiHelp.Tip(_smtpSsl, "服务器要求加密连接时勾选 SSL/TLS。");
+            UiHelp.Tip(_smtpUser, "SMTP 登录用户名，可留空。");
+            UiHelp.Tip(_smtpPwd, "SMTP 密码或授权码，保存在本机加密配置中。");
+            UiHelp.Tip(_smtpFrom, "通知邮件的发件人地址。");
+            UiHelp.Tip(_smtpTo, "接收任务通知的邮箱，多个收件人的支持方式以 SMTP 服务器要求为准。");
+            UiHelp.Tip(_smtpSubject, "邮件标题模板。可插入任务、结果、时间和运行统计变量。");
+            UiHelp.Tip(_smtpBody, "邮件正文模板。支持 {任务}、{结果}、{时间}、{详情}、{客户标识}、{文件统计}、{包统计}、{大小统计}。");
+            UiHelp.Tip(_smtpFooter, "追加到邮件正文末尾的签名或固定说明。");
+            UiHelp.Tip(_sendAfterTask, "任务完成后按下方条件发送邮件。");
+            UiHelp.Tip(_sendWhen, "选择仅失败、仅成功或所有任务都发送邮件。");
+            UiHelp.Tip(_purgeLocal, "删除超过保留天数、且属于完整备份单元的本机文件。");
+            UiHelp.Tip(_purgeNetwork, "删除网络共享中超过保留天数的完整备份单元。");
+            UiHelp.Tip(_purgeFtp, "删除 FTP 中超过保留天数的备份包。");
+            UiHelp.Tip(_purgeQiniu, "删除七牛云本产品前缀下超过保留天数的完整备份单元。");
+            UiHelp.Tip(_purgeBaidu, "删除百度网盘本产品目录下超过保留天数的完整备份单元。");
+            UiHelp.Tip(_purgeAliyun, "删除阿里云本产品前缀下超过保留天数的完整备份单元。");
+            UiHelp.Tip(_purgeTencent, "删除腾讯云本产品前缀下超过保留天数的完整备份单元。");
+            UiHelp.Tip(_purgeCtyun, "删除天翼云本产品前缀下超过保留天数的完整备份单元。");
+            UiHelp.Tip(_retainLocal, "本机备份保留天数。普通单包逐文件判断，分卷包要求整组都过期。");
+            UiHelp.Tip(_retainNetwork, "网络共享备份保留天数。");
+            UiHelp.Tip(_retainFtp, "FTP 备份保留天数。");
+            UiHelp.Tip(_retainQiniu, "七牛云备份保留天数。");
+            UiHelp.Tip(_retainBaidu, "百度网盘备份保留天数。");
+            UiHelp.Tip(_retainAliyun, "阿里云备份保留天数。");
+            UiHelp.Tip(_retainTencent, "腾讯云备份保留天数。");
+            UiHelp.Tip(_retainCtyun, "天翼云备份保留天数。");
+            UiHelp.Tip(_purgeTime, "每天到达此时间后执行一次自动删除检查。");
         }
 
         private UIElement StorageTab()
@@ -768,6 +824,26 @@ namespace YxyXb.Client.Pages
         private CheckBox NameCheck(string text)
         {
             var box = new CheckBox { Content = text, Margin = new Thickness(0, 4, 0, 0) };
+            if (text == "时间")
+            {
+                UiHelp.Tip(box, "在名称中加入备份开始时间，避免同名覆盖。");
+            }
+            else if (text == "库名（仅数据库任务）")
+            {
+                UiHelp.Tip(box, "数据库任务把库名写入 ZIP 文件名。");
+            }
+            else if (text == "实例名（仅数据库任务）")
+            {
+                UiHelp.Tip(box, "数据库任务按实例名建立子目录。");
+            }
+            else if (text == "备份类型（文件备份 / 库备份）")
+            {
+                UiHelp.Tip(box, "在备份目录中区分文件备份和数据库备份。");
+            }
+            else if (text == "任务名")
+            {
+                UiHelp.Tip(box, "把任务名称写入文件名或子目录，便于区分不同任务。");
+            }
             box.Checked += delegate { RefreshPreview(); };
             box.Unchecked += delegate { RefreshPreview(); };
             return box;

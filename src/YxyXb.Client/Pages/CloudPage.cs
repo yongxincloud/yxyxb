@@ -95,6 +95,7 @@ namespace YxyXb.Client.Pages
             _authQrBtn = new Button { Content = "扫码授权", Width = 96, Height = 28, Margin = new Thickness(0, 0, 8, 0) };
             _authPwdBtn = new Button { Content = "帐号密码", Width = 96, Height = 28, Margin = new Thickness(0, 0, 8, 0) };
             _authLogoutBtn = new Button { Content = "注销", Width = 72, Height = 28, Visibility = Visibility.Collapsed };
+            ApplyTooltips();
             _authQrBtn.Click += delegate { StartAuth(true); };
             _authPwdBtn.Click += delegate { StartAuth(false); };
             _authLogoutBtn.Click += LogoutBaidu_OnClick;
@@ -164,6 +165,26 @@ namespace YxyXb.Client.Pages
             root.Children.Add(split);
             Content = root;
             _list.SelectedIndex = 0;
+        }
+
+        private void ApplyTooltips()
+        {
+            UiHelp.Tip(_enabled, "启用后，任务列表才会允许选择该云服务商。");
+            UiHelp.Tip(_bucket, "七牛云空间名。必须已在当前账号中创建。");
+            UiHelp.Tip(_ak, "七牛云 AccessKey。凭据只保存在本机。");
+            UiHelp.Tip(_sk, "七牛云 SecretKey。留空保存表示沿用已有密钥。");
+            UiHelp.Tip(_zone, "七牛空间所在区域，选错会导致上传地址不正确。");
+            UiHelp.Tip(_minKbps, "上行限速，单位 KB/s。0 表示不限；会影响云、FTP 和共享上传。");
+            UiHelp.Tip(_maxKbps, "下行限速，单位 KB/s。0 表示不限；会影响 FTP 源下载。");
+            UiHelp.Tip(_parallel, "云上传并行分片数，可填 1 或 2。建议保持 1 以降低断线风险。");
+            UiHelp.Tip(_objectBucket, "对象存储桶名。腾讯云桶名通常包含 APPID。");
+            UiHelp.Tip(_objectAk, "对象存储 AccessKey 或 SecretId。凭据只保存在本机。");
+            UiHelp.Tip(_objectSk, "对象存储 SecretKey。留空保存表示沿用已有密钥。");
+            UiHelp.Tip(_objectRegion, "选择桶所在地域；选择自定义 Endpoint 时可手动填写地址。");
+            UiHelp.Tip(_objectEndpoint, "服务商控制台提供的公网 Endpoint；天翼云必须填写。");
+            UiHelp.Tip(_authQrBtn, "打开百度授权窗口并使用二维码登录。");
+            UiHelp.Tip(_authPwdBtn, "打开百度授权窗口并使用帐号和密码登录。");
+            UiHelp.Tip(_authLogoutBtn, "清除本机保存的百度授权，以便更换账号。");
         }
 
         private bool IsQiniu()

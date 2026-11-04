@@ -48,8 +48,26 @@ namespace YxyXb.Client.Pages
             tabs.Items.Add(new TabItem { Header = "Oracle（后续）", IsEnabled = false });
             tabs.Items.Add(new TabItem { Header = "达梦（后续）", IsEnabled = false });
             tabs.Items.Add(new TabItem { Header = "PostgreSQL（后续）", IsEnabled = false });
+            ApplyTooltips();
             Content = tabs;
             Loaded += delegate { ReloadInstances(); PrefillPassword(); };
+        }
+
+        private void ApplyTooltips()
+        {
+            UiHelp.Tip(_mssqlInstances, "选择接收恢复数据的 SQL Server 实例。");
+            UiHelp.Tip(_mysqlInstances, "选择接收恢复数据的 MySQL 实例。");
+            UiHelp.Tip(_fileInput, "全部分卷和 manifest 清单必须放在同一个目录；目录内只能有一组备份。");
+            UiHelp.Tip(_fileOutput, "程序会在此目录下创建新的 restore-时间戳 子目录，不覆盖已有文件。");
+            UiHelp.Tip(_filePwd, "分卷 ZIP 设置了压缩密码时填写。");
+            UiHelp.Tip(_mssqlFile, "选择单个 ZIP/Bak，或选择包含一组 MSSQL 分卷的目录。");
+            UiHelp.Tip(_mssqlTarget, "恢复后使用的数据库名；同名库仅在勾选覆盖时才允许。");
+            UiHelp.Tip(_mssqlPwd, "分卷 ZIP 设置了压缩密码时填写。");
+            UiHelp.Tip(_mssqlReplace, "勾选后会覆盖同名数据库，原数据不可恢复。");
+            UiHelp.Tip(_mysqlFile, "选择单个 ZIP/SQL，或选择包含一组 MySQL 分卷的目录。");
+            UiHelp.Tip(_mysqlTarget, "恢复后使用的数据库名；覆盖会先删除再重建目标库。");
+            UiHelp.Tip(_mysqlPwd, "分卷 ZIP 设置了压缩密码时填写。");
+            UiHelp.Tip(_mysqlReplace, "勾选后会删除并重建同名数据库，原数据不可恢复。");
         }
 
         private UIElement BuildFile()

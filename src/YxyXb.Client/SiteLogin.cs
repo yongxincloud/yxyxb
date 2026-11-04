@@ -489,6 +489,12 @@ namespace YxyXb.Client
             panel.Children.Add(error);
             var login = new Button { Content = "登录", Height = 40, IsDefault = true, Background = BrushOf("Accent", "#0E7490"), Foreground = Brushes.White };
             panel.Children.Add(login);
+            UiHelp.Tip(passwordMode, "使用网站账号密码登录。");
+            UiHelp.Tip(codeMode, "向登录邮箱发送一次性验证码，无需输入密码。");
+            UiHelp.Tip(email, "注册和购买授权时使用的网站登录邮箱。");
+            UiHelp.Tip(password, "网站账号密码只用于本次登录，不保存在本机。");
+            UiHelp.Tip(code, "填写邮件中的一次性验证码，通常 5 分钟内有效。");
+            UiHelp.Tip(send, "向当前邮箱发送登录验证码。");
             card.Child = panel;
             dialog.Content = card;
 

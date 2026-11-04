@@ -24,22 +24,29 @@
                 <RowDefinition Height="48"/><RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
             <TextBlock Text="名称" VerticalAlignment="Center"/>
-            <TextBox x:Name="TxtName" Grid.Column="1" Margin="0,4"/>
+            <TextBox x:Name="TxtName" Grid.Column="1" Margin="0,4"
+                     ToolTip="实例显示名称，用于在任务和恢复页面中识别该 SQL Server。"/>
             <TextBlock Text="服务器" Grid.Row="1" VerticalAlignment="Center"/>
-            <TextBox x:Name="TxtServer" Grid.Row="1" Grid.Column="1" Text="localhost" Margin="0,4"/>
+            <TextBox x:Name="TxtServer" Grid.Row="1" Grid.Column="1" Text="localhost" Margin="0,4"
+                     ToolTip="SQL Server 主机名或 IP；命名实例可填写 localhost\\SQLEXPRESS。"/>
             <TextBlock Text="端口" Grid.Row="2" VerticalAlignment="Center"/>
-            <TextBox x:Name="TxtPort" Grid.Row="2" Grid.Column="1" Text="0" Margin="0,4"/>
+            <TextBox x:Name="TxtPort" Grid.Row="2" Grid.Column="1" Text="0" Margin="0,4"
+                     ToolTip="SQL Server 端口。0 表示使用服务器或实例的默认端口。"/>
             <TextBlock Text="验证" Grid.Row="3" VerticalAlignment="Center"/>
-            <ComboBox x:Name="CmbAuth" Grid.Row="3" Grid.Column="1" Margin="0,4" SelectionChanged="CmbAuth_OnChanged">
+            <ComboBox x:Name="CmbAuth" Grid.Row="3" Grid.Column="1" Margin="0,4" SelectionChanged="CmbAuth_OnChanged"
+                      ToolTip="Windows 身份使用当前 Windows 账户；SQL 账户使用数据库用户名和密码。">
                 <ComboBoxItem Content="Windows" Tag="windows" IsSelected="True"/>
                 <ComboBoxItem Content="SQL 账户" Tag="sql"/>
             </ComboBox>
             <TextBlock Text="用户名" Grid.Row="4" VerticalAlignment="Center"/>
-            <TextBox x:Name="TxtUser" Grid.Row="4" Grid.Column="1" Margin="0,4" IsEnabled="False"/>
+            <TextBox x:Name="TxtUser" Grid.Row="4" Grid.Column="1" Margin="0,4" IsEnabled="False"
+                     ToolTip="选择 SQL 账户验证后填写数据库登录名。"/>
             <TextBlock Text="密码" Grid.Row="5" VerticalAlignment="Center"/>
-            <PasswordBox x:Name="TxtPassword" Grid.Row="5" Grid.Column="1" Margin="0,4" IsEnabled="False"/>
+            <PasswordBox x:Name="TxtPassword" Grid.Row="5" Grid.Column="1" Margin="0,4" IsEnabled="False"
+                         ToolTip="SQL 账户密码，保存在本机加密配置中。"/>
             <TextBlock Text="超时(秒)" Grid.Row="6" VerticalAlignment="Center"/>
-            <TextBox x:Name="TxtTimeout" Grid.Row="6" Grid.Column="1" Text="30" Margin="0,4"/>
+            <TextBox x:Name="TxtTimeout" Grid.Row="6" Grid.Column="1" Text="30" Margin="0,4"
+                     ToolTip="连接和备份命令的超时时间，单位秒。"/>
             <TextBlock x:Name="TxtHint" Grid.Row="7" Grid.ColumnSpan="2" TextWrapping="Wrap" Margin="0,8,0,0"
                        Text="端口 0 表示默认。命名实例填 localhost\SQLEXPRESS。Oracle / MySQL / 达梦 / PostgreSQL 本期禁用。"/>
         </Grid>

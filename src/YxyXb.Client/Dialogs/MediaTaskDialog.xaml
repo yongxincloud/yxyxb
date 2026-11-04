@@ -27,37 +27,48 @@
                     <RowDefinition Height="48"/><RowDefinition Height="48"/><RowDefinition Height="48"/>
                 </Grid.RowDefinitions>
                 <TextBlock Text="名称" VerticalAlignment="Center"/>
-                <TextBox x:Name="TxtName" Grid.Column="1" Margin="0,4"/>
+                <TextBox x:Name="TxtName" Grid.Column="1" Margin="0,4"
+                         ToolTip="离线介质任务名称，用于在任务列表和日志中区分不同任务。"/>
                 <TextBlock Text="打包文件夹" Grid.Row="1" VerticalAlignment="Center"/>
                 <Grid Grid.Row="1" Grid.Column="1" Margin="0,4">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="72"/>
                     </Grid.ColumnDefinitions>
-                    <TextBox x:Name="TxtSource"/>
+                    <TextBox x:Name="TxtSource"
+                             ToolTip="要打包到离线介质的源文件夹。不能与备份目录相同或互相包含。"/>
                     <Button Grid.Column="1" Content="选择" Margin="8,0,0,0" Click="BtnBrowse_OnClick"/>
                 </Grid>
                 <TextBlock Text="目标介质" Grid.Row="2" VerticalAlignment="Center"/>
-                <ComboBox x:Name="CmbMedia" Grid.Row="2" Grid.Column="1" Margin="0,4" DisplayMemberPath="IdentityText"/>
+                <ComboBox x:Name="CmbMedia" Grid.Row="2" Grid.Column="1" Margin="0,4" DisplayMemberPath="IdentityText"
+                          ToolTip="选择已登记的移动硬盘或 U 盘。每项按序列号、磁盘签名和容量识别。"/>
                 <TextBlock Text="盘内目录" Grid.Row="3" VerticalAlignment="Center"/>
-                <TextBox x:Name="TxtFolder" Grid.Row="3" Grid.Column="1" Text="用心云循备" Margin="0,4"/>
+                <TextBox x:Name="TxtFolder" Grid.Row="3" Grid.Column="1" Text="用心云循备" Margin="0,4"
+                         ToolTip="在目标介质内创建的子目录名称。"/>
                 <TextBlock Text="任务开始时间" Grid.Row="4" VerticalAlignment="Center"/>
-                <md:TimePicker x:Name="TmWinStart" Grid.Row="4" Grid.Column="1" Is24Hours="True" WithSeconds="False" Width="140" HorizontalAlignment="Left" Margin="0,4"/>
+                <md:TimePicker x:Name="TmWinStart" Grid.Row="4" Grid.Column="1" Is24Hours="True" WithSeconds="False" Width="140" HorizontalAlignment="Left" Margin="0,4"
+                               ToolTip="到该时间后检查介质并开始离线任务。"/>
                 <TextBlock Text="介质离线时间" Grid.Row="5" VerticalAlignment="Center"/>
-                <md:TimePicker x:Name="TmWinEnd" Grid.Row="5" Grid.Column="1" Is24Hours="True" WithSeconds="False" Width="140" HorizontalAlignment="Left" Margin="0,4"/>
+                <md:TimePicker x:Name="TmWinEnd" Grid.Row="5" Grid.Column="1" Is24Hours="True" WithSeconds="False" Width="140" HorizontalAlignment="Left" Margin="0,4"
+                               ToolTip="到该时间仍在线时再次执行隔离；跨零点按当天时间处理。"/>
                 <TextBlock Text="等待就位(分)" Grid.Row="6" VerticalAlignment="Center"/>
-                <TextBox x:Name="TxtWait" Grid.Row="6" Grid.Column="1" Text="30" Margin="0,4"/>
+                <TextBox x:Name="TxtWait" Grid.Row="6" Grid.Column="1" Text="30" Margin="0,4"
+                         ToolTip="任务开始后若介质未接入，最多等待多少分钟。"/>
                 <TextBlock Text="保留版本 M" Grid.Row="7" VerticalAlignment="Center"/>
-                <TextBox x:Name="TxtM" Grid.Row="7" Grid.Column="1" Text="7" Margin="0,4"/>
+                <TextBox x:Name="TxtM" Grid.Row="7" Grid.Column="1" Text="7" Margin="0,4"
+                         ToolTip="目标盘上最多保留最近多少个备份版本。"/>
                 <TextBlock Text="保留天数 D" Grid.Row="8" VerticalAlignment="Center"/>
-                <TextBox x:Name="TxtD" Grid.Row="8" Grid.Column="1" Text="7" Margin="0,4"/>
+                <TextBox x:Name="TxtD" Grid.Row="8" Grid.Column="1" Text="7" Margin="0,4"
+                         ToolTip="目标盘上最多保留多少天内的备份版本。"/>
                 <TextBlock Text="冲突" Grid.Row="9" VerticalAlignment="Center"/>
-                <ComboBox x:Name="CmbConflict" Grid.Row="9" Grid.Column="1" Margin="0,4">
+                <ComboBox x:Name="CmbConflict" Grid.Row="9" Grid.Column="1" Margin="0,4"
+                          ToolTip="目标目录存在同名文件时选择覆盖或跳过。">
                     <ComboBoxItem Content="覆盖" Tag="overwrite" IsSelected="True"/>
                     <ComboBoxItem Content="跳过" Tag="skip"/>
                 </ComboBox>
                 <TextBlock Text="周期" Grid.Row="10" VerticalAlignment="Center"/>
-                <ComboBox x:Name="CmbCycle" Grid.Row="10" Grid.Column="1" Margin="0,4">
+                <ComboBox x:Name="CmbCycle" Grid.Row="10" Grid.Column="1" Margin="0,4"
+                          ToolTip="离线介质任务的重复周期。">
                     <ComboBoxItem Content="分钟" Tag="minute"/>
                     <ComboBoxItem Content="小时" Tag="hour"/>
                     <ComboBoxItem Content="天" Tag="day" IsSelected="True"/>
@@ -66,16 +77,21 @@
                     <ComboBoxItem Content="仅一次" Tag="once"/>
                 </ComboBox>
                 <TextBlock Text="间隔" Grid.Row="11" VerticalAlignment="Center"/>
-                <TextBox x:Name="TxtInterval" Grid.Row="11" Grid.Column="1" Text="1" Margin="0,4"/>
+                <TextBox x:Name="TxtInterval" Grid.Row="11" Grid.Column="1" Text="1" Margin="0,4"
+                         ToolTip="周期间隔，必须为大于等于 1 的整数。"/>
                 <TextBlock Text="下次执行" Grid.Row="12" VerticalAlignment="Center"/>
                 <StackPanel Grid.Row="12" Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                    <DatePicker x:Name="DtNext" Width="180" Margin="0,4,8,4" FirstDayOfWeek="Monday" Language="zh-CN"/>
-                    <md:TimePicker x:Name="TmNext" Width="140" Is24Hours="True" WithSeconds="False" Margin="0,4"/>
+                    <DatePicker x:Name="DtNext" Width="180" Margin="0,4,8,4" FirstDayOfWeek="Monday" Language="zh-CN"
+                                ToolTip="下一次计划执行的日期。"/>
+                    <md:TimePicker x:Name="TmNext" Width="140" Is24Hours="True" WithSeconds="False" Margin="0,4"
+                                   ToolTip="下一次计划执行的时间。"/>
                 </StackPanel>
                 <TextBlock Text="隔离" Grid.Row="13" VerticalAlignment="Center"/>
                 <StackPanel Grid.Row="13" Grid.Column="1" Orientation="Horizontal">
-                    <CheckBox x:Name="ChkIsolate" Content="完成后立即离线" IsChecked="True" VerticalAlignment="Center" Margin="0,0,12,0"/>
-                    <ComboBox x:Name="CmbLevel" Width="120" VerticalAlignment="Center">
+                    <CheckBox x:Name="ChkIsolate" Content="完成后立即离线" IsChecked="True" VerticalAlignment="Center" Margin="0,0,12,0"
+                              ToolTip="复制完成后立即执行离线，不等“介质离线时间”。"/>
+                    <ComboBox x:Name="CmbLevel" Width="120" VerticalAlignment="Center"
+                              ToolTip="隔离级别越高越深。L2 卷离线是默认；L4 会尝试弹出设备。">
                         <ComboBoxItem Content="L1 去盘符" Tag="1"/>
                         <ComboBoxItem Content="L2 卷离线" Tag="2" IsSelected="True"/>
                         <ComboBoxItem Content="L3 整盘离线" Tag="3"/>
@@ -83,8 +99,10 @@
                     </ComboBox>
                 </StackPanel>
                 <StackPanel Grid.Row="14" Grid.Column="1" Orientation="Horizontal">
-                    <CheckBox x:Name="ChkEnabled" Content="启用" IsChecked="True" VerticalAlignment="Center" Margin="0,0,16,0"/>
-                    <CheckBox x:Name="ChkHash" Content="巡检使用 SHA-256（默认关）" VerticalAlignment="Center"/>
+                    <CheckBox x:Name="ChkEnabled" Content="启用" IsChecked="True" VerticalAlignment="Center" Margin="0,0,16,0"
+                              ToolTip="停用后该任务不会按计划执行。"/>
+                    <CheckBox x:Name="ChkHash" Content="巡检使用 SHA-256（默认关）" VerticalAlignment="Center"
+                              ToolTip="巡检时计算文件 SHA-256。更可靠，但会明显增加磁盘读取时间。"/>
                 </StackPanel>
             </Grid>
         </ScrollViewer>

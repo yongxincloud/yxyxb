@@ -31,27 +31,33 @@
                         <RowDefinition Height="48"/>
                     </Grid.RowDefinitions>
                     <TextBlock Text="名称" VerticalAlignment="Center"/>
-                    <TextBox x:Name="TxtName" Grid.Column="1" Grid.ColumnSpan="2" Margin="0,4"/>
+                    <TextBox x:Name="TxtName" Grid.Column="1" Grid.ColumnSpan="2" Margin="0,4"
+                             ToolTip="任务名称，用于在任务列表和日志中区分不同备份任务。"/>
                     <TextBlock Text="源" Grid.Row="1" VerticalAlignment="Center"/>
-                    <ComboBox x:Name="CmbSource" Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Margin="0,4" SelectionChanged="CmbSource_OnChanged">
+                    <ComboBox x:Name="CmbSource" Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Margin="0,4" SelectionChanged="CmbSource_OnChanged"
+                              ToolTip="选择源类型：本地文件夹、UNC 共享目录或 FTP 远程目录。">
                         <ComboBoxItem Content="本地" Tag="local" IsSelected="True"/>
                         <ComboBoxItem Content="UNC" Tag="unc"/>
                         <ComboBoxItem Content="FTP" Tag="ftp"/>
                     </ComboBox>
                     <TextBlock Text="文件夹" Grid.Row="2" VerticalAlignment="Center"/>
-                    <TextBox x:Name="TxtPath" Grid.Row="2" Grid.Column="1" Margin="0,4"/>
+                    <TextBox x:Name="TxtPath" Grid.Row="2" Grid.Column="1" Margin="0,4"
+                             ToolTip="本地填文件夹路径；UNC 填共享目录；FTP 填服务器上的远程目录。"/>
                     <Button x:Name="BtnBrowse" Grid.Row="2" Grid.Column="2" Content="选择" Margin="8,4,0,4" Click="BtnBrowse_OnClick"/>
                     <TextBlock Text="重计时(分)" Grid.Row="3" VerticalAlignment="Center"/>
-                    <TextBox x:Name="TxtRetry" Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="2" Text="30" Margin="0,4"/>
+                    <TextBox x:Name="TxtRetry" Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="2" Text="30" Margin="0,4"
+                             ToolTip="失败后等待多少分钟再重试。"/>
                     <TextBlock Text="排序" Grid.Row="4" VerticalAlignment="Center"/>
-                    <TextBox x:Name="TxtSort" Grid.Row="4" Grid.Column="1" Grid.ColumnSpan="2" Text="0" Margin="0,4"/>
+                    <TextBox x:Name="TxtSort" Grid.Row="4" Grid.Column="1" Grid.ColumnSpan="2" Text="0" Margin="0,4"
+                             ToolTip="任务列表排序值，越小越靠前。"/>
                     <TextBlock Text="分卷上限(GB)" Grid.Row="5" VerticalAlignment="Center"
                                ToolTip="0 表示使用系统设置中的分卷大小"
                                ToolTipService.InitialShowDelay="200" ToolTipService.ShowDuration="10000"/>
                     <TextBox x:Name="TxtPartSize" Grid.Row="5" Grid.Column="1" Grid.ColumnSpan="2" Text="0" Margin="0,4"
                              ToolTip="0 表示使用系统设置中的分卷大小"
                              ToolTipService.InitialShowDelay="200" ToolTipService.ShowDuration="10000"/>
-                    <CheckBox x:Name="ChkEnabled" Grid.Row="6" Grid.Column="0" Grid.ColumnSpan="3" Content="启用" IsChecked="True" VerticalAlignment="Center"/>
+                    <CheckBox x:Name="ChkEnabled" Grid.Row="6" Grid.Column="0" Grid.ColumnSpan="3" Content="启用" IsChecked="True" VerticalAlignment="Center"
+                              ToolTip="停用后该任务不会按计划执行，也不能立即执行。"/>
                 </Grid>
             </TabItem>
             <TabItem Header="计划周期">
@@ -66,7 +72,8 @@
                         <RowDefinition Height="48"/>
                     </Grid.RowDefinitions>
                     <TextBlock Text="周期" VerticalAlignment="Center"/>
-                    <ComboBox x:Name="CmbCycle" Grid.Column="1" Margin="0,4">
+                    <ComboBox x:Name="CmbCycle" Grid.Column="1" Margin="0,4"
+                              ToolTip="选择任务重复周期。选择“仅一次”时任务成功后会停用。">
                         <ComboBoxItem Content="分钟" Tag="minute"/>
                         <ComboBoxItem Content="小时" Tag="hour"/>
                         <ComboBoxItem Content="天" Tag="day" IsSelected="True"/>
@@ -75,24 +82,34 @@
                         <ComboBoxItem Content="仅一次" Tag="once"/>
                     </ComboBox>
                     <TextBlock Text="间隔" Grid.Row="1" VerticalAlignment="Center"/>
-                    <TextBox x:Name="TxtInterval" Grid.Row="1" Grid.Column="1" Text="1" Margin="0,4"/>
+                    <TextBox x:Name="TxtInterval" Grid.Row="1" Grid.Column="1" Text="1" Margin="0,4"
+                             ToolTip="周期间隔，必须为大于等于 1 的整数。"/>
                     <TextBlock Text="下次执行" Grid.Row="2" VerticalAlignment="Center"/>
                     <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                        <DatePicker x:Name="DtNext" Width="180" Margin="0,4,8,4" FirstDayOfWeek="Monday" Language="zh-CN"/>
-                        <md:TimePicker x:Name="TmNext" Width="140" Is24Hours="True" WithSeconds="False" Margin="0,4"/>
+                        <DatePicker x:Name="DtNext" Width="180" Margin="0,4,8,4" FirstDayOfWeek="Monday" Language="zh-CN"
+                                    ToolTip="任务第一次或下一次计划执行的日期。"/>
+                        <md:TimePicker x:Name="TmNext" Width="140" Is24Hours="True" WithSeconds="False" Margin="0,4"
+                                       ToolTip="任务第一次或下一次计划执行的时间。"/>
                     </StackPanel>
                 </Grid>
             </TabItem>
             <TabItem Header="任务设置">
                 <StackPanel Margin="12">
-                    <CheckBox x:Name="ChkNetwork" Content="网络传输（UNC）" Margin="0,6"/>
-                    <CheckBox x:Name="ChkFtp" Content="FTP 上传" Margin="0,6"/>
-                    <CheckBox x:Name="ChkCloud" Content="云上传" Margin="0,6"/>
-                    <ComboBox x:Name="CmbCloud" Margin="0,0,0,6" Width="200" HorizontalAlignment="Left"/>
-                    <CheckBox x:Name="ChkDelete" Content="立即删本次本地包（默认不勾）" Margin="0,6" Checked="ChkDelete_OnChecked"/>
-                    <CheckBox x:Name="ChkEmail" Content="完成后发邮件" Margin="0,6"/>
+                    <CheckBox x:Name="ChkNetwork" Content="网络传输（UNC）" Margin="0,6"
+                              ToolTip="把备份单元复制到“设置 → 网络传输”配置的共享目录。"/>
+                    <CheckBox x:Name="ChkFtp" Content="FTP 上传" Margin="0,6"
+                              ToolTip="把备份单元上传到“设置 → FTP”配置的服务器。"/>
+                    <CheckBox x:Name="ChkCloud" Content="云上传" Margin="0,6"
+                              ToolTip="把备份单元上传到当前已配置的云服务商。"/>
+                    <ComboBox x:Name="CmbCloud" Margin="0,0,0,6" Width="200" HorizontalAlignment="Left"
+                              ToolTip="选择本任务使用的云服务商。"/>
+                    <CheckBox x:Name="ChkDelete" Content="立即删本次本地包（默认不勾）" Margin="0,6" Checked="ChkDelete_OnChecked"
+                              ToolTip="所有启用通道和邮件都成功后，删除本次本机备份单元。"/>
+                    <CheckBox x:Name="ChkEmail" Content="完成后发邮件" Margin="0,6"
+                              ToolTip="按“设置 → EMAIL”中的发送条件和模板发送任务结果。"/>
                     <TextBlock Text="完成后运行程序" Margin="0,12,0,4"/>
-                    <TextBox x:Name="TxtPost" Height="26"/>
+                    <TextBox x:Name="TxtPost" Height="26"
+                             ToolTip="任务成功后可执行的本机程序路径；留空表示不运行。"/>
                 </StackPanel>
             </TabItem>
         </TabControl>

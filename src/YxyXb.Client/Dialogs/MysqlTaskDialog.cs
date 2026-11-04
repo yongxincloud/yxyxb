@@ -56,6 +56,7 @@ namespace YxyXb.Client.Dialogs
             _cycle.SelectedIndex = 0;
             foreach (var item in _instances) _instance.Items.Add(item);
             CloudPickerUi.Bind(_cloud, _cmbCloud, _ready);
+            ApplyTooltips();
             if (existing != null)
             {
                 _name.Text = existing.Name;
@@ -104,12 +105,13 @@ namespace YxyXb.Client.Dialogs
             panel.Children.Add(_interval);
             var partSizeLabel = Label("分卷上限（GB）");
             partSizeLabel.ToolTip = "0 表示使用系统设置中的分卷大小";
-            ToolTipService.SetInitialShowDelay(partSizeLabel, 200);
+            YxyXb.Client.UiHelp.Tip(partSizeLabel, "单个分卷的上限，单位 GB。填 0 表示使用系统设置中的分卷大小。");
             ToolTipService.SetShowDuration(partSizeLabel, 10000);
             panel.Children.Add(partSizeLabel);
             _partSize.ToolTip = "0 表示使用系统设置中的分卷大小";
             ToolTipService.SetInitialShowDelay(_partSize, 200);
             ToolTipService.SetShowDuration(_partSize, 10000);
+            YxyXb.Client.UiHelp.Tip(_partSize, "单个分卷的上限，单位 GB。填 0 表示使用系统设置中的分卷大小。");
             panel.Children.Add(_partSize);
             panel.Children.Add(Label("下次执行"));
             panel.Children.Add(DateTimePick.Combine(_nextDate, _nextTime));
@@ -125,6 +127,25 @@ namespace YxyXb.Client.Dialogs
             ok.Click += delegate { Accept(); };
             panel.Children.Add(ok);
             Content = new ScrollViewer { Content = panel };
+        }
+
+        private void ApplyTooltips()
+        {
+            YxyXb.Client.UiHelp.Tip(_name, "MySQL 备份任务名称，用于在任务列表和日志中区分不同任务。");
+            YxyXb.Client.UiHelp.Tip(_instance, "选择要备份的 MySQL 实例。");
+            YxyXb.Client.UiHelp.Tip(_scope, "选择全部用户库或指定库。指定库需要在下方输入库名。");
+            YxyXb.Client.UiHelp.Tip(_dbs, "指定库模式下填写 MySQL 库名，多个库名用逗号分隔。");
+            YxyXb.Client.UiHelp.Tip(_cycle, "选择数据库任务重复周期。");
+            YxyXb.Client.UiHelp.Tip(_interval, "周期间隔，必须为大于等于 1 的整数。");
+            YxyXb.Client.UiHelp.Tip(_partSize, "单个分卷上限，单位 GB。填 0 使用系统设置中的分卷大小。");
+            YxyXb.Client.UiHelp.Tip(_nextDate, "任务下一次计划执行的日期。");
+            YxyXb.Client.UiHelp.Tip(_nextTime, "任务下一次计划执行的时间。");
+            YxyXb.Client.UiHelp.Tip(_enabled, "停用后该任务不会按计划执行。");
+            YxyXb.Client.UiHelp.Tip(_network, "把备份单元复制到“设置 → 网络传输”配置的共享目录。");
+            YxyXb.Client.UiHelp.Tip(_ftp, "把备份单元上传到“设置 → FTP”配置的服务器。");
+            YxyXb.Client.UiHelp.Tip(_cloud, "把备份单元上传到已配置的云服务商。");
+            YxyXb.Client.UiHelp.Tip(_cmbCloud, "选择本任务使用的云服务商。");
+            YxyXb.Client.UiHelp.Tip(_email, "按“设置 → EMAIL”的条件和模板发送任务结果。");
         }
 
         private void Accept()

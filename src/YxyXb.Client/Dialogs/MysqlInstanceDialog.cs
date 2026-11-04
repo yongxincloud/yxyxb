@@ -35,6 +35,7 @@ namespace YxyXb.Client.Dialogs
             _editId = existing == null ? 0 : existing.Id;
             _existingProtected = existing == null ? null : existing.PasswordProtected;
             _hadPassword = !string.IsNullOrEmpty(_existingProtected);
+            ApplyTooltips();
             if (existing != null)
             {
                 _name.Text = existing.Name;
@@ -66,6 +67,16 @@ namespace YxyXb.Client.Dialogs
             bar.Children.Add(ok);
             panel.Children.Add(bar);
             Content = panel;
+        }
+
+        private void ApplyTooltips()
+        {
+            YxyXb.Client.UiHelp.Tip(_name, "MySQL 实例显示名称，用于在任务和恢复页面中识别该实例。");
+            YxyXb.Client.UiHelp.Tip(_server, "MySQL 主机名或 IP 地址。");
+            YxyXb.Client.UiHelp.Tip(_port, "MySQL 端口，默认 3306。");
+            YxyXb.Client.UiHelp.Tip(_user, "MySQL 登录用户名。");
+            YxyXb.Client.UiHelp.Tip(_password, "MySQL 密码，保存在本机加密配置中。");
+            YxyXb.Client.UiHelp.Tip(_timeout, "连接和数据库命令的超时时间，单位秒。");
         }
 
         private void Test()

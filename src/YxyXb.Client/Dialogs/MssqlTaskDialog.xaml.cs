@@ -135,7 +135,9 @@ namespace YxyXb.Client.Dialogs
                 var dbs = MssqlConnect.ListUserDatabases(inst);
                 for (var i = 0; i < dbs.Count; i++)
                 {
-                    LstDbs.Items.Add(new CheckBox { Content = dbs[i], IsChecked = false, Margin = new Thickness(0, 2, 0, 2) });
+                    var box = new CheckBox { Content = dbs[i], IsChecked = false, Margin = new Thickness(0, 2, 0, 2) };
+                    YxyXb.Client.UiHelp.Tip(box, "勾选后将该数据库加入指定库备份范围。系统库不会出现在此列表中。");
+                    LstDbs.Items.Add(box);
                 }
             }
             catch (Exception ex)
