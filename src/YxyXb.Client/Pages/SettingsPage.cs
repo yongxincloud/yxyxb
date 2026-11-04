@@ -215,7 +215,7 @@ namespace YxyXb.Client.Pages
             panel.Children.Add(Label("单个分卷上限（GiB，64 MiB–1 TiB）"));
             panel.Children.Add(_partSize);
             panel.Children.Add(SaveButton(SaveStorage));
-            return panel;
+            return Scroll(panel);
         }
 
         private UIElement NamingTab()
@@ -238,7 +238,7 @@ namespace YxyXb.Client.Pages
             panel.Children.Add(_nameDirTask);
             panel.Children.Add(_preview);
             panel.Children.Add(SaveButton(SaveNaming));
-            return panel;
+            return Scroll(panel);
         }
 
         private UIElement UncTab()
@@ -272,7 +272,7 @@ namespace YxyXb.Client.Pages
             bar.Children.Add(test);
             bar.Children.Add(save);
             panel.Children.Add(bar);
-            return panel;
+            return Scroll(panel);
         }
 
         private UIElement FtpTab()
@@ -309,7 +309,7 @@ namespace YxyXb.Client.Pages
             bar.Children.Add(test);
             bar.Children.Add(save);
             panel.Children.Add(bar);
-            return panel;
+            return Scroll(panel);
         }
 
         private UIElement MailTab()
@@ -402,7 +402,7 @@ namespace YxyXb.Client.Pages
             panel.Children.Add(Label("天翼云保留天数"));
             panel.Children.Add(_retainCtyun);
             panel.Children.Add(SaveButton(SavePurge));
-            return panel;
+            return Scroll(panel);
         }
 
         private UIElement GeneralTab()
@@ -433,7 +433,7 @@ namespace YxyXb.Client.Pages
                 Foreground = (System.Windows.Media.Brush)Application.Current.Resources["Muted"]
             });
             panel.Children.Add(SaveButton(SaveGeneral));
-            return panel;
+            return Scroll(panel);
         }
 
         private void Load()
@@ -783,6 +783,16 @@ namespace YxyXb.Client.Pages
             var button = new Button { Content = "保存", Width = 80, Height = 28, Margin = new Thickness(0, 12, 0, 0), HorizontalAlignment = HorizontalAlignment.Left };
             button.Click += delegate { action(); };
             return button;
+        }
+
+        private static UIElement Scroll(UIElement content)
+        {
+            return new ScrollViewer
+            {
+                VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+                HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
+                Content = content
+            };
         }
 
         private static TextBlock Hint(string text)
