@@ -76,6 +76,58 @@ namespace YxyXb.Core.Backup
             return text.Substring(text.Length - maxChars);
         }
 
+        public static int Clear(string dataDir)
+        {
+            var removed = 0;
+            var directories = new[]
+            {
+                Path.Combine(dataDir ?? "", "baidu-upload"),
+                Path.Combine(dataDir ?? "", "qiniu-upload")
+            };
+
+            lock (Gate)
+            {
+                for (var i = 0; i < directories.Length; i++)
+                {
+                    if (!Directory.Exists(directories[i]))
+                    {
+                        continue;
+                    }
+
+                    string[] files;
+                    try
+                    {
+                        files = Directory.GetFiles(directories[i], "*.log");
+                    }
+                    catch (IOException)
+                    {
+                        continue;
+                    }
+                    catch (UnauthorizedAccessException)
+                    {
+                        continue;
+                    }
+
+                    for (var j = 0; j < files.Length; j++)
+                    {
+                        try
+                        {
+                            File.Delete(files[j]);
+                            removed++;
+                        }
+                        catch (IOException)
+                        {
+                        }
+                        catch (UnauthorizedAccessException)
+                        {
+                        }
+                    }
+                }
+            }
+
+            return removed;
+        }
+
         private static void Collect(List<string> files, string dir)
         {
             if (!Directory.Exists(dir))

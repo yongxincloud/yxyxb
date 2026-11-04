@@ -60,6 +60,29 @@ namespace YxyXb.Client.Pages
                 TextWrapping = TextWrapping.Wrap,
                 Margin = new Thickness(0, 0, 0, 4)
             };
+            var fileBox = slice ? ScrollableMessage.CreateBox() : null;
+            if (fileBox != null)
+            {
+                fileBox.MinHeight = 100;
+            }
+
+            Action reloadFile = delegate
+            {
+                if (fileBox == null)
+                {
+                    return;
+                }
+
+                try
+                {
+                    var text = SliceLog.ReadRecent(AppPaths.DataDirectory, 16000);
+                    fileBox.Text = string.IsNullOrEmpty(text) ? "尚无分片日志文件。" : text;
+                }
+                catch (Exception ex)
+                {
+                    fileBox.Text = ex.Message;
+                }
+            };
             grid.SelectionChanged += delegate
             {
                 var row = grid.SelectedItem as LogRow;
@@ -96,7 +119,11 @@ namespace YxyXb.Client.Pages
                 Padding = new Thickness(12, 0, 12, 0),
                 Margin = new Thickness(0, 0, 8, 0)
             };
-            refresh.Click += delegate { reload(); };
+            refresh.Click += delegate
+            {
+                reload();
+                reloadFile();
+            };
             var clear = new Button
             {
                 Content = "清空日志",
@@ -114,22 +141,20 @@ namespace YxyXb.Client.Pages
                 if (slice)
                 {
                     LogStore.DeleteAny(boot.Db, new[] { "baidu", "qiniu", "aliyun", "tencent", "ctyun" });
+                    SliceLog.Clear(AppPaths.DataDirectory);
                 }
                 else
                 {
                     LogStore.DeleteByType(boot.Db, type);
                 }
                 reload();
+                if (fileBox != null)
+                {
+                    fileBox.Text = "";
+                }
             };
             bar.Children.Add(refresh);
             bar.Children.Add(clear);
-
-            TextBox fileBox = null;
-            if (slice)
-            {
-                fileBox = ScrollableMessage.CreateBox();
-                fileBox.MinHeight = 100;
-            }
 
             var root = new DockPanel { LastChildFill = true, Margin = new Thickness(8) };
             var bottom = new DockPanel { LastChildFill = true };
@@ -159,15 +184,7 @@ namespace YxyXb.Client.Pages
                     }
 
                     reload();
-                    try
-                    {
-                        var text = SliceLog.ReadRecent(AppPaths.DataDirectory, 16000);
-                        fileBox.Text = string.IsNullOrEmpty(text) ? "尚无分片日志文件。" : text;
-                    }
-                    catch (Exception ex)
-                    {
-                        fileBox.Text = ex.Message;
-                    }
+                    reloadFile();
                 };
                 timer.Tick += delegate { pulse(); };
                 root.Loaded += delegate { timer.Start(); pulse(); };
