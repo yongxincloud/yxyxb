@@ -102,11 +102,10 @@ namespace YxyXb.Client.Dialogs
             panel.Children.Add(_cycle);
             panel.Children.Add(Label("间隔"));
             panel.Children.Add(_interval);
-            panel.Children.Add(Label("分卷上限（GB，0=跟随全局）"));
+            panel.Children.Add(Label("分卷上限（GB，0=使用系统设置）"));
             panel.Children.Add(_partSize);
             panel.Children.Add(Label("下次执行"));
             panel.Children.Add(DateTimePick.Combine(_nextDate, _nextTime));
-            panel.Children.Add(_enabled);
             var flags = new WrapPanel();
             flags.Children.Add(_network);
             flags.Children.Add(_ftp);
@@ -114,6 +113,7 @@ namespace YxyXb.Client.Dialogs
             panel.Children.Add(flags);
             panel.Children.Add(_cloud);
             panel.Children.Add(_cmbCloud);
+            panel.Children.Add(_enabled);
             var ok = new Button { Content = "确定", Width = 80, IsDefault = true, HorizontalAlignment = HorizontalAlignment.Left };
             ok.Click += delegate { Accept(); };
             panel.Children.Add(ok);

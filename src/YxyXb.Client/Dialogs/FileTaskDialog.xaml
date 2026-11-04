@@ -45,9 +45,9 @@
                     <TextBox x:Name="TxtRetry" Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="2" Text="30" Margin="0,4"/>
                     <TextBlock Text="排序" Grid.Row="4" VerticalAlignment="Center"/>
                     <TextBox x:Name="TxtSort" Grid.Row="4" Grid.Column="1" Grid.ColumnSpan="2" Text="0" Margin="0,4"/>
-                    <CheckBox x:Name="ChkEnabled" Grid.Row="5" Grid.Column="1" Content="启用" IsChecked="True" VerticalAlignment="Center"/>
-                    <TextBlock Text="分卷上限(GB)" Grid.Row="6" VerticalAlignment="Center"/>
-                    <TextBox x:Name="TxtPartSize" Grid.Row="6" Grid.Column="1" Grid.ColumnSpan="2" Text="0" Margin="0,4"/>
+                    <TextBlock Text="分卷上限(GB，0=使用系统设置)" Grid.Row="5" VerticalAlignment="Center"/>
+                    <TextBox x:Name="TxtPartSize" Grid.Row="5" Grid.Column="1" Grid.ColumnSpan="2" Text="0" Margin="0,4"/>
+                    <CheckBox x:Name="ChkEnabled" Grid.Row="6" Grid.Column="0" Grid.ColumnSpan="3" Content="启用" IsChecked="True" VerticalAlignment="Center"/>
                 </Grid>
             </TabItem>
             <TabItem Header="计划周期">

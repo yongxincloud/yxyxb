@@ -40,9 +40,9 @@
                     <ScrollViewer Grid.Row="4" Grid.Column="1" Margin="0,4" MinHeight="160" VerticalScrollBarVisibility="Auto">
                         <ItemsControl x:Name="LstDbs"/>
                     </ScrollViewer>
-                    <CheckBox x:Name="ChkEnabled" Grid.Row="5" Grid.Column="1" Content="启用" IsChecked="True" VerticalAlignment="Center"/>
-                    <TextBlock Text="分卷上限(GB)" Grid.Row="6" Grid.Column="0" VerticalAlignment="Center"/>
-                    <TextBox x:Name="TxtPartSize" Grid.Row="6" Grid.Column="1" Text="0" Margin="0,4"/>
+                    <TextBlock Text="分卷上限(GB，0=使用系统设置)" Grid.Row="5" Grid.Column="0" VerticalAlignment="Center"/>
+                    <TextBox x:Name="TxtPartSize" Grid.Row="5" Grid.Column="1" Text="0" Margin="0,4"/>
+                    <CheckBox x:Name="ChkEnabled" Grid.Row="6" Grid.Column="0" Grid.ColumnSpan="2" Content="启用" IsChecked="True" VerticalAlignment="Center"/>
                 </Grid>
             </TabItem>
             <TabItem Header="计划周期">
