@@ -12,6 +12,8 @@ namespace YxyXb.Contracts.Dto
 
         public int ZipLevel { get; set; }
 
+        public long PartSizeBytes { get; set; }
+
         public int UploadMinKbps { get; set; }
 
         public int UploadMaxKbps { get; set; }

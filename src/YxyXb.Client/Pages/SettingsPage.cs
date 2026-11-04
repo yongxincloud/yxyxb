@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
@@ -19,6 +20,7 @@ namespace YxyXb.Client.Pages
         private readonly HostBootstrap _boot;
         private readonly TextBox _bak;
         private readonly TextBox _zipLevel;
+        private readonly TextBox _partSize;
         private readonly PasswordBox _zipPwd;
         private readonly TextBlock _preview;
         private readonly TextBox _softwareId;
@@ -82,6 +84,7 @@ namespace YxyXb.Client.Pages
             var tabs = new TabControl();
             _bak = new TextBox();
             _zipLevel = new TextBox { Text = "5" };
+            _partSize = new TextBox { Text = "4" };
             _zipPwd = new PasswordBox();
             _preview = new TextBlock { TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 8, 0, 0) };
             _softwareId = new TextBox();
@@ -209,6 +212,8 @@ namespace YxyXb.Client.Pages
             panel.Children.Add(_zipLevel);
             panel.Children.Add(Label("压缩密码（可空；不进日志）"));
             panel.Children.Add(_zipPwd);
+            panel.Children.Add(Label("单个分卷上限（GiB，64 MiB–1 TiB）"));
+            panel.Children.Add(_partSize);
             panel.Children.Add(SaveButton(SaveStorage));
             return panel;
         }
@@ -436,6 +441,8 @@ namespace YxyXb.Client.Pages
             var s = SettingsStore.Get(_boot.Db);
             _bak.Text = AppPaths.DisplayBakPath(s.BakPath);
             _zipLevel.Text = s.ZipLevel.ToString();
+            _partSize.Text = ((double)PackageLimits.NormalizeGlobal(s.PartSizeBytes) / 1073741824d)
+                .ToString("0.###", CultureInfo.InvariantCulture);
             _zipPwd.Password = s.ZipPassword ?? "";
             _softwareId.Text = s.SoftwareId;
             ApplyNameFlags(s.NameFlags == 0 ? NameParts.DefaultFlags : s.NameFlags);
@@ -504,6 +511,13 @@ namespace YxyXb.Client.Pages
 
             int level;
             s.ZipLevel = int.TryParse(_zipLevel.Text, out level) ? level : 5;
+            double gib;
+            if (!double.TryParse((_partSize.Text ?? "").Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out gib) || gib <= 0)
+            {
+                MessageBox.Show(Window.GetWindow(this), "分卷上限必须是大于 0 的数字。", "备份存储", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+            s.PartSizeBytes = PackageLimits.NormalizeGlobal((long)Math.Round(gib * 1073741824d));
             s.ZipPassword = _zipPwd.Password;
             SettingsStore.Save(_boot.Db, s);
             RefreshPreview();

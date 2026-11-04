@@ -6,11 +6,30 @@ using YxyXb.Core.Security;
 
 namespace YxyXb.Core.Backup
 {
+    public sealed class PendingUploadFile
+    {
+        public string LocalPath { get; set; }
+
+        public bool NetworkOk { get; set; }
+
+        public bool FtpOk { get; set; }
+
+        public bool CloudOk { get; set; }
+    }
+
     public sealed class PendingItem
     {
         public string Key { get; set; }
 
         public string ZipPath { get; set; }
+
+        public string PackageDirectory { get; set; }
+
+        public string ManifestPath { get; set; }
+
+        public PendingUploadFile[] UploadFiles { get; set; }
+
+        public long ArchiveBytes { get; set; }
 
         public string Fingerprint { get; set; }
 
@@ -36,6 +55,8 @@ namespace YxyXb.Core.Backup
         public string[] DbNames { get; set; }
 
         public string CycleUntilUtc { get; set; }
+
+        public BackupRunStats RunStats { get; set; }
 
         public PendingItem[] Items { get; set; }
     }
@@ -131,17 +152,17 @@ namespace YxyXb.Core.Backup
         public static string[] ChannelsToSend(PendingItem item, bool doNetwork, bool doFtp, bool doCloud)
         {
             var list = new List<string>();
-            if (doNetwork && (item == null || !item.NetworkOk))
+            if (doNetwork && (item == null || !item.NetworkOk || PendingFiles.AnyPending(item, "network")))
             {
                 list.Add("network");
             }
 
-            if (doFtp && (item == null || !item.FtpOk))
+            if (doFtp && (item == null || !item.FtpOk || PendingFiles.AnyPending(item, "ftp")))
             {
                 list.Add("ftp");
             }
 
-            if (doCloud && (item == null || !item.CloudOk))
+            if (doCloud && (item == null || !item.CloudOk || PendingFiles.AnyPending(item, "cloud")))
             {
                 list.Add("cloud");
             }
@@ -168,7 +189,7 @@ namespace YxyXb.Core.Backup
                 && string.Equals(item.Fingerprint ?? "", now.Fingerprint ?? "", StringComparison.Ordinal)
                 && item.ZipLevel == now.ZipLevel
                 && string.Equals(item.PasswordSha256 ?? "", now.PasswordSha256 ?? "", StringComparison.Ordinal);
-            if (!same || !ZipStillThere(item, zipExists))
+            if (!same || !PendingFiles.PackageExists(item, zipExists))
             {
                 return Repack(same ? "本地包不在" : "源或压缩设置已变", items, false);
             }
@@ -208,7 +229,7 @@ namespace YxyXb.Core.Backup
             var keep = new List<PendingItem>();
             for (var i = 0; i < items.Length; i++)
             {
-                if (ZipStillThere(items[i], zipExists))
+                if (PendingFiles.PackageExists(items[i], zipExists))
                 {
                     keep.Add(items[i]);
                 }
@@ -299,16 +320,6 @@ namespace YxyXb.Core.Backup
             return pending.Items;
         }
 
-        private static bool ZipStillThere(PendingItem item, Func<string, bool> zipExists)
-        {
-            if (item == null || string.IsNullOrEmpty(item.ZipPath) || zipExists == null)
-            {
-                return false;
-            }
-
-            return zipExists(item.ZipPath);
-        }
-
         private static bool SameZipSettings(PendingItem[] items, DatabaseSnapshot now)
         {
             for (var i = 0; i < items.Length; i++)
@@ -359,7 +370,8 @@ namespace YxyXb.Core.Backup
 
             for (var i = 0; i < remove.Length; i++)
             {
-                if (string.Equals(remove[i].ZipPath ?? "", item.ZipPath ?? "", StringComparison.OrdinalIgnoreCase))
+                if (string.Equals(remove[i].PackageDirectory ?? remove[i].ZipPath ?? "",
+                    item.PackageDirectory ?? item.ZipPath ?? "", StringComparison.OrdinalIgnoreCase))
                 {
                     return true;
                 }
