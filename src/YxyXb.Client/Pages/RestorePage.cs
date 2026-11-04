@@ -6,6 +6,7 @@ using System.Windows.Controls;
 using Microsoft.Win32;
 using YxyXb.Contracts.Dto;
 using YxyXb.Core;
+using YxyXb.Core.Backup;
 using YxyXb.Core.Runtime;
 using YxyXb.Core.Store;
 using YxyXb.Mssql;
@@ -19,6 +20,11 @@ namespace YxyXb.Client.Pages
         private readonly ExclusiveBgJob _job = new ExclusiveBgJob();
         private ComboBox _mssqlInstances;
         private ComboBox _mysqlInstances;
+        private TextBox _fileInput;
+        private TextBox _fileOutput;
+        private TextBox _filePwd;
+        private TextBlock _fileStatus;
+        private Button _fileRun;
         private TextBox _mssqlFile;
         private TextBox _mysqlFile;
         private TextBox _mssqlTarget;
@@ -36,6 +42,7 @@ namespace YxyXb.Client.Pages
         {
             _boot = boot;
             var tabs = new TabControl();
+            tabs.Items.Add(new TabItem { Header = "文件", Content = BuildFile() });
             tabs.Items.Add(new TabItem { Header = "MSSQL", Content = BuildMssql() });
             tabs.Items.Add(new TabItem { Header = "MySQL", Content = BuildMysql() });
             tabs.Items.Add(new TabItem { Header = "Oracle（后续）", IsEnabled = false });
@@ -43,6 +50,30 @@ namespace YxyXb.Client.Pages
             tabs.Items.Add(new TabItem { Header = "PostgreSQL（后续）", IsEnabled = false });
             Content = tabs;
             Loaded += delegate { ReloadInstances(); PrefillPassword(); };
+        }
+
+        private UIElement BuildFile()
+        {
+            var panel = new StackPanel { Margin = new Thickness(12) };
+            panel.Children.Add(new TextBlock
+            {
+                Text = "把同一份备份的全部分卷和 manifest 清单下载到同一个文件夹，再选择恢复目录。程序会校验、组装并解压到新的时间戳子目录。",
+                TextWrapping = TextWrapping.Wrap,
+                Margin = new Thickness(0, 0, 0, 12)
+            });
+            _fileInput = new TextBox { Height = 28 };
+            panel.Children.Add(Labeled("分卷下载目录", FolderRow(_fileInput)));
+            _fileOutput = new TextBox { Height = 28 };
+            panel.Children.Add(Labeled("恢复到", FolderRow(_fileOutput)));
+            _filePwd = new TextBox { Height = 28 };
+            panel.Children.Add(Labeled("压缩密码（可选）", _filePwd));
+            var bar = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 4, 0, 8) };
+            _fileRun = Btn("开始恢复", delegate { RunFileRestore(); });
+            bar.Children.Add(_fileRun);
+            panel.Children.Add(bar);
+            _fileStatus = new TextBlock { TextWrapping = TextWrapping.Wrap };
+            panel.Children.Add(_fileStatus);
+            return new ScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Content = panel };
         }
 
         private UIElement BuildMssql()
@@ -132,9 +163,57 @@ namespace YxyXb.Client.Pages
                 var pwd = SettingsStore.Get(_boot.Db).ZipPassword ?? "";
                 if (_mssqlPwd != null && string.IsNullOrEmpty(_mssqlPwd.Text)) _mssqlPwd.Text = pwd;
                 if (_mysqlPwd != null && string.IsNullOrEmpty(_mysqlPwd.Text)) _mysqlPwd.Text = pwd;
+                if (_filePwd != null && string.IsNullOrEmpty(_filePwd.Text)) _filePwd.Text = pwd;
             }
             catch
             {
+            }
+        }
+
+        private void RunFileRestore()
+        {
+            var input = (_fileInput.Text ?? "").Trim();
+            var output = (_fileOutput.Text ?? "").Trim();
+            if (!Directory.Exists(input))
+            {
+                MessageBox.Show(Window.GetWindow(this), "请选择包含全部分卷和清单的目录。", "文件恢复");
+                return;
+            }
+
+            if (!Directory.Exists(output))
+            {
+                MessageBox.Show(Window.GetWindow(this), "请选择已经存在的恢复目录。", "文件恢复");
+                return;
+            }
+
+            _fileRun.IsEnabled = false;
+            _fileStatus.Text = "正在校验并组装分卷…";
+            var password = _filePwd.Text ?? "";
+            if (!_job.TryStart(
+                delegate
+                {
+                    var result = FileRestoreService.Restore(input, output, password);
+                    return "已恢复 " + result.FileCount + " 个文件到：\n" + result.OutputDirectory;
+                },
+                delegate(string result, Exception error)
+                {
+                    Dispatcher.BeginInvoke(new Action(delegate
+                    {
+                        _fileRun.IsEnabled = true;
+                        if (error != null)
+                        {
+                            _fileStatus.Text = "失败：" + error.Message;
+                            MessageBox.Show(Window.GetWindow(this), error.Message, "文件恢复");
+                            return;
+                        }
+
+                        _fileStatus.Text = result;
+                        MessageBox.Show(Window.GetWindow(this), _fileStatus.Text, "文件恢复");
+                    }));
+                }))
+            {
+                _fileRun.IsEnabled = true;
+                MessageBox.Show(Window.GetWindow(this), "已有恢复任务在执行。", "恢复");
             }
         }
 
@@ -317,6 +396,25 @@ namespace YxyXb.Client.Pages
                 {
                     box.Text = dlg.FileName;
                     if (afterPick != null) afterPick();
+                }
+            });
+            DockPanel.SetDock(browse, Dock.Right);
+            row.Children.Add(browse);
+            row.Children.Add(box);
+            return row;
+        }
+
+        private static UIElement FolderRow(TextBox box)
+        {
+            var row = new DockPanel();
+            var browse = Btn("选择…", delegate
+            {
+                using (var dialog = new System.Windows.Forms.FolderBrowserDialog())
+                {
+                    if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+                    {
+                        box.Text = dialog.SelectedPath;
+                    }
                 }
             });
             DockPanel.SetDock(browse, Dock.Right);
