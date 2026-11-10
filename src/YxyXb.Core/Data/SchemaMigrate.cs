@@ -44,6 +44,21 @@ namespace YxyXb.Core.Data
             Add(db, "file_tasks", "part_size_bytes", "INTEGER NOT NULL DEFAULT 0");
             Add(db, "mssql_tasks", "part_size_bytes", "INTEGER NOT NULL DEFAULT 0");
             Add(db, "mysql_tasks", "part_size_bytes", "INTEGER NOT NULL DEFAULT 0");
+            Add(db, "file_tasks", "schedule_anchor_utc", "TEXT");
+            Add(db, "mssql_tasks", "schedule_anchor_utc", "TEXT");
+            Add(db, "mysql_tasks", "schedule_anchor_utc", "TEXT");
+            Add(db, "media_tasks", "schedule_anchor_utc", "TEXT");
+            SetInitialAnchor(db, "file_tasks");
+            SetInitialAnchor(db, "mssql_tasks");
+            SetInitialAnchor(db, "mysql_tasks");
+            SetInitialAnchor(db, "media_tasks");
+        }
+
+        private static void SetInitialAnchor(SqliteDb db, string table)
+        {
+            db.Execute(
+                "UPDATE " + table +
+                " SET schedule_anchor_utc=next_run_utc WHERE schedule_anchor_utc IS NULL AND next_run_utc IS NOT NULL");
         }
 
         private static void Add(SqliteDb db, string table, string column, string decl)

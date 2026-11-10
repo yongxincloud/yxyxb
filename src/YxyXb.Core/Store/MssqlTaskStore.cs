@@ -65,8 +65,8 @@ namespace YxyXb.Core.Store
         {
             db.Execute(
                 @"INSERT INTO mssql_tasks (name,instance_id,enabled,db_scope,selected_dbs,retry_minutes,sort_order,part_size_bytes,
-                  cycle_kind,cycle_interval,next_run_utc,do_network,do_ftp,do_cloud,cloud_provider,do_delete_now,do_email,created_utc)
-                  VALUES (@n,@i,@e,@sc,@sd,@rm,@so,@ps,@ck,@ci,@nr,@dn,@df,@dc,@cp,@dd,@de,@u)",
+                  cycle_kind,cycle_interval,schedule_anchor_utc,next_run_utc,do_network,do_ftp,do_cloud,cloud_provider,do_delete_now,do_email,created_utc)
+                  VALUES (@n,@i,@e,@sc,@sd,@rm,@so,@ps,@ck,@ci,@sa,@nr,@dn,@df,@dc,@cp,@dd,@de,@u)",
                 Params(task));
             return Convert.ToInt64(db.ExecuteScalar("SELECT last_insert_rowid()"));
         }
@@ -75,7 +75,8 @@ namespace YxyXb.Core.Store
         {
             db.Execute(
                 @"UPDATE mssql_tasks SET name=@n, instance_id=@i, enabled=@e, db_scope=@sc, selected_dbs=@sd,
-                  retry_minutes=@rm, sort_order=@so, part_size_bytes=@ps, cycle_kind=@ck, cycle_interval=@ci, next_run_utc=@nr,
+                  retry_minutes=@rm, sort_order=@so, part_size_bytes=@ps, cycle_kind=@ck, cycle_interval=@ci,
+                  schedule_anchor_utc=@sa, next_run_utc=@nr,
                   do_network=@dn, do_ftp=@df, do_cloud=@dc, cloud_provider=@cp, do_delete_now=@dd, do_email=@de
                   WHERE id=@id",
                 new SQLiteParameter("@n", task.Name),
@@ -88,6 +89,7 @@ namespace YxyXb.Core.Store
                 new SQLiteParameter("@ps", PackageLimits.NormalizeTask(task.PartSizeBytes)),
                 new SQLiteParameter("@ck", task.CycleKind ?? "day"),
                 new SQLiteParameter("@ci", task.CycleInterval < 1 ? 1 : task.CycleInterval),
+                new SQLiteParameter("@sa", AnchorValue(task)),
                 new SQLiteParameter("@nr", task.NextRunUtc.HasValue ? (object)task.NextRunUtc.Value.ToString("o") : DBNull.Value),
                 new SQLiteParameter("@dn", task.DoNetwork ? 1 : 0),
                 new SQLiteParameter("@df", task.DoFtp ? 1 : 0),
@@ -135,7 +137,8 @@ namespace YxyXb.Core.Store
             var enabled = task.Enabled;
             if (ok)
             {
-                next = ScheduleCalculator.NextAfter(task.CycleKind, task.CycleInterval, utcNow);
+                var anchor = task.ScheduleAnchorUtc ?? task.NextRunUtc ?? utcNow;
+                next = ScheduleCalculator.NextPlannedAfter(task.CycleKind, task.CycleInterval, anchor, utcNow);
                 if (!next.HasValue)
                 {
                     enabled = false;
@@ -189,6 +192,7 @@ namespace YxyXb.Core.Store
                 new SQLiteParameter("@ps", PackageLimits.NormalizeTask(task.PartSizeBytes)),
                 new SQLiteParameter("@ck", task.CycleKind ?? "day"),
                 new SQLiteParameter("@ci", task.CycleInterval < 1 ? 1 : task.CycleInterval),
+                new SQLiteParameter("@sa", AnchorValue(task)),
                 new SQLiteParameter("@nr", task.NextRunUtc.HasValue ? (object)task.NextRunUtc.Value.ToString("o") : DBNull.Value),
                 new SQLiteParameter("@dn", task.DoNetwork ? 1 : 0),
                 new SQLiteParameter("@df", task.DoFtp ? 1 : 0),
@@ -202,7 +206,7 @@ namespace YxyXb.Core.Store
 
         private static MssqlTaskDto Read(DataRow row)
         {
-            return new MssqlTaskDto
+            var task = new MssqlTaskDto
             {
                 Id = Convert.ToInt64(row["id"]),
                 Name = Convert.ToString(row["name"]),
@@ -215,6 +219,7 @@ namespace YxyXb.Core.Store
                 PartSizeBytes = PackageLimits.NormalizeTask(Convert.ToInt64(row["part_size_bytes"])),
                 CycleKind = Convert.ToString(row["cycle_kind"]),
                 CycleInterval = Convert.ToInt32(row["cycle_interval"]),
+                ScheduleAnchorUtc = Parse(row["schedule_anchor_utc"]),
                 NextRunUtc = Parse(row["next_run_utc"]),
                 LastRunUtc = Parse(row["last_run_utc"]),
                 RunCount = Convert.ToInt32(row["run_count"]),
@@ -226,6 +231,17 @@ namespace YxyXb.Core.Store
                 DoEmail = Convert.ToInt32(row["do_email"]) != 0,
                 PendingJson = row["pending_json"] == DBNull.Value ? null : Convert.ToString(row["pending_json"])
             };
+            var anchor = task.ScheduleAnchorUtc ?? task.NextRunUtc;
+            if (anchor.HasValue)
+            {
+                task.NextPlannedUtc = ScheduleCalculator.NextPlannedAfter(
+                    task.CycleKind,
+                    task.CycleInterval,
+                    anchor.Value,
+                    DateTime.UtcNow);
+            }
+
+            return task;
         }
 
         private static DateTime? Parse(object value)
@@ -236,6 +252,12 @@ namespace YxyXb.Core.Store
             }
 
             return SqliteDb.ParseUtc(Convert.ToString(value));
+        }
+
+        private static object AnchorValue(MssqlTaskDto task)
+        {
+            var anchor = task.ScheduleAnchorUtc ?? task.NextRunUtc;
+            return anchor.HasValue ? (object)anchor.Value.ToString("o") : DBNull.Value;
         }
     }
 }

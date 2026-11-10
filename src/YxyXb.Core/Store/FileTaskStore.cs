@@ -52,8 +52,8 @@ namespace YxyXb.Core.Store
         {
             db.Execute(
                 @"INSERT INTO file_tasks (name,enabled,source_kind,source_path,retry_minutes,sort_order,cycle_kind,cycle_interval,part_size_bytes,
-                  next_run_utc,do_network,do_ftp,do_cloud,cloud_provider,do_delete_now,do_email,post_program,created_utc)
-                  VALUES (@name,@en,@sk,@sp,@rm,@so,@ck,@ci,@ps,@nr,@dn,@df,@dc,@cp,@dd,@de,@pp,@utc)",
+                  schedule_anchor_utc,next_run_utc,do_network,do_ftp,do_cloud,cloud_provider,do_delete_now,do_email,post_program,created_utc)
+                  VALUES (@name,@en,@sk,@sp,@rm,@so,@ck,@ci,@ps,@sa,@nr,@dn,@df,@dc,@cp,@dd,@de,@pp,@utc)",
                 Params(task, true));
             var id = db.ExecuteScalar("SELECT last_insert_rowid()");
             return Convert.ToInt64(id);
@@ -63,7 +63,8 @@ namespace YxyXb.Core.Store
         {
             db.Execute(
                 @"UPDATE file_tasks SET name=@name, enabled=@en, source_kind=@sk, source_path=@sp, retry_minutes=@rm,
-                  sort_order=@so, cycle_kind=@ck, cycle_interval=@ci, part_size_bytes=@ps, next_run_utc=@nr, do_network=@dn, do_ftp=@df,
+                  sort_order=@so, cycle_kind=@ck, cycle_interval=@ci, part_size_bytes=@ps, schedule_anchor_utc=@sa,
+                  next_run_utc=@nr, do_network=@dn, do_ftp=@df,
                   do_cloud=@dc, cloud_provider=@cp, do_delete_now=@dd, do_email=@de, post_program=@pp
                   WHERE id=@id",
                 new SQLiteParameter("@name", task.Name),
@@ -75,6 +76,7 @@ namespace YxyXb.Core.Store
                 new SQLiteParameter("@ck", task.CycleKind ?? "day"),
                 new SQLiteParameter("@ci", task.CycleInterval < 1 ? 1 : task.CycleInterval),
                 new SQLiteParameter("@ps", PackageLimits.NormalizeTask(task.PartSizeBytes)),
+                new SQLiteParameter("@sa", AnchorValue(task)),
                 new SQLiteParameter("@nr", task.NextRunUtc.HasValue ? (object)task.NextRunUtc.Value.ToString("o") : DBNull.Value),
                 new SQLiteParameter("@dn", task.DoNetwork ? 1 : 0),
                 new SQLiteParameter("@df", task.DoFtp ? 1 : 0),
@@ -123,7 +125,12 @@ namespace YxyXb.Core.Store
             var enabled = task.Enabled;
             if (ok)
             {
-                next = YxyXb.Core.Schedule.ScheduleCalculator.NextAfter(task.CycleKind, task.CycleInterval, utcNow);
+                var anchor = task.ScheduleAnchorUtc ?? task.NextRunUtc ?? utcNow;
+                next = YxyXb.Core.Schedule.ScheduleCalculator.NextPlannedAfter(
+                    task.CycleKind,
+                    task.CycleInterval,
+                    anchor,
+                    utcNow);
                 if (!next.HasValue)
                 {
                     enabled = false;
@@ -145,7 +152,7 @@ namespace YxyXb.Core.Store
 
         private static FileTaskDto Read(DataRow row)
         {
-            return new FileTaskDto
+            var task = new FileTaskDto
             {
                 Id = Convert.ToInt64(row["id"]),
                 Name = Convert.ToString(row["name"]),
@@ -157,6 +164,7 @@ namespace YxyXb.Core.Store
                 CycleKind = Convert.ToString(row["cycle_kind"]),
                 CycleInterval = Convert.ToInt32(row["cycle_interval"]),
                 PartSizeBytes = PackageLimits.NormalizeTask(Convert.ToInt64(row["part_size_bytes"])),
+                ScheduleAnchorUtc = ParseTime(row["schedule_anchor_utc"]),
                 NextRunUtc = ParseTime(row["next_run_utc"]),
                 LastRunUtc = ParseTime(row["last_run_utc"]),
                 RunCount = Convert.ToInt32(row["run_count"]),
@@ -169,6 +177,17 @@ namespace YxyXb.Core.Store
                 PostProgram = row["post_program"] == DBNull.Value ? null : Convert.ToString(row["post_program"]),
                 PendingJson = row["pending_json"] == DBNull.Value ? null : Convert.ToString(row["pending_json"])
             };
+            var anchor = task.ScheduleAnchorUtc ?? task.NextRunUtc;
+            if (anchor.HasValue)
+            {
+                task.NextPlannedUtc = YxyXb.Core.Schedule.ScheduleCalculator.NextPlannedAfter(
+                    task.CycleKind,
+                    task.CycleInterval,
+                    anchor.Value,
+                    DateTime.UtcNow);
+            }
+
+            return task;
         }
 
         private static DateTime? ParseTime(object value)
@@ -194,6 +213,7 @@ namespace YxyXb.Core.Store
                 new SQLiteParameter("@ck", task.CycleKind ?? "day"),
                 new SQLiteParameter("@ci", task.CycleInterval < 1 ? 1 : task.CycleInterval),
                 new SQLiteParameter("@ps", PackageLimits.NormalizeTask(task.PartSizeBytes)),
+                new SQLiteParameter("@sa", AnchorValue(task)),
                 new SQLiteParameter("@nr", task.NextRunUtc.HasValue ? (object)task.NextRunUtc.Value.ToString("o") : DBNull.Value),
                 new SQLiteParameter("@dn", task.DoNetwork ? 1 : 0),
                 new SQLiteParameter("@df", task.DoFtp ? 1 : 0),
@@ -204,6 +224,12 @@ namespace YxyXb.Core.Store
                 new SQLiteParameter("@pp", (object)task.PostProgram ?? DBNull.Value),
                 new SQLiteParameter("@utc", SqliteDb.UtcNowText())
             };
+        }
+
+        private static object AnchorValue(FileTaskDto task)
+        {
+            var anchor = task.ScheduleAnchorUtc ?? task.NextRunUtc;
+            return anchor.HasValue ? (object)anchor.Value.ToString("o") : DBNull.Value;
         }
     }
 }

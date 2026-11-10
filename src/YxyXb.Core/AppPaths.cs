@@ -17,7 +17,7 @@ namespace YxyXb.Core
 
         public const string DatabaseFileName = "yxyxb.db";
 
-        public const string ReleaseVersion = "1.1.0";
+        public const string ReleaseVersion = "1.1.1";
 
         public const string UpdateManifestUrl = "http://download.yongxinyun.com/yxyxb/version.json";
 

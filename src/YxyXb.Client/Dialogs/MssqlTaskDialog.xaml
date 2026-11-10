@@ -76,12 +76,12 @@
                     <TextBlock Text="间隔" Grid.Row="1" VerticalAlignment="Center"/>
                     <TextBox x:Name="TxtInterval" Grid.Row="1" Grid.Column="1" Text="1" Margin="0,4"
                              ToolTip="周期间隔，必须为大于等于 1 的整数。"/>
-                    <TextBlock Text="下次执行" Grid.Row="2" VerticalAlignment="Center"/>
+                    <TextBlock Text="计划执行时间" Grid.Row="2" VerticalAlignment="Center"/>
                     <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                         <DatePicker x:Name="DtNext" Width="180" Margin="0,4,8,4" FirstDayOfWeek="Monday" Language="zh-CN"
-                                    ToolTip="任务下一次计划执行的日期。"/>
+                                    ToolTip="任务首次执行或调整计划时的日期；补跑、人工执行和失败重试不会改变它。"/>
                         <md:TimePicker x:Name="TmNext" Width="140" Is24Hours="True" WithSeconds="False" Margin="0,4"
-                                       ToolTip="任务下一次计划执行的时间。"/>
+                                       ToolTip="按北京时间解释的计划执行时间；补跑、人工执行和失败重试不会改变它。"/>
                     </StackPanel>
                 </Grid>
             </TabItem>

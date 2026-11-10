@@ -5,6 +5,7 @@ using System.IO;
 using System.Text;
 using System.Threading;
 using YxyXb.Contracts.Dto;
+using YxyXb.Contracts.Time;
 using YxyXb.Core;
 using YxyXb.Core.Backup;
 using YxyXb.Core.Runtime;
@@ -122,7 +123,7 @@ namespace YxyXb.Engine
             var next = "none";
             if (upcoming.Count > 0 && upcoming[0].NextRunUtc.HasValue)
             {
-                next = upcoming[0].Kind + ":" + upcoming[0].Name + " @ " + upcoming[0].NextRunUtc.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm");
+                next = upcoming[0].Kind + ":" + upcoming[0].Name + " @ " + ChinaTime.ToChina(upcoming[0].NextRunUtc.Value).ToString("yyyy-MM-dd HH:mm");
             }
 
             WriteStatus("ok ran=" + ran + " licensed=" + (licensed ? "1" : "0") + " queued=" + upcoming.Count + " next=" + next);

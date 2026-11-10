@@ -61,7 +61,7 @@ namespace YxyXb.Client.Pages
             grid.Columns.Add(TextCol("备份类型", "SourceKindText", 80));
             grid.Columns.Add(TextCol("周期", "CycleText", 90));
             grid.Columns.Add(TextCol("已执行", "RunCount", 70));
-            grid.Columns.Add(TextCol("下次执行", "NextRunLocal", 140));
+            grid.Columns.Add(TextCol("计划时间", "PlannedRunLocal", 140));
             grid.MouseDoubleClick += delegate(object s, MouseButtonEventArgs e)
             {
                 e.Handled = true;
@@ -97,7 +97,7 @@ namespace YxyXb.Client.Pages
             grid.Columns.Add(TextCol("周期", "CycleText", 90));
             grid.Columns.Add(TextCol("已执行", "RunCount", 70));
             grid.Columns.Add(TextCol("上次执行", "LastRunLocal", 140));
-            grid.Columns.Add(TextCol("下次执行", "NextRunLocal", 140));
+            grid.Columns.Add(TextCol("计划时间", "PlannedRunLocal", 140));
             grid.MouseDoubleClick += delegate(object s, MouseButtonEventArgs e)
             {
                 e.Handled = true;
@@ -227,7 +227,7 @@ namespace YxyXb.Client.Pages
             _mysqlGrid.Columns.Add(TextCol("周期", "CycleText", 90));
             _mysqlGrid.Columns.Add(TextCol("已执行", "RunCount", 70));
             _mysqlGrid.Columns.Add(TextCol("上次执行", "LastRunLocal", 140));
-            _mysqlGrid.Columns.Add(TextCol("下次执行", "NextRunLocal", 140));
+            _mysqlGrid.Columns.Add(TextCol("计划时间", "PlannedRunLocal", 140));
             _mysqlGrid.MouseDoubleClick += delegate(object s, MouseButtonEventArgs e)
             {
                 e.Handled = true;

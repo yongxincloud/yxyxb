@@ -1,4 +1,5 @@
 using System;
+using YxyXb.Contracts.Time;
 
 namespace YxyXb.Contracts.Dto
 {
@@ -82,7 +83,11 @@ namespace YxyXb.Contracts.Dto
 
         public int CycleInterval { get; set; }
 
+        public DateTime? ScheduleAnchorUtc { get; set; }
+
         public DateTime? NextRunUtc { get; set; }
+
+        public DateTime? NextPlannedUtc { get; set; }
 
         public DateTime? LastRunUtc { get; set; }
 
@@ -105,7 +110,18 @@ namespace YxyXb.Contracts.Dto
             get
             {
                 return NextRunUtc.HasValue
-                    ? NextRunUtc.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm")
+                    ? ChinaTime.ToChina(NextRunUtc.Value).ToString("yyyy-MM-dd HH:mm")
+                    : "";
+            }
+        }
+
+        public string PlannedRunLocal
+        {
+            get
+            {
+                var planned = NextPlannedUtc ?? ScheduleAnchorUtc ?? NextRunUtc;
+                return planned.HasValue
+                    ? ChinaTime.ToChina(planned.Value).ToString("yyyy-MM-dd HH:mm")
                     : "";
             }
         }
@@ -115,7 +131,7 @@ namespace YxyXb.Contracts.Dto
             get
             {
                 return LastRunUtc.HasValue
-                    ? LastRunUtc.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm")
+                    ? ChinaTime.ToChina(LastRunUtc.Value).ToString("yyyy-MM-dd HH:mm")
                     : "未执行";
             }
         }

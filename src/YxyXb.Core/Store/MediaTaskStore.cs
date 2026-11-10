@@ -63,8 +63,8 @@ namespace YxyXb.Core.Store
             db.Execute(
                 @"INSERT INTO media_tasks (name,media_id,enabled,source_path,target_folder,window_start,window_end,wait_minutes,
                   retain_versions,retain_days,conflict_mode,isolate_after,isolate_level,use_sha256,
-                  cycle_kind,cycle_interval,next_run_utc,created_utc)
-                  VALUES (@n,@m,@e,@sp,@tf,@ws,@we,@w,@rv,@rd,@cm,@ia,@il,@sh,@ck,@ci,@nr,@u)",
+                  cycle_kind,cycle_interval,schedule_anchor_utc,next_run_utc,created_utc)
+                  VALUES (@n,@m,@e,@sp,@tf,@ws,@we,@w,@rv,@rd,@cm,@ia,@il,@sh,@ck,@ci,@sa,@nr,@u)",
                 new SQLiteParameter("@n", task.Name),
                 new SQLiteParameter("@m", task.MediaId),
                 new SQLiteParameter("@e", task.Enabled ? 1 : 0),
@@ -81,6 +81,7 @@ namespace YxyXb.Core.Store
                 new SQLiteParameter("@sh", task.UseSha256 ? 1 : 0),
                 new SQLiteParameter("@ck", task.CycleKind ?? "day"),
                 new SQLiteParameter("@ci", task.CycleInterval < 1 ? 1 : task.CycleInterval),
+                new SQLiteParameter("@sa", AnchorValue(task)),
                 new SQLiteParameter("@nr", task.NextRunUtc.HasValue ? (object)task.NextRunUtc.Value.ToString("o") : DBNull.Value),
                 new SQLiteParameter("@u", SqliteDb.UtcNowText()));
             return Convert.ToInt64(db.ExecuteScalar("SELECT last_insert_rowid()"));
@@ -91,7 +92,8 @@ namespace YxyXb.Core.Store
             db.Execute(
                 @"UPDATE media_tasks SET name=@n, media_id=@m, enabled=@e, source_path=@sp, target_folder=@tf, window_start=@ws, window_end=@we,
                   wait_minutes=@w, retain_versions=@rv, retain_days=@rd, conflict_mode=@cm, isolate_after=@ia, isolate_level=@il,
-                  use_sha256=@sh, cycle_kind=@ck, cycle_interval=@ci, next_run_utc=@nr, waiting_since_utc=NULL
+                  use_sha256=@sh, cycle_kind=@ck, cycle_interval=@ci, schedule_anchor_utc=@sa,
+                  next_run_utc=@nr, waiting_since_utc=NULL
                   WHERE id=@id",
                 new SQLiteParameter("@n", task.Name),
                 new SQLiteParameter("@m", task.MediaId),
@@ -109,6 +111,7 @@ namespace YxyXb.Core.Store
                 new SQLiteParameter("@sh", task.UseSha256 ? 1 : 0),
                 new SQLiteParameter("@ck", task.CycleKind ?? "day"),
                 new SQLiteParameter("@ci", task.CycleInterval < 1 ? 1 : task.CycleInterval),
+                new SQLiteParameter("@sa", AnchorValue(task)),
                 new SQLiteParameter("@nr", task.NextRunUtc.HasValue ? (object)task.NextRunUtc.Value.ToString("o") : DBNull.Value),
                 new SQLiteParameter("@id", task.Id));
         }
@@ -128,7 +131,8 @@ namespace YxyXb.Core.Store
 
         public static void MarkResult(SqliteDb db, MediaTaskDto task, bool ok, DateTime utcNow)
         {
-            DateTime? next = ScheduleCalculator.NextAfter(task.CycleKind, task.CycleInterval, utcNow);
+            var anchor = task.ScheduleAnchorUtc ?? task.NextRunUtc ?? utcNow;
+            DateTime? next = ScheduleCalculator.NextPlannedAfter(task.CycleKind, task.CycleInterval, anchor, utcNow);
             var enabled = task.Enabled;
             if (ok && !next.HasValue)
             {
@@ -191,7 +195,7 @@ namespace YxyXb.Core.Store
 
         private static MediaTaskDto Read(DataRow row)
         {
-            return new MediaTaskDto
+            var task = new MediaTaskDto
             {
                 Id = Convert.ToInt64(row["id"]),
                 Name = Convert.ToString(row["name"]),
@@ -212,11 +216,23 @@ namespace YxyXb.Core.Store
                 UseSha256 = Convert.ToInt32(row["use_sha256"]) != 0,
                 CycleKind = Convert.ToString(row["cycle_kind"]),
                 CycleInterval = Convert.ToInt32(row["cycle_interval"]),
+                ScheduleAnchorUtc = Parse(row["schedule_anchor_utc"]),
                 NextRunUtc = Parse(row["next_run_utc"]),
                 LastRunUtc = Parse(row["last_run_utc"]),
                 WaitingSinceUtc = row.Table.Columns.Contains("waiting_since_utc") ? Parse(row["waiting_since_utc"]) : null,
                 RunCount = Convert.ToInt32(row["run_count"])
             };
+            var anchor = task.ScheduleAnchorUtc ?? task.NextRunUtc;
+            if (anchor.HasValue)
+            {
+                task.NextPlannedUtc = ScheduleCalculator.NextPlannedAfter(
+                    task.CycleKind,
+                    task.CycleInterval,
+                    anchor.Value,
+                    DateTime.UtcNow);
+            }
+
+            return task;
         }
 
         private static DateTime? Parse(object value)
@@ -227,6 +243,12 @@ namespace YxyXb.Core.Store
             }
 
             return SqliteDb.ParseUtc(Convert.ToString(value));
+        }
+
+        private static object AnchorValue(MediaTaskDto task)
+        {
+            var anchor = task.ScheduleAnchorUtc ?? task.NextRunUtc;
+            return anchor.HasValue ? (object)anchor.Value.ToString("o") : DBNull.Value;
         }
     }
 }

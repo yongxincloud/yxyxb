@@ -5,6 +5,7 @@ using System.IO;
 using System.Text;
 using System.Threading;
 using YxyXb.Contracts.Dto;
+using YxyXb.Contracts.Time;
 using YxyXb.Core;
 using YxyXb.Core.Data;
 using YxyXb.Core.Schedule;
@@ -78,7 +79,7 @@ namespace YxyXb.Media
         private static bool Process(SqliteDb db, MediaTaskDto task)
         {
             var nowUtc = DateTime.UtcNow;
-            var nowLocal = nowUtc.ToLocalTime();
+            var nowLocal = ChinaTime.ToChina(nowUtc);
             var due = !task.NextRunUtc.HasValue || task.NextRunUtc.Value <= nowUtc || task.WaitingSinceUtc.HasValue;
             if (!due)
             {
@@ -194,7 +195,7 @@ namespace YxyXb.Media
         private static void SyncOfflineDeadline(SqliteDb db)
         {
             var tasks = MediaTaskStore.ListEnabled(db);
-            var nowLocal = DateTime.Now;
+            var nowLocal = ChinaTime.Now;
             var bakPath = AppPaths.DisplayBakPath(SettingsStore.Get(db).BakPath);
             var open = new HashSet<long>();
             for (var i = 0; i < tasks.Count; i++)
@@ -445,7 +446,7 @@ namespace YxyXb.Media
                 if (!packageRun.TamperPending)
                     log.Append(" 删除版本 ").Append(packageRun.DeletedVersions).Append("。");
 
-                var inPeriod = WindowClock.IsInWindow(nowUtc.ToLocalTime(), task.WindowStart, task.WindowEnd);
+                var inPeriod = WindowClock.IsInWindow(ChinaTime.ToChina(nowUtc), task.WindowStart, task.WindowEnd);
                 if (inPeriod)
                 {
                     MediaStore.SetAutoHeld(db, record.Id, true);
@@ -483,7 +484,7 @@ namespace YxyXb.Media
                 log.Append(" 失败：").Append(ex.Message);
                 LogStore.Add(db, "media", mode, "error", task.Name, log.ToString());
                 MediaTaskStore.MarkResult(db, task, false, nowUtc);
-                if (!WindowClock.IsInWindow(DateTime.Now, task.WindowStart, task.WindowEnd))
+                if (!WindowClock.IsInWindow(ChinaTime.Now, task.WindowStart, task.WindowEnd))
                 {
                     ForceOffline(db, record, task.IsolateLevel, "任务失败且已到介质离线时间，");
                 }

@@ -5,6 +5,7 @@ using System.Windows.Controls;
 using MaterialDesignThemes.Wpf;
 using YxyXb.Contracts.Cloud;
 using YxyXb.Contracts.Dto;
+using YxyXb.Contracts.Time;
 using YxyXb.Core.Store;
 using YxyXb.Core.Backup;
 
@@ -74,7 +75,9 @@ namespace YxyXb.Client.Dialogs
                 Select(_cycle, existing.CycleKind);
                 Select(_cmbCloud, existing.CloudProvider);
                 DateTimePick.SetDateTime(_nextDate, _nextTime,
-                    existing.NextRunUtc.HasValue ? existing.NextRunUtc.Value.ToLocalTime() : DateTime.Now.AddMinutes(2));
+                    existing.NextPlannedUtc.HasValue || existing.ScheduleAnchorUtc.HasValue || existing.NextRunUtc.HasValue
+                        ? ChinaTime.ToChina(existing.NextPlannedUtc ?? existing.ScheduleAnchorUtc ?? existing.NextRunUtc.Value)
+                        : ChinaTime.Now.AddMinutes(2));
                 for (var i = 0; i < _instance.Items.Count; i++)
                 {
                     var inst = (MysqlInstanceDto)_instance.Items[i];
@@ -83,7 +86,7 @@ namespace YxyXb.Client.Dialogs
             }
             else
             {
-                DateTimePick.SetDateTime(_nextDate, _nextTime, DateTime.Now.AddMinutes(2));
+                DateTimePick.SetDateTime(_nextDate, _nextTime, ChinaTime.Now.AddMinutes(2));
                 if (_instance.Items.Count > 0)
                 {
                     _instance.SelectedIndex = 0;
@@ -113,7 +116,7 @@ namespace YxyXb.Client.Dialogs
             ToolTipService.SetShowDuration(_partSize, 10000);
             YxyXb.Client.UiHelp.Tip(_partSize, "单个分卷的上限，单位 GB。填 0 表示使用系统设置中的分卷大小。");
             panel.Children.Add(_partSize);
-            panel.Children.Add(Label("下次执行"));
+            panel.Children.Add(Label("计划执行时间"));
             panel.Children.Add(DateTimePick.Combine(_nextDate, _nextTime));
             var flags = new WrapPanel();
             flags.Children.Add(_network);
@@ -138,8 +141,8 @@ namespace YxyXb.Client.Dialogs
             YxyXb.Client.UiHelp.Tip(_cycle, "选择数据库任务重复周期。");
             YxyXb.Client.UiHelp.Tip(_interval, "周期间隔，必须为大于等于 1 的整数。");
             YxyXb.Client.UiHelp.Tip(_partSize, "单个分卷上限，单位 GB。填 0 使用系统设置中的分卷大小。");
-            YxyXb.Client.UiHelp.Tip(_nextDate, "任务下一次计划执行的日期。");
-            YxyXb.Client.UiHelp.Tip(_nextTime, "任务下一次计划执行的时间。");
+            YxyXb.Client.UiHelp.Tip(_nextDate, "任务首次执行或调整计划时的日期；补跑、人工执行和失败重试不会改变它。");
+            YxyXb.Client.UiHelp.Tip(_nextTime, "按北京时间解释的计划执行时间；补跑、人工执行和失败重试不会改变它。");
             YxyXb.Client.UiHelp.Tip(_enabled, "停用后该任务不会按计划执行。");
             YxyXb.Client.UiHelp.Tip(_network, "把备份单元复制到“设置 → 网络传输”配置的共享目录。");
             YxyXb.Client.UiHelp.Tip(_ftp, "把备份单元上传到“设置 → FTP”配置的服务器。");
@@ -160,7 +163,7 @@ namespace YxyXb.Client.Dialogs
             DateTime nextLocal;
             if (!DateTimePick.TryGetDateTime(_nextDate, _nextTime, out nextLocal))
             {
-                MessageBox.Show(this, "请选择下次执行的日期和时间。", "校验");
+                MessageBox.Show(this, "请选择计划执行的日期和时间。", "校验");
                 return;
             }
 
@@ -196,7 +199,8 @@ namespace YxyXb.Client.Dialogs
                 CycleKind = TagOf(_cycle, "day"),
                 CycleInterval = interval,
                 PartSizeBytes = partBytes,
-                NextRunUtc = DateTime.SpecifyKind(nextLocal, DateTimeKind.Local).ToUniversalTime(),
+                ScheduleAnchorUtc = ChinaTime.ToUtc(nextLocal),
+                NextRunUtc = ChinaTime.ToUtc(nextLocal),
                 DoNetwork = _network.IsChecked == true,
                 DoFtp = _ftp.IsChecked == true,
                 DoCloud = _ready.Count > 0 && _cloud.IsChecked == true,

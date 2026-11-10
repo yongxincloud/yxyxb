@@ -1,5 +1,6 @@
 using System;
 using YxyXb.Contracts.Dto;
+using YxyXb.Contracts.Time;
 using YxyXb.Core.Schedule;
 
 namespace YxyXb.Media
@@ -24,7 +25,7 @@ namespace YxyXb.Media
             }
 
             var chosen = task.NextRunUtc.Value.Kind == DateTimeKind.Utc
-                ? task.NextRunUtc.Value.ToLocalTime()
+                ? ChinaTime.ToChina(task.NextRunUtc.Value)
                 : task.NextRunUtc.Value;
             if (!WindowClock.IsInWindow(chosen, task.WindowStart, task.WindowEnd))
             {

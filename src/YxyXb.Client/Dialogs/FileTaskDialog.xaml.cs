@@ -5,6 +5,7 @@ using System.Windows;
 using System.Windows.Controls;
 using YxyXb.Contracts.Cloud;
 using YxyXb.Contracts.Dto;
+using YxyXb.Contracts.Time;
 using YxyXb.Core.Backup;
 
 namespace YxyXb.Client.Dialogs
@@ -43,7 +44,7 @@ namespace YxyXb.Client.Dialogs
             }
             else
             {
-                DateTimePick.SetDateTime(DtNext, TmNext, DateTime.Now.AddMinutes(2));
+                DateTimePick.SetDateTime(DtNext, TmNext, ChinaTime.Now.AddMinutes(2));
             }
         }
 
@@ -68,9 +69,10 @@ namespace YxyXb.Client.Dialogs
             SelectTag(CmbSource, existing.SourceKind, "local");
             SelectTag(CmbCycle, existing.CycleKind, "day");
             SelectTag(CmbCloud, existing.CloudProvider, _ready.Count > 0 ? _ready[0] : "qiniu");
-            if (existing.NextRunUtc.HasValue)
+            var planned = existing.NextPlannedUtc ?? existing.ScheduleAnchorUtc ?? existing.NextRunUtc;
+            if (planned.HasValue)
             {
-                DateTimePick.SetDateTime(DtNext, TmNext, existing.NextRunUtc.Value.ToLocalTime());
+                DateTimePick.SetDateTime(DtNext, TmNext, ChinaTime.ToChina(planned.Value));
             }
 
             BtnBrowse.IsEnabled = SelectedTag(CmbSource) == "local";
@@ -114,7 +116,7 @@ namespace YxyXb.Client.Dialogs
             DateTime nextLocal;
             if (!DateTimePick.TryGetDateTime(DtNext, TmNext, out nextLocal))
             {
-                MessageBox.Show(this, "请选择下次执行的日期和时间。", "校验", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show(this, "请选择计划执行的日期和时间。", "校验", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
@@ -157,7 +159,8 @@ namespace YxyXb.Client.Dialogs
                 CycleKind = SelectedTag(CmbCycle),
                 CycleInterval = interval,
                 PartSizeBytes = partBytes,
-                NextRunUtc = DateTime.SpecifyKind(nextLocal, DateTimeKind.Local).ToUniversalTime(),
+                ScheduleAnchorUtc = ChinaTime.ToUtc(nextLocal),
+                NextRunUtc = ChinaTime.ToUtc(nextLocal),
                 DoNetwork = ChkNetwork.IsChecked == true,
                 DoFtp = ChkFtp.IsChecked == true,
                 DoCloud = _ready.Count > 0 && ChkCloud.IsChecked == true,

@@ -4,6 +4,7 @@ using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
 using YxyXb.Contracts.Dto;
+using YxyXb.Contracts.Time;
 using YxyXb.Core;
 using YxyXb.Core.Schedule;
 using YxyXb.Core.Store;
@@ -43,7 +44,7 @@ namespace YxyXb.Client.Dialogs
                     CmbMedia.SelectedIndex = 0;
                 }
 
-                DateTimePick.SetDateTime(DtNext, TmNext, DateTime.Now.AddMinutes(2));
+                DateTimePick.SetDateTime(DtNext, TmNext, ChinaTime.Now.AddMinutes(2));
                 DateTimePick.SetHmm(TmWinStart, "22:00");
                 DateTimePick.SetHmm(TmWinEnd, "23:00");
             }
@@ -70,9 +71,10 @@ namespace YxyXb.Client.Dialogs
             SelectTag(CmbConflict, existing.ConflictMode, "overwrite");
             SelectTag(CmbCycle, existing.CycleKind, "day");
             SelectTag(CmbLevel, existing.IsolateLevel.ToString(CultureInfo.InvariantCulture), "2");
-            if (existing.NextRunUtc.HasValue)
+            var planned = existing.NextPlannedUtc ?? existing.ScheduleAnchorUtc ?? existing.NextRunUtc;
+            if (planned.HasValue)
             {
-                DateTimePick.SetDateTime(DtNext, TmNext, existing.NextRunUtc.Value.ToLocalTime());
+                DateTimePick.SetDateTime(DtNext, TmNext, ChinaTime.ToChina(planned.Value));
             }
 
             if (media == null)
@@ -101,7 +103,7 @@ namespace YxyXb.Client.Dialogs
             DateTime nextLocal;
             if (!DateTimePick.TryGetDateTime(DtNext, TmNext, out nextLocal))
             {
-                MessageBox.Show(this, "请选择下次执行的日期和时间。", "校验");
+                MessageBox.Show(this, "请选择计划执行的日期和时间。", "校验");
                 return;
             }
 
@@ -132,7 +134,8 @@ namespace YxyXb.Client.Dialogs
                 UseSha256 = ChkHash.IsChecked == true,
                 CycleKind = TagOf(CmbCycle, "day"),
                 CycleInterval = interval,
-                NextRunUtc = DateTime.SpecifyKind(nextLocal, DateTimeKind.Local).ToUniversalTime()
+                ScheduleAnchorUtc = ChinaTime.ToUtc(nextLocal),
+                NextRunUtc = ChinaTime.ToUtc(nextLocal)
             };
 
             var error = MediaTaskStore.Validate(task, _bakPath);
@@ -144,7 +147,7 @@ namespace YxyXb.Client.Dialogs
 
             if (!WindowClock.IsInWindow(nextLocal, task.WindowStart, task.WindowEnd))
             {
-                var tip = "下次执行 " + nextLocal.ToString("HH:mm") + " 不在任务开始 " + task.WindowStart
+                var tip = "计划执行 " + nextLocal.ToString("HH:mm") + " 不在任务开始 " + task.WindowStart
                     + " 与介质离线 " + task.WindowEnd
                     + " 之间。到任务开始时间后才会检查：介质已在线则执行，未在线则先挂载再执行。确定保存？";
                 if (MessageBox.Show(this, tip, "任务时间", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes)

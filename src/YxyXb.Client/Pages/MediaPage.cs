@@ -115,7 +115,7 @@ namespace YxyXb.Client.Pages
             _taskGrid.Columns.Add(Col("周期", "CycleText", 90));
             _taskGrid.Columns.Add(Col("已执行", "RunCount", 70));
             _taskGrid.Columns.Add(Col("上次执行", "LastRunLocal", 140));
-            _taskGrid.Columns.Add(Col("下次执行", "NextRunLocal", 140));
+            _taskGrid.Columns.Add(Col("计划时间", "PlannedRunLocal", 140));
             _taskGrid.MouseDoubleClick += delegate(object s, MouseButtonEventArgs e)
             {
                 e.Handled = true;
