@@ -85,7 +85,21 @@ namespace YxyXb.Qiniu
             var encoded = QiniuHttp.UrlSafeBase64(acc.Bucket + ":" + (remoteKey ?? ""));
             var path = "/stat/" + encoded;
             var auth = QiniuHttp.ManageToken(acc.AccessKey, acc.SecretKey, path, null);
-            var json = QiniuHttp.RequestJson("GET", "https://rs.qiniu.com" + path, auth, null, null);
+            string json;
+            try
+            {
+                json = QiniuHttp.RequestJson("GET", "https://rs.qiniu.com" + path, auth, null, null);
+            }
+            catch (InvalidOperationException ex)
+            {
+                if (QiniuHttp.IsMissingObjectError(ex.Message))
+                {
+                    throw new CloudObjectNotFoundException("七牛远端对象不存在：" + remoteKey, ex);
+                }
+
+                throw;
+            }
+
             var value = QiniuHttp.FromJson<QiniuStatResult>(json);
             if (value == null)
             {

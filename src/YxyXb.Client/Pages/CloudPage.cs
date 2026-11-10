@@ -141,8 +141,10 @@ namespace YxyXb.Client.Pages
             _form.Children.Add(_objectPanel);
             _form.Children.Add(Label("上行限速（KB/s，上传用，0 表示不限）"));
             _form.Children.Add(_minKbps);
+            _form.Children.Add(Example("示例：5 Mbps 带宽理论约 640 KB/s，建议填 400 KB/s，预留带宽给远程桌面和业务访问。"));
             _form.Children.Add(Label("下行限速（KB/s，下载用，0 表示不限）"));
             _form.Children.Add(_maxKbps);
+            _form.Children.Add(Example("示例：5 Mbps 带宽建议填 400 KB/s；若上下行同时传输并共享 5 Mbps，建议各填 250 KB/s。"));
             _form.Children.Add(Label("上传并行数（1–2）"));
             _form.Children.Add(_parallel);
             _form.Children.Add(new TextBlock
@@ -174,8 +176,8 @@ namespace YxyXb.Client.Pages
             UiHelp.Tip(_ak, "七牛云 AccessKey。凭据只保存在本机。");
             UiHelp.Tip(_sk, "七牛云 SecretKey。留空保存表示沿用已有密钥。");
             UiHelp.Tip(_zone, "七牛空间所在区域，选错会导致上传地址不正确。");
-            UiHelp.Tip(_minKbps, "上行限速，单位 KB/s。0 表示不限；会影响云、FTP 和共享上传。");
-            UiHelp.Tip(_maxKbps, "下行限速，单位 KB/s。0 表示不限；会影响 FTP 源下载。");
+            UiHelp.Tip(_minKbps, "上行限速，单位 KB/s。0 表示不限；会影响云、FTP 和共享上传。示例：5 Mbps 约 640 KB/s，建议填 400。");
+            UiHelp.Tip(_maxKbps, "下行限速，单位 KB/s。0 表示不限；会影响 FTP 源下载。示例：5 Mbps 约 640 KB/s，建议填 400；上下行同时传输可各填 250。");
             UiHelp.Tip(_parallel, "云上传并行分片数，可填 1 或 2。建议保持 1 以降低断线风险。");
             UiHelp.Tip(_objectBucket, "对象存储桶名。腾讯云桶名通常包含 APPID。");
             UiHelp.Tip(_objectAk, "对象存储 AccessKey 或 SecretId。凭据只保存在本机。");
@@ -666,6 +668,18 @@ namespace YxyXb.Client.Pages
         private static TextBlock Label(string text)
         {
             return new TextBlock { Text = text, Margin = new Thickness(0, 8, 0, 4) };
+        }
+
+        private static TextBlock Example(string text)
+        {
+            return new TextBlock
+            {
+                Text = text,
+                TextWrapping = TextWrapping.Wrap,
+                Foreground = System.Windows.Media.Brushes.Gray,
+                FontSize = 12,
+                Margin = new Thickness(0, 3, 0, 2)
+            };
         }
     }
 }

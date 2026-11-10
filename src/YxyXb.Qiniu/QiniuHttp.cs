@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Net;
 using System.Security.Cryptography;
@@ -139,7 +140,9 @@ namespace YxyXb.Qiniu
 
             const int blockSize = 4 * 1024 * 1024;
             var count = (int)((fileLen + blockSize - 1) / blockSize);
-            Say(note, "七牛 开始上传 " + Path.GetFileName(localPath) + "，大小 " + fileLen + " 字节，分片 " + count + "，远程 " + key);
+            Say(note, "七牛 开始上传 " + Path.GetFileName(localPath) + "，大小 " + fileLen
+                + " 字节，分片 " + count + "，限速 " + (maxKbps <= 0 ? "不限" : maxKbps + " KB/s")
+                + "，远程 " + key);
             var ctx = new string[count];
             var pacer = new BytePacer(maxKbps);
             var gate = new object();
@@ -365,7 +368,17 @@ namespace YxyXb.Qiniu
 
         public static string UrlSafeBase64(string text)
         {
-            return UrlSafe(Encoding.UTF8.GetBytes(text ?? "")).TrimEnd('=');
+            // 七牛的 stat/delete/mkfile 路径要求保留标准 Base64 的 '=' 填充。
+            return UrlSafe(Encoding.UTF8.GetBytes(text ?? ""));
+        }
+
+        internal static bool IsMissingObjectError(string message)
+        {
+            var text = message ?? "";
+            return text.IndexOf("HTTP 612", StringComparison.OrdinalIgnoreCase) >= 0
+                || text.IndexOf("HTTP 404", StringComparison.OrdinalIgnoreCase) >= 0
+                || text.IndexOf("no such file", StringComparison.OrdinalIgnoreCase) >= 0
+                || text.IndexOf("not found", StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
         public static DateTime FromPutTime(long putTime)
@@ -450,14 +463,13 @@ namespace YxyXb.Qiniu
 
     internal sealed class BytePacer
     {
-        private readonly int _bytesPerSecond;
+        private readonly long _bytesPerSecond;
         private readonly object _gate = new object();
-        private int _windowStart;
-        private int _used;
+        private long _nextSendTimestamp;
 
         public BytePacer(int maxKbps)
         {
-            _bytesPerSecond = maxKbps <= 0 ? 0 : maxKbps * 1024;
+            _bytesPerSecond = maxKbps <= 0 ? 0 : (long)maxKbps * 1024;
         }
 
         public void Take(int bytes)
@@ -467,29 +479,26 @@ namespace YxyXb.Qiniu
                 return;
             }
 
+            long waitTicks;
             lock (_gate)
             {
-                var now = Environment.TickCount;
-                if (_windowStart == 0 || unchecked(now - _windowStart) >= 1000)
+                var now = Stopwatch.GetTimestamp();
+                if (_nextSendTimestamp < now)
                 {
-                    _windowStart = now;
-                    _used = 0;
+                    _nextSendTimestamp = now;
                 }
 
-                _used += bytes;
-                if (_used <= _bytesPerSecond)
-                {
-                    return;
-                }
+                var sendAt = _nextSendTimestamp;
+                var durationTicks = (long)Math.Ceiling(
+                    (double)bytes * Stopwatch.Frequency / _bytesPerSecond);
+                _nextSendTimestamp = sendAt + Math.Max(1L, durationTicks);
+                waitTicks = sendAt - now;
+            }
 
-                var wait = 1000 - unchecked(now - _windowStart);
-                if (wait > 0 && wait <= 1000)
-                {
-                    System.Threading.Thread.Sleep(wait);
-                }
-
-                _windowStart = Environment.TickCount;
-                _used = bytes;
+            if (waitTicks > 0)
+            {
+                var waitMs = (long)Math.Ceiling(waitTicks * 1000d / Stopwatch.Frequency);
+                System.Threading.Thread.Sleep((int)Math.Min(waitMs, int.MaxValue));
             }
         }
     }

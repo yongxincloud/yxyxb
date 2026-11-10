@@ -177,7 +177,21 @@ namespace YxyXb.Baidu
             var url = "https://pan.baidu.com/rest/2.0/xpan/file?method=list"
                 + "&dir=" + Uri.EscapeDataString(dir)
                 + "&start=0&limit=1000";
-            var json = Api("GET", url, null, null);
+            string json;
+            try
+            {
+                json = Api("GET", url, null, null);
+            }
+            catch (InvalidOperationException ex)
+            {
+                if (ex.Message.IndexOf("errno=-9", StringComparison.Ordinal) >= 0)
+                {
+                    throw new CloudObjectNotFoundException("百度网盘远端目录或文件不存在：" + remoteKey, ex);
+                }
+
+                throw;
+            }
+
             var page = new JavaScriptSerializer().Deserialize<BaiduApiJson>(json) ?? new BaiduApiJson();
             if (page.list != null)
             {
@@ -196,7 +210,7 @@ namespace YxyXb.Baidu
                 }
             }
 
-            throw new InvalidOperationException("百度网盘远端文件不存在。");
+            throw new CloudObjectNotFoundException("百度网盘远端文件不存在：" + remoteKey);
         }
 
         private void CreateRemote(string path, long size, string uploadId, string blockList)

@@ -59,4 +59,17 @@
       </ResolvedFileToPublish>
     </ItemGroup>
   </Target>
+  <Target Name="IncludeSQLiteInteropPublish" AfterTargets="ComputeFilesToPublish">
+    <ItemGroup>
+      <_SQLiteInteropX64 Include="$(NuGetPackageRoot)stub.system.data.sqlite.core.netframework\1.0.118\build\net46\x64\SQLite.Interop.dll">
+        <RelativePath>x64\SQLite.Interop.dll</RelativePath>
+        <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      </_SQLiteInteropX64>
+      <_SQLiteInteropX86 Include="$(NuGetPackageRoot)stub.system.data.sqlite.core.netframework\1.0.118\build\net46\x86\SQLite.Interop.dll">
+        <RelativePath>x86\SQLite.Interop.dll</RelativePath>
+        <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      </_SQLiteInteropX86>
+      <ResolvedFileToPublish Include="@(_SQLiteInteropX64);@(_SQLiteInteropX86)" />
+    </ItemGroup>
+  </Target>
 </Project>

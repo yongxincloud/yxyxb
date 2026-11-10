@@ -75,6 +75,11 @@ namespace YxyXb.Ctyun
         {
             Require();
             var reply = Send("HEAD", remoteKey, null, "", null, false);
+            if (reply != null && reply.Status == 404)
+            {
+                throw new CloudObjectNotFoundException("天翼云远端对象不存在：" + remoteKey);
+            }
+
             Ensure(reply);
             return new CloudObjectInfo
             {
@@ -216,7 +221,8 @@ namespace YxyXb.Ctyun
 
             if (status == 403)
             {
-                throw new InvalidOperationException("密钥不正确。请检查 AccessKey 和 SecretKey，并使用公网地址。");
+                throw new InvalidOperationException(
+                    "天翼云请求被拒绝（403）。请检查密钥 AccessKey 和 SecretKey、公网地址，以及桶策略或对象锁定。");
             }
 
             if (status == 404)

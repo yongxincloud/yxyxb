@@ -81,7 +81,7 @@ namespace YxyXb.Cloud
 
             try
             {
-                storage.Upload(localPath, remoteKey);
+                CloudUploadRecovery.Upload(storage, localPath, remoteKey);
             }
             finally
             {

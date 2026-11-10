@@ -22,7 +22,8 @@ namespace YxyXb.Core.Cloud
             if (remote.Size != local)
             {
                 throw new InvalidOperationException(
-                    "远端对象大小不一致：本地 " + local + " 字节，远端 " + remote.Size + " 字节。");
+                    "远端对象大小不一致：本地 " + local + " 字节，远端 " + remote.Size
+                    + " 字节。若空间启用了 WORM、对象锁定或保留策略，客户端不会覆盖已有对象。");
             }
         }
     }

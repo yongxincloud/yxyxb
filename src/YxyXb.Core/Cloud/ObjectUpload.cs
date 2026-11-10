@@ -34,7 +34,7 @@ namespace YxyXb.Core.Cloud
             if (plan.Simple)
             {
                 var body = ReadRange(localPath, 0, (int)plan.PartSize);
-                TryCall("整包", delegate { api.PutWhole(remoteKey, body); return true; }, sleep, log);
+                api.PutWhole(remoteKey, body);
                 return;
             }
 

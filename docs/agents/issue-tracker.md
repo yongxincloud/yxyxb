@@ -1,5 +1,7 @@
 # Issue tracker: Local Markdown
 
+This repository has a GitHub remote (`yongxincloud/yxyxb`), but work items are intentionally tracked as local Markdown under `.scratch/`. Do not create GitHub issues or specs unless the user explicitly asks to switch trackers.
+
 Issues and specs for this repo live as markdown files in `.scratch/`.
 
 ## Conventions
@@ -17,6 +19,10 @@ Create a new file under `.scratch/<feature-slug>/` (creating the directory if ne
 ## When a skill says "fetch the relevant ticket"
 
 Read the file at the referenced path. The user will normally pass the path or the issue number directly.
+
+## Relationship to design history
+
+The checked-in files under `docs/superpowers/specs/` and `docs/superpowers/plans/` are historical design and implementation records. They provide context, but current code, `GLOSSARY.md`, and accepted ADRs take precedence when they disagree.
 
 ## Wayfinding operations
 

@@ -75,6 +75,11 @@ namespace YxyXb.TencentCloud
         {
             Require();
             var reply = Send("HEAD", remoteKey, null, "", null, false);
+            if (reply != null && reply.Status == 404)
+            {
+                throw new CloudObjectNotFoundException("腾讯云远端对象不存在：" + remoteKey);
+            }
+
             Ensure(reply);
             return new CloudObjectInfo
             {
@@ -236,7 +241,8 @@ namespace YxyXb.TencentCloud
 
             if (status == 403)
             {
-                throw new InvalidOperationException("密钥不正确。请检查 SecretId 和 SecretKey，并使用公网地址。");
+                throw new InvalidOperationException(
+                    "腾讯云请求被拒绝（403）。请检查密钥 SecretId 和 SecretKey、公网地址，以及桶策略或对象锁定。");
             }
 
             if (status == 404)

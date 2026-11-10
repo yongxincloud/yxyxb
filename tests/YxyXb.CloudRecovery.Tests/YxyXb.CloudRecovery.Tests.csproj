@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <RootNamespace>YxyXb.CloudRecovery.Tests</RootNamespace>
+    <AssemblyName>YxyXb.CloudRecovery.Tests</AssemblyName>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
+    <PackageReference Include="NUnit" Version="3.14.0" />
+    <PackageReference Include="NUnit3TestAdapter" Version="4.5.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\YxyXb.Core\YxyXb.Core.csproj" />
+    <ProjectReference Include="..\..\src\YxyXb.Contracts\YxyXb.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\YxyXb.Aliyun\YxyXb.Aliyun.csproj" />
+    <ProjectReference Include="..\..\src\YxyXb.Baidu\YxyXb.Baidu.csproj" />
+    <ProjectReference Include="..\..\src\YxyXb.Qiniu\YxyXb.Qiniu.csproj" />
+    <ProjectReference Include="..\..\src\YxyXb.TencentCloud\YxyXb.TencentCloud.csproj" />
+    <ProjectReference Include="..\..\src\YxyXb.Ctyun\YxyXb.Ctyun.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="..\YxyXb.Core.Tests\AliyunStorageTests.cs" Link="Existing\AliyunStorageTests.cs" />
+    <Compile Include="..\YxyXb.Core.Tests\CloudObjectKeysTests.cs" Link="Existing\CloudObjectKeysTests.cs" />
+    <Compile Include="..\YxyXb.Core.Tests\CtyunStorageTests.cs" Link="Existing\CtyunStorageTests.cs" />
+    <Compile Include="..\YxyXb.Core.Tests\PendingUploadTests.cs" Link="Existing\PendingUploadTests.cs" />
+    <Compile Include="..\YxyXb.Core.Tests\RemoteObjectVerifierTests.cs" Link="Existing\RemoteObjectVerifierTests.cs" />
+    <Compile Include="..\YxyXb.Core.Tests\TencentStorageTests.cs" Link="Existing\TencentStorageTests.cs" />
+  </ItemGroup>
+</Project>
