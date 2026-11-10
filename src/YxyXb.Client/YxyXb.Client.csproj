@@ -30,6 +30,7 @@
     <ProjectReference Include="..\YxyXb.MySql\YxyXb.MySql.csproj" />
     <ProjectReference Include="..\YxyXb.Cloud\YxyXb.Cloud.csproj" />
     <ProjectReference Include="..\YxyXb.Baidu\YxyXb.Baidu.csproj" />
+    <ProjectReference Include="..\YxyXb.SiteSession\YxyXb.SiteSession.csproj" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\YxyXb.Baidu\BaiduApp.example.json" Link="BaiduApp.example.json">

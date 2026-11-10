@@ -14,6 +14,7 @@ using System.Windows.Media;
 using YxyXb.Core;
 using YxyXb.Core.Data;
 using YxyXb.Core.Device;
+using YxyXb.SiteSession;
 using YxyXb.Core.Store;
 
 namespace YxyXb.Client
@@ -208,72 +209,12 @@ namespace YxyXb.Client
 
         public static SiteSession Load()
         {
-            var session = new SiteSession();
-            try
-            {
-                if (!File.Exists(SessionFile))
-                {
-                    return session;
-                }
-
-                var lines = File.ReadAllLines(SessionFile);
-                foreach (var line in lines)
-                {
-                    var index = line.IndexOf('=');
-                    if (index <= 0)
-                    {
-                        continue;
-                    }
-
-                    var key = line.Substring(0, index);
-                    var value = line.Substring(index + 1);
-                    if (key == "email") session.Email = value;
-                    else if (key == "name") session.Name = value;
-                    else if (key == "nickname") session.Nickname = value;
-                    else if (key == "company") session.CompanyName = value;
-                    else if (key == "valid") session.Valid = value == "true";
-                    else if (key == "status") session.AuthStatus = value;
-                    else if (key == "productNo") session.ProductNo = value;
-                    else if (key == "productName") session.ProductName = value;
-                    else if (key == "maxDevices")
-                    {
-                        int max;
-                        if (int.TryParse(value, out max)) session.MaxDevices = max;
-                    }
-                    else if (key == "days")
-                    {
-                        int days;
-                        if (int.TryParse(value, out days)) session.NextCheckDays = days;
-                    }
-                    else if (key == "end")
-                    {
-                        DateTime end;
-                        if (DateTime.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out end))
-                        {
-                            session.AuthEndUtc = end.ToUniversalTime();
-                        }
-                    }
-                }
-
-                session.LoggedIn = File.Exists(TokenFile) && !string.IsNullOrEmpty(session.Email);
-            }
-            catch (IOException)
-            {
-            }
-
-            return session;
+            return ToClientSession(CreateSessionService().Load());
         }
 
         public static void SignOut()
         {
-            try
-            {
-                if (File.Exists(TokenFile)) File.Delete(TokenFile);
-                if (File.Exists(SessionFile)) File.Delete(SessionFile);
-            }
-            catch (IOException)
-            {
-            }
+            CreateSessionService().SignOut();
         }
 
         public static string LocalDeviceId()
@@ -560,35 +501,21 @@ namespace YxyXb.Client
 
         public static void Login(string email, string password, string code)
         {
-            string path;
-            string json;
-            var deviceLabel = Escape(DeviceDisplayName());
-            var deviceId = Escape(DeviceId());
-            var note = Escape(CustomerNote(null));
-            var taskStatus = Escape(CurrentTaskStatus(null));
-            if (string.IsNullOrEmpty(code))
+            var device = new SiteDeviceContext
             {
-                path = "/api/client/login";
-                json = "{\"email\":\"" + Escape(email) + "\",\"password\":\"" + Escape(password)
-                    + "\",\"deviceId\":\"" + deviceId + "\",\"displayName\":\"" + deviceLabel
-                    + "\",\"note\":\"" + note + "\",\"taskStatus\":\"" + taskStatus + "\"}";
-            }
-            else
+                DeviceId = DeviceId(),
+                DisplayName = DeviceDisplayName(),
+                Note = CustomerNote(null),
+                TaskStatus = CurrentTaskStatus(null)
+            };
+            var service = CreateSessionService();
+            var outcome = string.IsNullOrEmpty(code)
+                ? service.LoginPassword(email, password, device)
+                : service.LoginCode(email, code, device);
+            if (outcome.DeviceLimited)
             {
-                path = "/api/client/login-code";
-                json = "{\"email\":\"" + Escape(email) + "\",\"code\":\"" + Escape(code)
-                    + "\",\"deviceId\":\"" + deviceId + "\",\"displayName\":\"" + deviceLabel
-                    + "\",\"note\":\"" + note + "\",\"taskStatus\":\"" + taskStatus + "\"}";
+                throw new DeviceLimitException(SiteSession.DeviceLimitPrompt(outcome.Error));
             }
-
-            var body = Post(path, json);
-            if (IsDeviceLimit(body))
-            {
-                Save(email, body);
-                throw new DeviceLimitException(SiteSession.DeviceLimitPrompt(Match(body, "\"error\"\\s*:\\s*\"([^\"]*)\"")));
-            }
-
-            Save(email, body);
         }
 
         private sealed class DeviceLimitException : InvalidOperationException
@@ -598,18 +525,39 @@ namespace YxyXb.Client
             }
         }
 
-        private static bool IsDeviceLimit(string body)
-        {
-            var errorCode = Regex.Match(body ?? "", "\"errorCode\"\\s*:\\s*\"([^\"]*)\"");
-            return errorCode.Success && errorCode.Groups[1].Value == "DEVICE_LIMIT";
-        }
-
         public static string SendCode(string email)
         {
-            var json = "{\"email\":\"" + Escape(email) + "\",\"scene\":\"login\"}";
-            var body = Post("/api/account/send-code", json);
-            var dev = Regex.Match(body, "\"devCode\"\\s*:\\s*\"([^\"]+)\"");
-            return dev.Success ? dev.Groups[1].Value : "";
+            return CreateSessionService().SendCode(email).DevCode ?? "";
+        }
+
+        private static SiteSessionService CreateSessionService()
+        {
+            var urlFile = Path.Combine(AppPaths.DataDirectory, "site.url");
+            var raw = File.Exists(urlFile) ? File.ReadAllText(urlFile) : "";
+            var baseUrl = SiteUrlFile.Read(raw, SiteUrlFile.DefaultSite).TrimEnd('/');
+            return new SiteSessionService(
+                new HttpSiteTransport(new Uri(baseUrl)),
+                new FileSiteSessionStore(AppPaths.DataDirectory, TokenFile, SessionFile));
+        }
+
+        private static SiteSession ToClientSession(SiteSessionState state)
+        {
+            state = state ?? new SiteSessionState();
+            return new SiteSession
+            {
+                LoggedIn = state.LoggedIn,
+                Email = state.Email,
+                Name = state.Name,
+                Nickname = state.Nickname,
+                CompanyName = state.CompanyName,
+                Valid = state.Valid,
+                AuthEndUtc = state.AuthEndUtc,
+                AuthStatus = state.AuthStatus,
+                NextCheckDays = state.NextCheckDays,
+                ProductNo = state.ProductNo,
+                ProductName = state.ProductName,
+                MaxDevices = state.MaxDevices
+            };
         }
 
         private static string Post(string path, string json)
