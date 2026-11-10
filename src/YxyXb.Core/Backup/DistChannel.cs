@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using YxyXb.Contracts.Cloud;
@@ -11,14 +10,6 @@ using YxyXb.Core.Transfer;
 
 namespace YxyXb.Core.Backup
 {
-    public sealed class PackageFinishResult
-    {
-        public bool DataOk { get; set; }
-        public bool MailOk { get; set; }
-        public bool MailAttempted { get; set; }
-        public string ResultCode { get; set; }
-    }
-
     public static class DistChannel
     {
         public static bool UncAndFtp(SqliteDb db, bool doNetwork, bool doFtp, string zipPath, StringBuilder log)
@@ -96,149 +87,6 @@ namespace YxyXb.Core.Backup
                 NetFail.NoteKept(log, ex);
                 return false;
             }
-        }
-
-        public static bool Finish(SqliteDb db, bool doEmail, bool doDelete, string taskName, IList<string> zips, bool distOk, StringBuilder log)
-        {
-            var mailOk = true;
-            var smtp = SettingsStore.GetXfer<SmtpSettingsDto>(db, "smtp");
-            if (MailUtil.ShouldSend(smtp, doEmail, distOk))
-            {
-                try
-                {
-                    MailUtil.SendResult(smtp, taskName, distOk, log.ToString(), SettingsStore.Get(db).SoftwareId);
-                    log.Append(" 已发邮件。");
-                }
-                catch (Exception ex)
-                {
-                    mailOk = false;
-                    log.Append(" 邮件失败：").Append(ex.Message).Append("。");
-                    NetFail.NoteKept(log, ex);
-                }
-            }
-
-            if (doDelete)
-            {
-                if (!distOk || !mailOk)
-                {
-                    throw new InvalidOperationException("已启用的网络/FTP/云/邮件未全部成功，不立即删本地包。");
-                }
-
-                for (var i = 0; i < zips.Count; i++)
-                {
-                    try
-                    {
-                        if (!string.IsNullOrEmpty(zips[i]) && File.Exists(zips[i]))
-                        {
-                            File.Delete(zips[i]);
-                        }
-                    }
-                    catch (IOException)
-                    {
-                    }
-                }
-
-                log.Append(" 已立即删本地包。");
-            }
-
-            return distOk && mailOk;
-        }
-
-        public static PackageFinishResult FinishPackages(
-            SqliteDb db,
-            bool doEmail,
-            bool doDelete,
-            string taskName,
-            IList<PendingItem> items,
-            bool distOk,
-            BackupRunStats stats,
-            StringBuilder log)
-        {
-            var dataOk = distOk && stats.SkippedFiles == 0;
-            var mailOk = true;
-            var mailAttempted = false;
-            var smtp = SettingsStore.GetXfer<SmtpSettingsDto>(db, "smtp");
-            var packageCount = CountPackages(items);
-            long archiveBytes = 0;
-            for (var i = 0; items != null && i < items.Count; i++)
-            {
-                var item = items[i];
-                if (item == null) continue;
-                if (item.ArchiveBytes > 0)
-                {
-                    archiveBytes += item.ArchiveBytes;
-                }
-                else if (!string.IsNullOrEmpty(item.ZipPath) && File.Exists(item.ZipPath))
-                {
-                    archiveBytes += new FileInfo(item.ZipPath).Length;
-                }
-            }
-
-            if (MailUtil.ShouldSend(smtp, doEmail, dataOk))
-            {
-                mailAttempted = true;
-                try
-                {
-                    MailUtil.SendResult(
-                        smtp,
-                        taskName,
-                        dataOk,
-                        log == null ? "" : log.ToString(),
-                        SettingsStore.Get(db).SoftwareId,
-                        BackupRunSummary.ToDatabaseMailStats(
-                            stats,
-                            archiveBytes,
-                            items != null && items.Count > 0,
-                            distOk,
-                            packageCount,
-                            distOk ? packageCount : 0));
-                    log.Append(" 已发邮件。");
-                }
-                catch (Exception ex)
-                {
-                    mailOk = false;
-                    log.Append(" 邮件失败：").Append(ex.Message).Append("。");
-                    NetFail.NoteKept(log, ex);
-                }
-            }
-
-            if (doDelete && dataOk)
-            {
-                for (var i = 0; items != null && i < items.Count; i++)
-                {
-                    if (!PendingFiles.TryDeletePackage(items[i]))
-                    {
-                        dataOk = false;
-                        log.Append(" 无法立即删除本地包。");
-                        break;
-                    }
-                }
-
-                if (dataOk) log.Append(" 已立即删本地包。");
-            }
-
-            return new PackageFinishResult
-            {
-                DataOk = dataOk,
-                MailOk = mailOk,
-                MailAttempted = mailAttempted,
-                ResultCode = BackupRunSummary.ResultCode(dataOk, mailOk)
-            };
-        }
-
-        private static int CountPackages(IList<PendingItem> items)
-        {
-            var count = 0;
-            for (var i = 0; items != null && i < items.Count; i++)
-            {
-                var item = items[i];
-                if (item == null) continue;
-                count += item.UploadFiles == null || item.UploadFiles.Length == 0
-                    ? 1
-                    : Math.Max(1, item.UploadFiles.Length - 1);
-            }
-
-            return Math.Max(1, count);
         }
     }
 }
