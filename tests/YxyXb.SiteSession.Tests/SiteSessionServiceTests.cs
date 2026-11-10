@@ -188,6 +188,64 @@ namespace YxyXb.SiteSession.Tests
             Assert.That(transport.Payload["deviceId"], Is.EqualTo("device-2"));
         }
 
+        [Test]
+        public void Verify_NetworkFailure_DoesNotDestroyExistingSession()
+        {
+            var store = new FakeStore
+            {
+                Session = new SiteSessionState
+                {
+                    LoggedIn = true,
+                    Email = "a@example.invalid",
+                    Token = "stored-token"
+                }
+            };
+            var service = new SiteSessionService(new FakeTransport(0, null) { ThrowOnPost = true }, store);
+
+            Assert.Throws<InvalidOperationException>(delegate { service.Verify(Device()); });
+            Assert.That(store.Session.Token, Is.EqualTo("stored-token"));
+        }
+
+        [Test]
+        public void ListDevices_ExpiredSession_ThrowsVisibleError()
+        {
+            var store = new FakeStore
+            {
+                Session = new SiteSessionState { Token = "stored-token" }
+            };
+            var service = new SiteSessionService(
+                new FakeTransport(400, "{\"ok\":false,\"error\":\"登录已失效\"}"),
+                store);
+
+            var error = Assert.Throws<InvalidOperationException>(delegate { service.ListDevices(); });
+
+            Assert.That(error.Message, Does.Contain("登录已失效"));
+        }
+
+        [Test]
+        public void FileStore_CorruptSession_IsTreatedAsLoggedOut()
+        {
+            var root = Path.Combine(Path.GetTempPath(), "yxy-site-corrupt-" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(root);
+            try
+            {
+                File.WriteAllText(Path.Combine(root, "site.token"), "token");
+                File.WriteAllText(Path.Combine(root, "site.session"), "invalid-session-data");
+
+                var loaded = new FileSiteSessionStore(
+                    root,
+                    Path.Combine(root, "site.token"),
+                    Path.Combine(root, "site.session")).Load();
+
+                Assert.That(loaded.LoggedIn, Is.False);
+                Assert.That(loaded.Email, Is.Null.Or.Empty);
+            }
+            finally
+            {
+                Directory.Delete(root, true);
+            }
+        }
+
         private static SiteDeviceContext Device()
         {
             return new SiteDeviceContext
@@ -220,9 +278,15 @@ namespace YxyXb.SiteSession.Tests
 
             public string Path { get; private set; }
             public IDictionary<string, object> Payload { get; private set; }
+            public bool ThrowOnPost { get; set; }
 
             public SiteHttpResponse Post(string path, IDictionary<string, object> payload)
             {
+                if (ThrowOnPost)
+                {
+                    throw new InvalidOperationException("无法连接网站");
+                }
+
                 Path = path;
                 Payload = payload;
                 return new SiteHttpResponse { StatusCode = _status, Body = _body };

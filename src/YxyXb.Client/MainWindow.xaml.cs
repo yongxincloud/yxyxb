@@ -126,7 +126,7 @@ namespace YxyXb.Client
                 "需要重新登录",
                 MessageBoxButton.OK,
                 MessageBoxImage.Information);
-            SiteLogin.Prompt(this, AfterLogin);
+            SiteLoginDialog.Prompt(this, AfterLogin);
         }
 
         private void Nav_OnClick(object sender, RoutedEventArgs e)
@@ -149,7 +149,7 @@ namespace YxyXb.Client
                 return;
             }
 
-            SiteLogin.Prompt(this, AfterLogin);
+            SiteLoginDialog.Prompt(this, AfterLogin);
         }
 
         private void AfterLogin()
