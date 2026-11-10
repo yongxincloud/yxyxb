@@ -12,4 +12,7 @@
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\YxyXb.Database\YxyXb.Database.csproj" />
+  </ItemGroup>
 </Project>

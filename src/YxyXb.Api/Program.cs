@@ -46,6 +46,7 @@ builder.Services.AddScoped<VendorProviderService>();
 builder.Services.AddScoped<VendorSettlementService>();
 builder.Services.AddScoped<VendorProductService>();
 builder.Services.AddScoped<DatabaseSeedService>();
+builder.Services.AddScoped<DatabaseStartupRunner>();
 builder.Services.AddHttpClient("alipay", client => client.Timeout = TimeSpan.FromSeconds(20));
 builder.Services.AddScoped<IAlipayGateway, AlipayGateway>();
 builder.Services.AddScoped<OrderService>();
@@ -61,7 +62,12 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<WebDb>();
-    new DatabaseStartupService().Initialize(db);
+    var startup = scope.ServiceProvider.GetRequiredService<DatabaseStartupRunner>();
+    startup.Run(new DatabaseStartupOptions
+    {
+        BackupDirectory = app.Configuration["Database:StartupBackupDirectory"],
+        ReportDirectory = app.Configuration["Database:StartupReportDirectory"]
+    });
     var seed = scope.ServiceProvider.GetRequiredService<DatabaseSeedService>();
     await seed.EnsureCatalogAsync();
 

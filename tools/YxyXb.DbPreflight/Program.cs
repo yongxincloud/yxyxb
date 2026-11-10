@@ -1,8 +1,8 @@
-using YxyXb.DbPreflight;
+using YxyXb.Database;
 
 if (!TryReadOptions(args, out var options))
 {
-    Console.Error.WriteLine("用法: YxyXb.DbPreflight --db <sqlite-path> [--backup-dir <dir>] [--report <json-path>]");
+    Console.Error.WriteLine("用法: YxyXb.DbPreflight --db <sqlite-path> [--backup-dir <dir>] [--report <json-path>] [--require-migrated-schema]");
     return 2;
 }
 
@@ -24,6 +24,12 @@ static bool TryReadOptions(string[] args, out PreflightOptions options)
     for (var i = 0; i < args.Length; i++)
     {
         var key = args[i];
+        if (string.Equals(key, "--require-migrated-schema", StringComparison.OrdinalIgnoreCase))
+        {
+            options.RequireMigratedSchema = true;
+            continue;
+        }
+
         if (i + 1 >= args.Length)
         {
             return false;

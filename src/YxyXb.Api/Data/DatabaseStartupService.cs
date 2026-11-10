@@ -1,27 +1,50 @@
 using System.Data;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 
 namespace YxyXb.Api.Data;
 
 public sealed class DatabaseStartupService
 {
-    public int Initialize(WebDb db)
+    public bool NeedsMigration(WebDb db)
+    {
+        return TryReadVersion(db).GetValueOrDefault() < 1;
+    }
+
+    public int? TryReadVersion(WebDb db)
+    {
+        try
+        {
+            return CurrentVersionOrZero(db);
+        }
+        catch (SqliteException)
+        {
+            return null;
+        }
+    }
+
+    public int Initialize(WebDb db, Action<string>? onStep = null)
     {
         db.Database.EnsureCreated();
+        onStep?.Invoke("schema.ensure-created");
         db.Database.ExecuteSqlRaw("""
             CREATE TABLE IF NOT EXISTS "SchemaVersions" (
               "Version" INTEGER NOT NULL CONSTRAINT "PK_SchemaVersions" PRIMARY KEY,
               "AppliedAtUtc" TEXT NOT NULL
             );
             """);
+        onStep?.Invoke("schema.versions.ready");
 
         var current = CurrentVersion(db);
         if (current < 1)
         {
+            onStep?.Invoke("schema.version.1.started");
             ApplyVersion1(db);
+            onStep?.Invoke("schema.version.1.applied");
             db.Database.ExecuteSqlRaw(
                 "INSERT INTO \"SchemaVersions\" (\"Version\", \"AppliedAtUtc\") VALUES (1, '" +
                 DateTime.UtcNow.ToString("o") + "');");
+            onStep?.Invoke("schema.version.1.recorded");
             current = 1;
         }
 
@@ -35,6 +58,16 @@ public sealed class DatabaseStartupService
         using var command = connection.CreateCommand();
         command.CommandText = "SELECT COALESCE(MAX(\"Version\"), 0) FROM \"SchemaVersions\";";
         return Convert.ToInt32(command.ExecuteScalar());
+    }
+
+    private static int CurrentVersionOrZero(WebDb db)
+    {
+        var connection = db.Database.GetDbConnection();
+        if (connection.State != ConnectionState.Open) connection.Open();
+        using var table = connection.CreateCommand();
+        table.CommandText = "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='SchemaVersions';";
+        if (Convert.ToInt32(table.ExecuteScalar()) == 0) return 0;
+        return CurrentVersion(db);
     }
 
     private static void ApplyVersion1(WebDb db)
