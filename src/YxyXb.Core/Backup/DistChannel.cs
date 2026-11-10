@@ -67,7 +67,6 @@ namespace YxyXb.Core.Backup
                 var key = CloudObjectKeys.ForZip(settings.SoftwareId, kind, taskName, zipPath);
                 var use = string.IsNullOrWhiteSpace(provider) ? CloudProviders.Qiniu : provider;
                 CloudRuntime.Require().Upload(db, use, zipPath, key);
-                CloudRuntime.Require().Verify(db, use, zipPath, key);
                 log.Append(" 云上传成功 ").Append(key).Append("。");
                 if (string.Equals(use, CloudProviders.Baidu, StringComparison.OrdinalIgnoreCase)
                     || string.Equals(use, CloudProviders.Qiniu, StringComparison.OrdinalIgnoreCase))

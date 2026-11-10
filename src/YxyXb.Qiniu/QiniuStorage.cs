@@ -7,6 +7,7 @@ using YxyXb.Contracts.Cloud;
 using YxyXb.Contracts.Dto;
 using YxyXb.Core;
 using YxyXb.Core.Backup;
+using YxyXb.Core.Cloud;
 
 namespace YxyXb.Qiniu
 {
@@ -73,7 +74,7 @@ namespace YxyXb.Qiniu
             }
 
             var token = QiniuHttp.UploadToken(acc.AccessKey, acc.SecretKey, acc.Bucket);
-            QiniuHttp.UploadFile(QiniuHttp.UploadHost(acc.Zone), token, remoteKey, localPath, _maxKbps, delegate(string line)
+            QiniuHttp.UploadFile(QiniuHttp.UploadHost(acc.Zone), token, remoteKey, localPath, _maxKbps, delegate (string line)
             {
                 Note(localPath, line);
             });
@@ -142,88 +143,93 @@ namespace YxyXb.Qiniu
         public int DeleteExpired(string prefix, DateTime olderThanUtc, Action<string> onDeleted)
         {
             var acc = Require();
-            var marker = "";
-            var guard = 0;
-            var deleted = 0;
-            var objects = new Dictionary<string, DateTime>(StringComparer.Ordinal);
-            while (guard < 200)
-            {
-                guard++;
-                var query = "/list?bucket=" + Uri.EscapeDataString(acc.Bucket)
-                    + "&prefix=" + Uri.EscapeDataString(prefix ?? "")
-                    + "&limit=1000";
-                if (!string.IsNullOrEmpty(marker))
+            var result = CloudRetentionRunner.DeleteExpired(
+                new Catalog(this),
+                prefix,
+                olderThanUtc,
+                delegate (IList<string> batch)
                 {
-                    query += "&marker=" + Uri.EscapeDataString(marker);
-                }
-
-                var auth = QiniuHttp.ManageToken(acc.AccessKey, acc.SecretKey, query, null);
-                var json = QiniuHttp.RequestJson("GET", "https://rsf.qiniu.com" + query, auth, null, null);
-                var page = QiniuHttp.FromJson<QiniuListResult>(json);
-                if (page == null || page.items == null || page.items.Count == 0)
-                {
-                    break;
-                }
-
-                for (var i = 0; i < page.items.Count; i++)
-                {
-                    var item = page.items[i];
-                    if (item == null || string.IsNullOrEmpty(item.key))
+                    for (var i = 0; i < batch.Count; i++)
                     {
-                        continue;
+                        DeleteOne(acc, batch[i]);
                     }
-
-                    // 只删过期 zip；不以「目录前缀」为删除对象
-                    if (!CloudObjectKeys.IsPackageObject(item.key))
-                    {
-                        continue;
-                    }
-
-                    var time = QiniuHttp.FromPutTime(item.putTime);
-                    if (time == DateTime.MinValue)
-                    {
-                        time = ParseStampFromKey(item.key);
-                    }
-
-                    if (time != DateTime.MinValue)
-                    {
-                        objects[item.key] = time;
-                    }
-                }
-
-                if (string.IsNullOrEmpty(page.marker))
-                {
-                    break;
-                }
-
-                marker = page.marker;
-            }
-
-            var keys = new List<string>(objects.Keys);
-            for (var i = 0; i < keys.Count; i++)
-            {
-                if (!CloudObjectKeys.IsManifest(keys[i])) continue;
-                var unit = CloudPackageRetention.GetExpiredUnitFiles(keys[i], objects, olderThanUtc);
-                for (var j = 0; j < unit.Count; j++)
-                {
-                    DeleteOne(acc, unit[j], onDeleted);
-                    deleted++;
-                }
-            }
-
-            return deleted;
+                },
+                onDeleted);
+            return result.DeletedCount;
         }
 
-        private static void DeleteOne(CloudAccountDto acc, string key, Action<string> onDeleted)
+        private sealed class Catalog : ICloudObjectCatalog
+        {
+            private readonly QiniuStorage _owner;
+
+            public Catalog(QiniuStorage owner)
+            {
+                _owner = owner;
+            }
+
+            public IList<CloudObjectEntry> List(string prefix)
+            {
+                var acc = _owner.Require();
+                var marker = "";
+                var guard = 0;
+                var entries = new List<CloudObjectEntry>();
+                while (guard < 200)
+                {
+                    guard++;
+                    var query = "/list?bucket=" + Uri.EscapeDataString(acc.Bucket)
+                        + "&prefix=" + Uri.EscapeDataString(prefix ?? "")
+                        + "&limit=1000";
+                    if (!string.IsNullOrEmpty(marker))
+                    {
+                        query += "&marker=" + Uri.EscapeDataString(marker);
+                    }
+
+                    var auth = QiniuHttp.ManageToken(acc.AccessKey, acc.SecretKey, query, null);
+                    var json = QiniuHttp.RequestJson("GET", "https://rsf.qiniu.com" + query, auth, null, null);
+                    var page = QiniuHttp.FromJson<QiniuListResult>(json);
+                    if (page == null || page.items == null || page.items.Count == 0)
+                    {
+                        break;
+                    }
+
+                    for (var i = 0; i < page.items.Count; i++)
+                    {
+                        var item = page.items[i];
+                        if (item == null || string.IsNullOrEmpty(item.key))
+                        {
+                            continue;
+                        }
+
+                        var time = QiniuHttp.FromPutTime(item.putTime);
+                        if (time == DateTime.MinValue)
+                        {
+                            time = ParseStampFromKey(item.key);
+                        }
+
+                        if (time != DateTime.MinValue)
+                        {
+                            entries.Add(new CloudObjectEntry { Key = item.key, ModifiedUtc = time });
+                        }
+                    }
+
+                    if (string.IsNullOrEmpty(page.marker))
+                    {
+                        break;
+                    }
+
+                    marker = page.marker;
+                }
+
+                return entries;
+            }
+        }
+
+        private static void DeleteOne(CloudAccountDto acc, string key)
         {
             var encoded = QiniuHttp.UrlSafeBase64(acc.Bucket + ":" + key);
             var path = "/delete/" + encoded;
             var auth = QiniuHttp.ManageToken(acc.AccessKey, acc.SecretKey, path, null);
             QiniuHttp.RequestJson("POST", "https://rs.qiniu.com" + path, auth, Encoding.UTF8.GetBytes(""), "application/x-www-form-urlencoded");
-            if (onDeleted != null)
-            {
-                onDeleted(key);
-            }
         }
 
         private static DateTime ParseStampFromKey(string key)

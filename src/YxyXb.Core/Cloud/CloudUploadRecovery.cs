@@ -55,7 +55,22 @@ namespace YxyXb.Core.Cloud
                 }
 
                 RemoteObjectVerifier.EnsureSameSize(localPath, remote);
+                return;
             }
+
+            CloudObjectInfo uploaded;
+            try
+            {
+                uploaded = storage.Stat(remoteKey);
+            }
+            catch (Exception verificationError)
+            {
+                throw new InvalidOperationException(
+                    "云上传完成，但远端对象校验失败：" + verificationError.Message,
+                    verificationError);
+            }
+
+            RemoteObjectVerifier.EnsureSameSize(localPath, uploaded);
         }
 
         private static CloudObjectInfo TryStat(ICloudStorage storage, string remoteKey)

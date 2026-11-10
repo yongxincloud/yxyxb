@@ -93,66 +93,78 @@ namespace YxyXb.Aliyun
         public int DeleteExpired(string prefix, DateTime olderThanUtc, Action<string> onDeleted)
         {
             Require();
-            var marker = "";
-            var guard = 0;
-            var deleted = 0;
-            var objects = new Dictionary<string, DateTime>(StringComparer.Ordinal);
-            while (guard < 200)
+            var result = CloudRetentionRunner.DeleteExpired(
+                new Catalog(this),
+                prefix,
+                olderThanUtc,
+                delegate (IList<string> batch)
+                {
+                    for (var i = 0; i < batch.Count; i++)
+                    {
+                        Ensure(Send("DELETE", batch[i], null, "", null, null));
+                    }
+                },
+                onDeleted);
+            return result.DeletedCount;
+        }
+
+        private sealed class Catalog : ICloudObjectCatalog
+        {
+            private readonly AliyunStorage _owner;
+
+            public Catalog(AliyunStorage owner)
             {
-                guard++;
-                var query = new Dictionary<string, string>();
-                query["max-keys"] = "1000";
-                query["prefix"] = prefix ?? "";
-                if (!string.IsNullOrEmpty(marker))
-                {
-                    query["marker"] = marker;
-                }
-
-                var reply = Send("GET", "", query, "", null, null);
-                Ensure(reply);
-                var page = ReadPage(reply.Body);
-                for (var i = 0; i < page.Items.Count; i++)
-                {
-                    var item = page.Items[i];
-                    if (item.Key == null || !CloudObjectKeys.IsPackageObject(item.Key))
-                    {
-                        continue;
-                    }
-
-                    var time = item.Modified;
-                    if (time == DateTime.MinValue)
-                    {
-                        time = Stamp(item.Key);
-                    }
-                    objects[item.Key] = time;
-                }
-
-                if (!page.Truncated || string.IsNullOrEmpty(page.NextMarker))
-                {
-                    break;
-                }
-
-                marker = page.NextMarker;
+                _owner = owner;
             }
 
-            var keys = new List<string>(objects.Keys);
-            for (var i = 0; i < keys.Count; i++)
+            public IList<CloudObjectEntry> List(string prefix)
             {
-                if (!CloudObjectKeys.IsManifest(keys[i]))
+                var marker = "";
+                var guard = 0;
+                var entries = new List<CloudObjectEntry>();
+                while (guard < 200)
                 {
-                    continue;
+                    guard++;
+                    var query = new Dictionary<string, string>();
+                    query["max-keys"] = "1000";
+                    query["prefix"] = prefix ?? "";
+                    if (!string.IsNullOrEmpty(marker))
+                    {
+                        query["marker"] = marker;
+                    }
+
+                    var reply = _owner.Send("GET", "", query, "", null, null);
+                    Ensure(reply);
+                    var page = ReadPage(reply.Body);
+                    for (var i = 0; i < page.Items.Count; i++)
+                    {
+                        var item = page.Items[i];
+                        if (item.Key == null)
+                        {
+                            continue;
+                        }
+
+                        var time = item.Modified;
+                        if (time == DateTime.MinValue)
+                        {
+                            time = Stamp(item.Key);
+                        }
+                        if (time != DateTime.MinValue)
+                        {
+                            entries.Add(new CloudObjectEntry { Key = item.Key, ModifiedUtc = time });
+                        }
+                    }
+
+                    if (!page.Truncated || string.IsNullOrEmpty(page.NextMarker))
+                    {
+                        break;
+                    }
+
+                    marker = page.NextMarker;
                 }
 
-                var unit = CloudPackageRetention.GetExpiredUnitFiles(keys[i], objects, olderThanUtc);
-                for (var j = 0; j < unit.Count; j++)
-                {
-                    Ensure(Send("DELETE", unit[j], null, "", null, null));
-                    deleted++;
-                    if (onDeleted != null) onDeleted(unit[j]);
-                }
+                return entries;
             }
-
-            return deleted;
         }
 
         private AliyunReply Send(string method, string key, IDictionary<string, string> query, string contentType, byte[] body, Dictionary<string, string> ossHeaders)

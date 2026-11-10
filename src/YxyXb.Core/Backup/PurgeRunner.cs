@@ -96,41 +96,12 @@ namespace YxyXb.Core.Backup
 
                 if (remote && settings.PurgeQiniu)
                 {
-                    try
-                    {
-                        var prefix = CloudObjectKeys.ProductPrefix(settings.SoftwareId);
-                        var older = DateTime.UtcNow.AddDays(-settings.QiniuRetainDays);
-                        var n = CloudRuntime.Require().DeleteExpired(db, CloudProviders.Qiniu, prefix, older, delegate(string key)
-                        {
-                            LogStore.Add(db, "purge", "auto", "ok", "七牛", "删除调用成功：" + key);
-                        });
-                        log.Append(" 七牛删除调用成功，共 ").Append(n).Append(" 个。");
-                    }
-                    catch (Exception ex)
-                    {
-                        ok = false;
-                        log.Append(" 七牛删除失败：").Append(ex.Message).Append("。");
-                    }
+                    PurgeCloud(db, settings, CloudProviders.Qiniu, "七牛", settings.QiniuRetainDays, log, ref ok);
                 }
 
                 if (remote && settings.PurgeBaidu)
                 {
-                    try
-                    {
-                        var prefix = CloudObjectKeys.ProductPrefix(settings.SoftwareId);
-                        var days = settings.BaiduRetainDays <= 0 ? 10 : settings.BaiduRetainDays;
-                        var older = DateTime.UtcNow.AddDays(-days);
-                        var n = CloudRuntime.Require().DeleteExpired(db, CloudProviders.Baidu, prefix, older, delegate(string key)
-                        {
-                            LogStore.Add(db, "purge", "auto", "ok", "百度", "删除调用成功：" + key);
-                        });
-                        log.Append(" 百度删除调用成功，共 ").Append(n).Append(" 个。");
-                    }
-                    catch (Exception ex)
-                    {
-                        ok = false;
-                        log.Append(" 百度删除失败：").Append(ex.Message).Append("。");
-                    }
+                    PurgeCloud(db, settings, CloudProviders.Baidu, "百度", settings.BaiduRetainDays, log, ref ok);
                 }
 
                 if (remote && settings.PurgeAliyun)

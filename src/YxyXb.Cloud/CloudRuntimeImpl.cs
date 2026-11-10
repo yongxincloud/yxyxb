@@ -1,11 +1,7 @@
 using System;
 using System.IO;
-using YxyXb.Aliyun;
 using YxyXb.Baidu;
-using YxyXb.Qiniu;
-using YxyXb.TencentCloud;
 using YxyXb.Contracts.Cloud;
-using YxyXb.Ctyun;
 using YxyXb.Contracts.Dto;
 using YxyXb.Core;
 using YxyXb.Core.Cloud;
@@ -23,8 +19,9 @@ namespace YxyXb.Cloud
                 return false;
             }
 
-            var storage = CloudStorageFactory.Create(provider, CloudAccountStore.Get(db, provider));
-            return storage.IsImplemented && AccountReady(provider, CloudAccountStore.Get(db, provider));
+            var account = CloudAccountStore.Get(db, provider);
+            var storage = CloudStorageFactory.Create(provider, account);
+            return storage.IsImplemented && AccountReady(provider, account);
         }
 
         public void Upload(SqliteDb db, string provider, string localPath, string remoteKey)
@@ -34,50 +31,10 @@ namespace YxyXb.Cloud
             var uploadKbps = CloudSpeed.UploadKbps(settings.UploadMinKbps, settings.UploadMaxKbps);
             storage.SetSpeed(uploadKbps, uploadKbps);
             storage.SetParallel(settings.UploadParallel);
-            var baidu = storage as BaiduStorage;
-            var qiniu = storage as QiniuStorage;
-            if (baidu != null)
+            storage.OnLog = delegate(string line)
             {
-                baidu.OnLog = delegate(string line)
-                {
-                    LogStore.Add(db, "baidu", "auto", SliceResult(line), Path.GetFileName(localPath), line);
-                };
-            }
-
-            if (qiniu != null)
-            {
-                qiniu.OnLog = delegate(string line)
-                {
-                    LogStore.Add(db, "qiniu", "auto", SliceResult(line), Path.GetFileName(localPath), line);
-                };
-            }
-
-            var ctyun = storage as CtyunStorage;
-            if (ctyun != null)
-            {
-                ctyun.OnLog = delegate(string line)
-                {
-                    LogStore.Add(db, "ctyun", "auto", SliceResult(line), Path.GetFileName(localPath), line);
-                };
-            }
-
-            var tencent = storage as TencentCloudStorage;
-            if (tencent != null)
-            {
-                tencent.OnLog = delegate(string line)
-                {
-                    LogStore.Add(db, "tencent", "auto", SliceResult(line), Path.GetFileName(localPath), line);
-                };
-            }
-
-            var aliyun = storage as AliyunStorage;
-            if (aliyun != null)
-            {
-                aliyun.OnLog = delegate(string line)
-                {
-                    LogStore.Add(db, "aliyun", "auto", SliceResult(line), Path.GetFileName(localPath), line);
-                };
-            }
+                LogStore.Add(db, provider, "auto", SliceResult(line), Path.GetFileName(localPath), line);
+            };
 
             try
             {
@@ -85,37 +42,8 @@ namespace YxyXb.Cloud
             }
             finally
             {
-                if (baidu != null)
-                {
-                    baidu.OnLog = null;
-                }
-
-                if (qiniu != null)
-                {
-                    qiniu.OnLog = null;
-                }
-
-                if (ctyun != null)
-                {
-                    ctyun.OnLog = null;
-                }
-
-                if (tencent != null)
-                {
-                    tencent.OnLog = null;
-                }
-
-                if (aliyun != null)
-                {
-                    aliyun.OnLog = null;
-                }
+                storage.OnLog = null;
             }
-        }
-
-        public void Verify(SqliteDb db, string provider, string localPath, string remoteKey)
-        {
-            var info = CreateReady(db, provider).Stat(remoteKey);
-            RemoteObjectVerifier.EnsureSameSize(localPath, info);
         }
 
         public int DeleteExpired(SqliteDb db, string provider, string prefix, DateTime olderThanUtc, Action<string> onDeleted)

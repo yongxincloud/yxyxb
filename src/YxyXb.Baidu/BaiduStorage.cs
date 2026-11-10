@@ -2,11 +2,13 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Web.Script.Serialization;
 using YxyXb.Contracts.Cloud;
 using YxyXb.Contracts.Dto;
 using YxyXb.Core;
+using YxyXb.Core.Cloud;
 
 namespace YxyXb.Baidu
 {
@@ -230,29 +232,40 @@ namespace YxyXb.Baidu
             RequireReady();
             EnsureToken();
             var cfg = Config();
-            var dir = CloudObjectKeys.BaiduRemotePath(cfg.AppFolderName, prefix ?? "");
-            if (dir.EndsWith("/", StringComparison.Ordinal))
-            {
-                dir = dir.TrimEnd('/');
-            }
-
-            return DeleteExpiredUnder(dir, olderThanUtc, onDeleted, 0);
+            var result = CloudRetentionRunner.DeleteExpired(
+                new Catalog(this),
+                prefix,
+                olderThanUtc,
+                delegate (IList<string> batch)
+                {
+                    var filelist = new JavaScriptSerializer().Serialize(
+                        Enumerable.ToArray(
+                            Enumerable.Select(batch, key => new Dictionary<string, string>
+                            {
+                                { "path", CloudObjectKeys.BaiduRemotePath(cfg.AppFolderName, key) }
+                            })));
+                    Api(
+                        "POST",
+                        "https://pan.baidu.com/rest/2.0/xpan/file?method=filemanager&opera=delete",
+                        Form("async", "0", "filelist", filelist),
+                        "application/x-www-form-urlencoded");
+                },
+                onDeleted);
+            return result.DeletedCount;
         }
 
         /// <summary>
-        /// 递归列出子目录，只按文件时间戳删除过期 zip；不按文件夹 mtime 整夹删除。
+        /// 递归列出子目录中的包对象；目录本身不进入删除候选。
         /// </summary>
-        private int DeleteExpiredUnder(string dir, DateTime olderThanUtc, Action<string> onDeleted, int depth)
+        private void ListUnder(string dir, IList<CloudObjectEntry> entries, int depth)
         {
             if (depth > 12 || string.IsNullOrEmpty(dir))
             {
-                return 0;
+                return;
             }
 
             var ser = new JavaScriptSerializer();
-            var deleted = 0;
             var start = 0;
-            var objects = new Dictionary<string, DateTime>(StringComparer.Ordinal);
             for (var guard = 0; guard < 200; guard++)
             {
                 var url = "https://pan.baidu.com/rest/2.0/xpan/file?method=list"
@@ -277,11 +290,10 @@ namespace YxyXb.Baidu
                     // 目录：只递归进入，永远不调用 delete（禁止整夹删除）
                     if (item.isdir != 0)
                     {
-                        deleted += DeleteExpiredUnder(item.path, olderThanUtc, onDeleted, depth + 1);
+                        ListUnder(item.path, entries, depth + 1);
                         continue;
                     }
 
-                    // 只删过期 zip 文件，其它文件类型一律保留
                     if (!CloudObjectKeys.IsPackageObject(item.path))
                     {
                         continue;
@@ -292,7 +304,14 @@ namespace YxyXb.Baidu
                     {
                         time = FromUnix(item.server_mtime);
                     }
-                    if (time != DateTime.MinValue) objects[item.path] = time;
+                    if (time != DateTime.MinValue)
+                    {
+                        entries.Add(new CloudObjectEntry
+                        {
+                            Key = ToObjectKey(item.path),
+                            ModifiedUtc = time
+                        });
+                    }
                 }
 
                 if (page.list.Count < 1000)
@@ -302,28 +321,42 @@ namespace YxyXb.Baidu
 
                 start += page.list.Count;
             }
+        }
 
-            var keys = new List<string>(objects.Keys);
-            for (var i = 0; i < keys.Count; i++)
+        private string ToObjectKey(string remotePath)
+        {
+            var root = CloudObjectKeys.BaiduRemotePath(Config().AppFolderName, "");
+            if (!root.EndsWith("/", StringComparison.Ordinal))
             {
-                if (!CloudObjectKeys.IsManifest(keys[i])) continue;
-                var unit = CloudPackageRetention.GetExpiredUnitFiles(keys[i], objects, olderThanUtc);
-                if (unit.Count == 0) continue;
-                var filelist = ser.Serialize(System.Linq.Enumerable.ToArray(
-                    System.Linq.Enumerable.Select(unit, key => new Dictionary<string, string> { { "path", key } })));
-                Api(
-                    "POST",
-                    "https://pan.baidu.com/rest/2.0/xpan/file?method=filemanager&opera=delete",
-                    Form("async", "0", "filelist", filelist),
-                    "application/x-www-form-urlencoded");
-                for (var j = 0; j < unit.Count; j++)
-                {
-                    deleted++;
-                    if (onDeleted != null) onDeleted(unit[j]);
-                }
+                root += "/";
             }
 
-            return deleted;
+            return remotePath != null && remotePath.StartsWith(root, StringComparison.Ordinal)
+                ? remotePath.Substring(root.Length)
+                : (remotePath ?? "").TrimStart('/');
+        }
+
+        private sealed class Catalog : ICloudObjectCatalog
+        {
+            private readonly BaiduStorage _owner;
+
+            public Catalog(BaiduStorage owner)
+            {
+                _owner = owner;
+            }
+
+            public IList<CloudObjectEntry> List(string prefix)
+            {
+                var dir = CloudObjectKeys.BaiduRemotePath(_owner.Config().AppFolderName, prefix ?? "");
+                if (dir.EndsWith("/", StringComparison.Ordinal))
+                {
+                    dir = dir.TrimEnd('/');
+                }
+
+                var entries = new List<CloudObjectEntry>();
+                _owner.ListUnder(dir, entries, 0);
+                return entries;
+            }
         }
 
         private void UploadParts(string localPath, string path, string uploadId, long fileLen, BaiduUploadCheckpoint cp, string dataDir)
@@ -345,7 +378,7 @@ namespace YxyXb.Baidu
 
             var gate = new object();
             Exception error = null;
-            System.Threading.Tasks.Parallel.For(0, count, new System.Threading.Tasks.ParallelOptions { MaxDegreeOfParallelism = _parallel }, delegate(int i)
+            System.Threading.Tasks.Parallel.For(0, count, new System.Threading.Tasks.ParallelOptions { MaxDegreeOfParallelism = _parallel }, delegate (int i)
             {
                 if (done.Contains(i))
                 {

@@ -8,6 +8,8 @@ namespace YxyXb.Contracts.Cloud
 
         bool IsImplemented { get; }
 
+        Action<string> OnLog { get; set; }
+
         void TestConnection();
 
         void SetSpeed(int minKbps, int maxKbps);
