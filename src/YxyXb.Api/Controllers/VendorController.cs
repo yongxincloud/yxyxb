@@ -49,13 +49,15 @@ public sealed class VendorController : ControllerBase
     private readonly IEmailSender _email;
     private readonly IPasswordHasher _hasher;
     private readonly VendorCustomerAuthService _customerAuth;
+    private readonly VendorProviderService _providers;
     public VendorController(
         WebDb db,
         MailSettingsService mail,
         EmailCodeService codes,
         IEmailSender email,
         IPasswordHasher hasher,
-        VendorCustomerAuthService customerAuth)
+        VendorCustomerAuthService customerAuth,
+        VendorProviderService providers)
     {
         _db = db;
         _mail = mail;
@@ -63,6 +65,7 @@ public sealed class VendorController : ControllerBase
         _email = email;
         _hasher = hasher;
         _customerAuth = customerAuth;
+        _providers = providers;
     }
 
     [HttpPost("login")]
@@ -276,70 +279,28 @@ public sealed class VendorController : ControllerBase
     public async Task<IActionResult> CreateLevel([FromBody] LevelBody body)
     {
         if (!Vendor()) return NotFound();
-        if (string.IsNullOrWhiteSpace(body.Name) || body.Rate <= 0 || body.Rate >= 1)
-            return BadRequest(new { ok = false, error = "等级名称必填，佣金比例要在 0 和 1 之间" });
-        var now = DateTime.UtcNow;
-        var level = new ProviderLevel
-        {
-            Name = body.Name.Trim(),
-            CommissionRate = body.Rate,
-            Status = 1,
-            CreatedAt = now,
-            UpdatedAt = now
-        };
-        _db.ProviderLevels.Add(level);
-        await _db.SaveChangesAsync();
-        return Ok(new { ok = true, id = level.Id });
+        var result = await _providers.CreateLevelAsync(body.Name, body.Rate);
+        return result.Ok
+            ? Ok(new { ok = true, id = result.Value!.Id })
+            : BadRequest(new { ok = false, error = result.Error });
     }
 
     [HttpPost("levels/{id:long}")]
     public async Task<IActionResult> UpdateLevel(long id, [FromBody] LevelBody body)
     {
         if (!Vendor()) return NotFound();
-        if (body.Rate <= 0 || body.Rate >= 1)
-            return BadRequest(new { ok = false, error = "佣金比例要在 0 和 1 之间" });
-        var level = await _db.ProviderLevels.SingleOrDefaultAsync(x => x.Id == id);
-        if (level == null) return BadRequest(new { ok = false, error = "等级不存在" });
-        var before = level.CommissionRate;
-        level.CommissionRate = body.Rate;
-        level.UpdatedAt = DateTime.UtcNow;
-        _db.OperationLogs.Add(new OperationLog
-        {
-            Module = "level",
-            Action = "rate",
-            BeforeValue = before.ToString("0.00"),
-            AfterValue = body.Rate.ToString("0.00"),
-            CreatedAt = level.UpdatedAt
-        });
-        await _db.SaveChangesAsync();
-        return Ok(new { ok = true });
+        var result = await _providers.UpdateLevelAsync(id, body.Rate);
+        return result.Ok ? Ok(new { ok = true }) : BadRequest(new { ok = false, error = result.Error });
     }
 
     [HttpPost("provider-applies/{id:long}/approve")]
     public async Task<IActionResult> Approve(long id, [FromBody] ApproveBody body)
     {
         if (!Vendor()) return NotFound();
-        var apply = await _db.ProviderApplies.SingleOrDefaultAsync(x => x.Id == id && x.Status == 0);
-        if (apply == null) return BadRequest(new { ok = false, error = "申请不存在或已审批" });
-        var level = await _db.ProviderLevels.SingleOrDefaultAsync(x => x.Id == body.LevelId && x.Status == 1);
-        if (level == null) return BadRequest(new { ok = false, error = "等级不存在" });
-        var now = DateTime.UtcNow;
-        var provider = new Provider
-        {
-            ProviderNo = "P" + now.ToString("yyyyMMddHHmmssfff"),
-            AccountId = apply.AccountId,
-            Name = apply.CompanyName,
-            LevelId = level.Id,
-            Status = 1,
-            EffectiveAt = now,
-            CreatedAt = now,
-            UpdatedAt = now
-        };
-        _db.Providers.Add(provider);
-        await _db.SaveChangesAsync();
-        apply.Status = 1;
-        await _db.SaveChangesAsync();
-        return Ok(new { ok = true, providerNo = provider.ProviderNo });
+        var result = await _providers.ApproveAsync(id, body.LevelId);
+        return result.Ok
+            ? Ok(new { ok = true, providerNo = result.Value!.ProviderNo })
+            : BadRequest(new { ok = false, error = result.Error });
     }
 
     [HttpPost("settlements/{id:long}/approve")]
@@ -520,8 +481,7 @@ public sealed class VendorController : ControllerBase
     public async Task<IActionResult> Applies()
     {
         if (!Vendor()) return NotFound();
-        var rows = await _db.ProviderApplies.Where(x => x.Status == 0).OrderBy(x => x.Id)
-            .Select(x => new { x.Id, x.CompanyName, x.TaxNo, x.ContactName, x.ContactEmail }).ToListAsync();
+        var rows = await _providers.ListPendingApplicationsAsync();
         return Ok(new { ok = true, rows });
     }
 
@@ -637,75 +597,26 @@ public sealed class VendorController : ControllerBase
     public async Task<IActionResult> SetProviderStatus(long id, [FromBody] ProviderStatusBody body)
     {
         if (!Vendor()) return NotFound();
-        if (body.Status is not (0 or 1))
-            return BadRequest(new { ok = false, error = "状态只能是启用或停用" });
-        var provider = await _db.Providers.SingleOrDefaultAsync(x => x.Id == id);
-        if (provider == null) return BadRequest(new { ok = false, error = "服务商不存在" });
-        if (provider.Status == 2)
-            return BadRequest(new { ok = false, error = "已解约的服务商不能改状态" });
-        if (provider.Status == body.Status) return Ok(new { ok = true });
-        var before = provider.Status;
-        var now = DateTime.UtcNow;
-        provider.Status = body.Status;
-        provider.UpdatedAt = now;
-        _db.OperationLogs.Add(new OperationLog
-        {
-            Module = "provider",
-            Action = body.Status == 1 ? "enable" : "disable",
-            BeforeValue = provider.ProviderNo + ":" + before,
-            AfterValue = provider.ProviderNo + ":" + body.Status,
-            CreatedAt = now
-        });
-        await _db.SaveChangesAsync();
-        return Ok(new { ok = true });
+        var result = await _providers.SetStatusAsync(id, body.Status);
+        return result.Ok ? Ok(new { ok = true }) : BadRequest(new { ok = false, error = result.Error });
     }
 
     [HttpPost("providers/{id:long}/level")]
     public async Task<IActionResult> SetProviderLevel(long id, [FromBody] ProviderLevelBody body)
     {
         if (!Vendor()) return NotFound();
-        var provider = await _db.Providers.SingleOrDefaultAsync(x => x.Id == id);
-        if (provider == null) return BadRequest(new { ok = false, error = "服务商不存在" });
-        if (provider.Status == 2)
-            return BadRequest(new { ok = false, error = "已解约的服务商不能改等级" });
-        var level = await _db.ProviderLevels.SingleOrDefaultAsync(x => x.Id == body.LevelId && x.Status == 1);
-        if (level == null) return BadRequest(new { ok = false, error = "等级不存在" });
-        if (provider.LevelId == level.Id) return Ok(new { ok = true });
-        var before = provider.LevelId;
-        var now = DateTime.UtcNow;
-        provider.LevelId = level.Id;
-        provider.UpdatedAt = now;
-        _db.OperationLogs.Add(new OperationLog
-        {
-            Module = "provider",
-            Action = "level",
-            BeforeValue = provider.ProviderNo + ":" + before,
-            AfterValue = provider.ProviderNo + ":" + level.Id,
-            CreatedAt = now
-        });
-        await _db.SaveChangesAsync();
-        return Ok(new { ok = true });
+        var result = await _providers.SetLevelAsync(id, body.LevelId);
+        return result.Ok ? Ok(new { ok = true }) : BadRequest(new { ok = false, error = result.Error });
     }
 
     [HttpPost("providers/{id:long}/freeze")]
     public async Task<IActionResult> Freeze(long id)
     {
         if (!Vendor()) return NotFound();
-        var provider = await _db.Providers.SingleOrDefaultAsync(x => x.Id == id && x.Status != 2);
-        if (provider == null) return BadRequest(new { ok = false, error = "服务商不存在或已解约" });
-        provider.Status = 2;
-        provider.UpdatedAt = DateTime.UtcNow;
-        var customers = _db.Customers.Where(x => x.DirectProviderId == provider.Id).ToList();
-        foreach (var customer in customers) customer.DirectProviderId = null;
-        _db.OperationLogs.Add(new OperationLog
-        {
-            Module = "provider",
-            Action = "freeze",
-            AfterValue = provider.ProviderNo,
-            CreatedAt = provider.UpdatedAt
-        });
-        await _db.SaveChangesAsync();
-        return Ok(new { ok = true, moved = customers.Count });
+        var result = await _providers.FreezeAsync(id);
+        return result.Ok
+            ? Ok(new { ok = true, moved = result.Value!.Moved })
+            : BadRequest(new { ok = false, error = result.Error });
     }
 
     bool Vendor()
