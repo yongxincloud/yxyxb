@@ -318,7 +318,7 @@ namespace YxyXb.Core.Backup
         }
     }
 
-    internal sealed class BackupPackageStore : IBackupPackageStore
+    public sealed class BackupPackageStore : IBackupPackageStore
     {
         public bool DeleteReplacements(PendingItem[] items, StringBuilder log)
         {

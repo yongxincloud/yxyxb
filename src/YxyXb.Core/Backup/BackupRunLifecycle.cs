@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Text;
 using YxyXb.Core.Transfer;
 
@@ -335,6 +336,10 @@ namespace YxyXb.Core.Backup
                 if (item.ArchiveBytes > 0)
                 {
                     total += item.ArchiveBytes;
+                }
+                else if (!string.IsNullOrEmpty(item.ZipPath) && File.Exists(item.ZipPath))
+                {
+                    total += new FileInfo(item.ZipPath).Length;
                 }
             }
 
