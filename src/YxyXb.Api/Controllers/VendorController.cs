@@ -51,6 +51,7 @@ public sealed class VendorController : ControllerBase
     private readonly VendorCustomerAuthService _customerAuth;
     private readonly VendorProviderService _providers;
     private readonly VendorSettlementService _settlements;
+    private readonly VendorProductService _products;
     public VendorController(
         WebDb db,
         MailSettingsService mail,
@@ -59,7 +60,8 @@ public sealed class VendorController : ControllerBase
         IPasswordHasher hasher,
         VendorCustomerAuthService customerAuth,
         VendorProviderService providers,
-        VendorSettlementService settlements)
+        VendorSettlementService settlements,
+        VendorProductService products)
     {
         _db = db;
         _mail = mail;
@@ -69,6 +71,7 @@ public sealed class VendorController : ControllerBase
         _customerAuth = customerAuth;
         _providers = providers;
         _settlements = settlements;
+        _products = products;
     }
 
     [HttpPost("login")]
@@ -342,68 +345,28 @@ public sealed class VendorController : ControllerBase
     }
 
     [HttpPost("products/{productNo}/price")]
-    public Task<IActionResult> ChangePrice(string productNo, [FromBody] PriceBody body) =>
-        UpdateProduct(productNo, new ProductUpdateBody(body.Price, null, null, null, null, null, null));
+    public async Task<IActionResult> ChangePrice(string productNo, [FromBody] PriceBody body)
+    {
+        if (!Vendor()) return NotFound();
+        var result = await _products.ChangePriceAsync(productNo, body.Price);
+        return result.Ok ? Ok(new { ok = true }) : BadRequest(new { ok = false, error = result.Error });
+    }
 
     [HttpPost("products/{productNo}")]
     public async Task<IActionResult> UpdateProduct(string productNo, [FromBody] ProductUpdateBody body)
     {
         if (!Vendor()) return NotFound();
-        var product = await _db.Products.SingleOrDefaultAsync(x => x.ProductNo == productNo);
-        if (product == null) return BadRequest(new { ok = false, error = "产品不存在" });
-
-        if (body.Price is <= 0) return BadRequest(new { ok = false, error = "价格必须大于 0" });
-        if (body.MaxDevices is < 1) return BadRequest(new { ok = false, error = "设备上限至少为 1" });
-        if (body.Status is not (null or 0 or 1)) return BadRequest(new { ok = false, error = "上下架状态不正确" });
-
-        var promoPrice = body.PromoPrice ?? product.PromoPrice;
-        var promoStart = body.PromoStart ?? product.PromoStart;
-        var promoEnd = body.PromoEnd ?? product.PromoEnd;
-        if (body.PromoPrice == 0) { promoPrice = null; promoStart = null; promoEnd = null; }
-        if (promoPrice is > 0)
-        {
-            if (promoStart == null || promoEnd == null || promoStart >= promoEnd)
-                return BadRequest(new { ok = false, error = "促销价需要有效的起止时间" });
-        }
-
-        var before = System.Text.Json.JsonSerializer.Serialize(new
-        {
-            product.Price, product.PromoPrice, product.PromoStart, product.PromoEnd,
-            product.MaxDevices, product.SortOrder, product.Status
-        });
-
-        if (body.Price != null) product.Price = body.Price.Value;
-        if (body.PromoPrice != null || body.PromoPrice == 0)
-        {
-            product.PromoPrice = promoPrice;
-            product.PromoStart = promoStart;
-            product.PromoEnd = promoEnd;
-        }
-        else
-        {
-            if (body.PromoStart != null) product.PromoStart = body.PromoStart;
-            if (body.PromoEnd != null) product.PromoEnd = body.PromoEnd;
-        }
-        if (body.MaxDevices != null) product.MaxDevices = body.MaxDevices.Value;
-        if (body.SortOrder != null) product.SortOrder = body.SortOrder.Value;
-        if (body.Status != null) product.Status = body.Status.Value;
-        product.UpdatedAt = DateTime.UtcNow;
-
-        var after = System.Text.Json.JsonSerializer.Serialize(new
-        {
-            product.Price, product.PromoPrice, product.PromoStart, product.PromoEnd,
-            product.MaxDevices, product.SortOrder, product.Status
-        });
-        _db.OperationLogs.Add(new OperationLog
-        {
-            Module = "product",
-            Action = "update",
-            BeforeValue = before,
-            AfterValue = after,
-            CreatedAt = DateTime.UtcNow
-        });
-        await _db.SaveChangesAsync();
-        return Ok(new { ok = true });
+        var result = await _products.UpdateAsync(
+            productNo,
+            new ProductUpdateCommand(
+                body.Price,
+                body.PromoPrice,
+                body.PromoStart,
+                body.PromoEnd,
+                body.MaxDevices,
+                body.SortOrder,
+                body.Status));
+        return result.Ok ? Ok(new { ok = true }) : BadRequest(new { ok = false, error = result.Error });
     }
 
     [HttpGet("mail")]
