@@ -1,12 +1,10 @@
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Text;
 using YxyXb.Contracts.Dto;
 using YxyXb.Core.Data;
 using YxyXb.Core.Store;
-using YxyXb.Core.Transfer;
 
 namespace YxyXb.Core.Backup
 {
@@ -60,319 +58,28 @@ namespace YxyXb.Core.Backup
 
         public static void ExecuteOne(SqliteDb db, FileTaskDto task, string mode)
         {
-            var now = DateTime.UtcNow;
-            var log = new StringBuilder();
-            var ok = false;
-            var mailOk = true;
-            var mailAttempted = false;
-            var stats = new BackupRunStats();
-            var archiveBytes = 0L;
-            string zipPath = null;
-            string tempRoot = null;
-            try
+            BackupRunLifecycle.Execute(new BackupRunRequest
             {
-                var settings = SettingsStore.Get(db);
-                var bak = AppPaths.BackupDirectoryOrThrow(settings.BakPath);
-                Directory.CreateDirectory(bak);
-
-                var error = FileTaskValidator.Validate(task, bak);
-                if (error != null && task.SourceKind == "local")
+                Task = new FileBackupTaskState(db, task),
+                Source = new FileBackupSource(db, task),
+                Delivery = new FileBackupDelivery(db, task.Name),
+                Notification = new FileBackupNotification(db, task.DoEmail, task.Name),
+                PackageStore = new BackupPackageStore(),
+                DoNetwork = task.DoNetwork,
+                DoFtp = task.DoFtp,
+                DoCloud = task.DoCloud,
+                CloudProvider = task.CloudProvider,
+                DoDeleteNow = task.DoDeleteNow,
+                Mode = mode,
+                AfterSuccess = delegate(StringBuilder log)
                 {
-                    throw new InvalidOperationException(error);
-                }
-
-                var sourceRoot = PrepareSource(db, task, log, out tempRoot);
-                if (BackupNaming.IsLoop(sourceRoot, bak))
-                {
-                    throw new InvalidOperationException("源路径不能回环到备份目录。");
-                }
-
-                var scan = SourceWalker.ScanLocal(sourceRoot);
-                var files = scan.Files;
-                stats = scan.Stats;
-                log.Append("发现 ").Append(stats.DiscoveredFiles)
-                    .Append("，打包 ").Append(stats.PackedFiles)
-                    .Append("，跳过 ").Append(stats.SkippedFiles).Append("。");
-                for (var i = 0; i < scan.DirectoryErrors.Count; i++)
-                {
-                    log.Append(" 目录无法读取：").Append(scan.DirectoryErrors[i]).Append("。");
-                }
-
-                var fingerprintFiles = new List<FingerprintFile>();
-                for (var i = 0; i < files.Count; i++)
-                {
-                    var item = files[i];
-                    var info = new FileInfo(item.FullPath);
-                    fingerprintFiles.Add(new FingerprintFile
+                    if (!string.IsNullOrEmpty(task.PostProgram) && File.Exists(task.PostProgram))
                     {
-                        RelativePath = item.RelativePath,
-                        Length = info.Length,
-                        LastWriteUtcTicks = File.GetLastWriteTimeUtc(item.FullPath).Ticks
-                    });
-                }
-
-                var passwordHash = SourceFingerprint.PasswordHash(settings.ZipPassword);
-                var fingerprint = SourceFingerprint.Compute(fingerprintFiles);
-                var record = PendingBackup.Parse(task.PendingJson);
-                var decision = PendingBackup.DecideFile(record, new FileSnapshot
-                {
-                    SourceKind = task.SourceKind ?? "local",
-                    SourcePath = task.SourcePath ?? "",
-                    Fingerprint = fingerprint,
-                    ZipLevel = settings.ZipLevel,
-                    PasswordSha256 = passwordHash
-                }, File.Exists);
-                var track = task.DoNetwork || task.DoFtp || task.DoCloud;
-                if (decision.Reuse)
-                {
-                    TryDeleteDir(tempRoot);
-                    tempRoot = null;
-                    zipPath = decision.Keep[0].ZipPath;
-                    archiveBytes = decision.Keep[0].ArchiveBytes;
-                    if (archiveBytes <= 0 && !string.IsNullOrEmpty(zipPath) && File.Exists(zipPath))
-                    {
-                        archiveBytes = new FileInfo(zipPath).Length;
-                    }
-                    log.Append(" 沿用未传完的包 ").Append(zipPath);
-                }
-                else
-                {
-                    if (!PendingFiles.DeleteReplacements(decision.Replace, log))
-                    {
-                        throw new InvalidOperationException("删除未传完的包失败，已中止。");
-                    }
-
-                    record = PendingBackup.RemoveItems(record, decision.Replace);
-                    var removedJson = PendingBackup.ToJson(record);
-                    FileTaskStore.SavePending(db, task.Id, removedJson);
-                    task.PendingJson = removedJson;
-                    var flags = settings.NameFlags == 0 ? NameParts.DefaultFlags : settings.NameFlags;
-                    var parts = NameParts.FromFlags(flags);
-                    var folder = BackupNaming.FileFolder(bak, settings.SoftwareId, task.Name, parts);
-                    zipPath = Path.Combine(folder, BackupNaming.FileZipName(settings.SoftwareId, task.Name, now, parts));
-                    try
-                    {
-                        ZipPacker.Pack(files, zipPath, settings.ZipPassword, settings.ZipLevel);
-                    }
-                    catch (Exception)
-                    {
-                        PendingFiles.TryDeleteZip(zipPath);
-                        throw;
-                    }
-                    archiveBytes = new FileInfo(zipPath).Length;
-
-                    log.Append(" 产出 ").Append(zipPath);
-                    log.Append(string.IsNullOrEmpty(settings.ZipPassword) ? "。" : "，已用压缩密码。");
-                    if (decision.Replace != null && decision.Replace.Length > 0)
-                    {
-                        log.Append(" 重新打包：").Append(decision.Reason);
-                    }
-
-                    var packed = new PendingItem
-                    {
-                        Key = "file",
-                        ZipPath = zipPath,
-                        Fingerprint = fingerprint,
-                        ZipLevel = settings.ZipLevel,
-                        PasswordSha256 = passwordHash,
-                        ArchiveBytes = archiveBytes
-                    };
-                    var limit = PackageLimits.Resolve(settings.PartSizeBytes, task.PartSizeBytes);
-                    var split = PackageSplitter.Split(
-                        zipPath,
-                        task.Name,
-                        limit,
-                        stats,
-                        delegate { return PackageManifestCodec.NewBackupId(now); });
-                    if (split != null)
-                    {
-                        File.Delete(zipPath);
-                        PendingFiles.SetSplitItem(packed, split, stats);
-                        log.Append(" 已生成分卷 ").Append(split.PartPaths.Length).Append(" 个。");
-                    }
-                    if (record == null)
-                    {
-                        record = new PendingRecord();
-                    }
-
-                    record.SourceKind = task.SourceKind ?? "local";
-                    record.SourcePath = task.SourcePath ?? "";
-                    record.CycleUntilUtc = null;
-                    record.RunStats = stats;
-                    record.Items = new[] { packed };
-                    if (track)
-                    {
-                        var json = PendingBackup.ToJson(record);
-                        FileTaskStore.SavePending(db, task.Id, json);
-                        task.PendingJson = json;
-                    }
-                    else
-                    {
-                        FileTaskStore.SavePending(db, task.Id, null);
-                        task.PendingJson = null;
+                        Process.Start(new ProcessStartInfo(task.PostProgram) { UseShellExecute = true });
+                        log.Append(" 已运行后续程序。");
                     }
                 }
-
-                var distOk = true;
-                if (track)
-                {
-                    var uploadItem = decision.Reuse ? decision.Keep[0] : record.Items[0];
-                    distOk = PendingFiles.UploadItem(
-                        db,
-                        uploadItem,
-                        task.DoNetwork,
-                        task.DoFtp,
-                        task.DoCloud,
-                        task.CloudProvider,
-                        "file",
-                        task.Name,
-                        log,
-                        delegate
-                        {
-                            var json = PendingBackup.ToJson(record);
-                            FileTaskStore.SavePending(db, task.Id, json);
-                            task.PendingJson = json;
-                        });
-                }
-
-                log.Append(" 源 ").Append(BackupRunSummary.FormatBytes(stats.SourceBytes))
-                    .Append("，压缩后 ").Append(BackupRunSummary.FormatBytes(archiveBytes)).Append("。");
-
-                var dataOk = distOk && stats.SkippedFiles == 0;
-                var packageItem = decision.Reuse ? decision.Keep[0] : record.Items[0];
-                var packageCount = packageItem.UploadFiles == null || packageItem.UploadFiles.Length == 0
-                    ? 1
-                    : Math.Max(1, packageItem.UploadFiles.Length - 1);
-                var smtp = SettingsStore.GetXfer<SmtpSettingsDto>(db, "smtp");
-                if (MailUtil.ShouldSend(smtp, task.DoEmail, dataOk))
-                {
-                    mailAttempted = true;
-                    try
-                    {
-                        MailUtil.SendResult(
-                            smtp,
-                            task.Name,
-                            dataOk,
-                            log.ToString(),
-                            settings.SoftwareId,
-                            BackupRunSummary.ToMailStats(
-                                stats, archiveBytes, track, distOk,
-                                packageCount, distOk ? packageCount : 0));
-                        log.Append(" 已发邮件。");
-                    }
-                    catch (Exception ex)
-                    {
-                        mailOk = false;
-                        log.Append(" 邮件失败：").Append(ex.Message).Append("。");
-                        NetFail.NoteKept(log, ex);
-                    }
-                }
-
-                if (!dataOk)
-                {
-                    throw new InvalidOperationException(stats.SkippedFiles > 0
-                        ? "存在无法读取的文件，本次备份失败。"
-                        : "已启用的数据通道未全部成功。");
-                }
-
-                if (task.DoDeleteNow && !PendingFiles.TryDeletePackage(packageItem))
-                {
-                    throw new InvalidOperationException("已成功的备份无法立即删除本地包。");
-                }
-                if (task.DoDeleteNow)
-                {
-                    log.Append(" 已立即删本地包。");
-                }
-
-                if (!string.IsNullOrEmpty(task.PostProgram) && File.Exists(task.PostProgram))
-                {
-                    Process.Start(new ProcessStartInfo(task.PostProgram) { UseShellExecute = true });
-                    log.Append(" 已运行后续程序。");
-                }
-
-                FileTaskStore.SavePending(db, task.Id, null);
-                task.PendingJson = null;
-                ok = true;
-            }
-            catch (Exception ex)
-            {
-                log.Append(" 失败：").Append(ex.Message);
-                var smtp = SettingsStore.GetXfer<SmtpSettingsDto>(db, "smtp");
-                if (!mailAttempted && MailUtil.ShouldSend(smtp, task.DoEmail, false))
-                {
-                    try
-                    {
-                        archiveBytes = !string.IsNullOrEmpty(zipPath) && File.Exists(zipPath)
-                            ? new FileInfo(zipPath).Length
-                            : 0;
-                        MailUtil.SendResult(
-                            smtp,
-                            task.Name,
-                            false,
-                            log.ToString(),
-                            SettingsStore.Get(db).SoftwareId,
-                            BackupRunSummary.ToMailStats(stats, archiveBytes, false, false));
-                    }
-                    catch
-                    {
-                    }
-                }
-            }
-            finally
-            {
-                TryDeleteDir(tempRoot);
-                FileTaskStore.MarkResult(db, task, ok, now);
-                LogStore.Add(
-                    db,
-                    "file",
-                    string.IsNullOrEmpty(mode) ? "auto" : mode,
-                    BackupRunSummary.ResultCode(ok, mailOk),
-                    task.Name,
-                    log.ToString());
-            }
-        }
-
-        private static string PrepareSource(SqliteDb db, FileTaskDto task, StringBuilder log, out string tempRoot)
-        {
-            tempRoot = null;
-            var kind = task.SourceKind ?? "local";
-            if (kind == "unc")
-            {
-                var unc = SettingsStore.GetXfer<UncSettingsDto>(db, "unc");
-                unc.Path = task.SourcePath;
-                UncShare.Test(unc);
-                return task.SourcePath;
-            }
-
-            if (kind == "ftp")
-            {
-                var ftp = SettingsStore.GetXfer<FtpSettingsDto>(db, "ftp");
-                ftp.RemoteDir = task.SourcePath;
-                tempRoot = Path.Combine(Path.GetTempPath(), "yxy-ftp-" + Guid.NewGuid().ToString("N"));
-                var speed = SettingsStore.Get(db);
-                var down = CloudSpeed.DownloadKbps(speed.UploadMinKbps, speed.UploadMaxKbps);
-                FtpUtil.DownloadTree(ftp, task.SourcePath, tempRoot, down);
-                log.Append("已下载 FTP 源。");
-                return tempRoot;
-            }
-
-            return task.SourcePath;
-        }
-
-        private static void TryDeleteDir(string path)
-        {
-            if (string.IsNullOrEmpty(path) || !Directory.Exists(path))
-            {
-                return;
-            }
-
-            try
-            {
-                Directory.Delete(path, true);
-            }
-            catch (IOException)
-            {
-            }
+            });
         }
     }
 }
