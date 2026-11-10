@@ -48,13 +48,21 @@ public sealed class VendorController : ControllerBase
     private readonly EmailCodeService _codes;
     private readonly IEmailSender _email;
     private readonly IPasswordHasher _hasher;
-    public VendorController(WebDb db, MailSettingsService mail, EmailCodeService codes, IEmailSender email, IPasswordHasher hasher)
+    private readonly VendorCustomerAuthService _customerAuth;
+    public VendorController(
+        WebDb db,
+        MailSettingsService mail,
+        EmailCodeService codes,
+        IEmailSender email,
+        IPasswordHasher hasher,
+        VendorCustomerAuthService customerAuth)
     {
         _db = db;
         _mail = mail;
         _codes = codes;
         _email = email;
         _hasher = hasher;
+        _customerAuth = customerAuth;
     }
 
     [HttpPost("login")]
@@ -380,58 +388,11 @@ public sealed class VendorController : ControllerBase
     public async Task<IActionResult> Grant([FromBody] GrantBody body)
     {
         if (!Vendor()) return NotFound();
-        var email = (body.Email ?? "").Trim().ToLowerInvariant();
-        var account = await _db.Accounts.SingleOrDefaultAsync(x => x.Email == email);
-        if (account == null) return BadRequest(new { ok = false, error = "账号不存在，后台不能新建账号" });
-        var customer = await _db.Customers.SingleOrDefaultAsync(x => x.AccountId == account.Id);
-        if (customer == null) return BadRequest(new { ok = false, error = "账号不存在，后台不能新建账号" });
-        var productNo = string.IsNullOrWhiteSpace(body.ProductNo) ? OrderService.StandardProductNo : body.ProductNo.Trim().ToUpperInvariant();
-        var product = await _db.Products.SingleOrDefaultAsync(x => x.ProductNo == productNo);
-        if (product == null || product.Status != 1) return BadRequest(new { ok = false, error = "产品不存在或已下架" });
-        var limitError = CustomLimitError(product, body.MaxDevices);
-        if (limitError != null) return BadRequest(new { ok = false, error = limitError });
-        var now = DateTime.UtcNow;
-        DateTime end;
-        if (body.EndTime != null)
-            end = body.EndTime.Value;
-        else if (body.Days is > 0)
-        {
-            var latest = await _db.SubscriptionAuths.Where(x => x.CustomerId == customer.Id)
-                .OrderByDescending(x => x.AuthEndTime).Select(x => (DateTime?)x.AuthEndTime).FirstOrDefaultAsync();
-            var baseTime = latest != null && now <= latest.Value.AddDays(7) ? latest.Value : now;
-            end = baseTime.AddDays(body.Days.Value);
-        }
-        else return BadRequest(new { ok = false, error = "请填写时长或到期日" });
-        if (end <= now) return BadRequest(new { ok = false, error = "到期日必须晚于现在" });
-        _db.SubscriptionAuths.Add(new SubscriptionAuth
-        {
-            CustomerId = customer.Id,
-            ProductId = product.Id,
-            AuthStartTime = now,
-            AuthEndTime = end,
-            Status = 1,
-            GrantType = 2,
-            GrantReason = body.Reason,
-            DeviceLimit = product.ProductNo == OrderService.CustomProductNo ? body.MaxDevices : null,
-            CreatedAt = now,
-            UpdatedAt = now
-        });
-        _db.OperationLogs.Add(new OperationLog
-        {
-            Module = "auth",
-            Action = "grant",
-            AfterValue = email + " " + product.ProductNo + " " + end.ToString("yyyy-MM-dd"),
-            CreatedAt = now
-        });
-        _db.Messages.Add(new SiteMessage
-        {
-            AccountId = account.Id,
-            Title = "授权已发放",
-            Content = "可用至 " + end.ToString("yyyy-MM-dd"),
-            CreatedAt = now
-        });
-        await _db.SaveChangesAsync();
-        return Ok(new { ok = true, authEndTime = end });
+        var result = await _customerAuth.GrantAsync(
+            new CustomerGrantCommand(body.Email, body.Days, body.EndTime, body.Reason, body.ProductNo, body.MaxDevices));
+        return result.Ok
+            ? Ok(new { ok = true, authEndTime = result.Value!.EndTime })
+            : BadRequest(new { ok = false, error = result.Error });
     }
 
     [HttpPost("products/{productNo}/price")]
@@ -634,232 +595,42 @@ public sealed class VendorController : ControllerBase
     public async Task<IActionResult> Customers([FromQuery] string? q)
     {
         if (!Vendor()) return NotFound();
-        var needle = (q ?? "").Trim().ToLowerInvariant();
-        var query = _db.Customers.Join(
-            _db.Accounts,
-            customer => customer.AccountId,
-            account => account.Id,
-            (customer, account) => new { Customer = customer, Account = account });
-        if (needle.Length > 0)
-        {
-            query = query.Where(x =>
-                (x.Customer.Name ?? "").ToLower().Contains(needle) ||
-                (x.Customer.Nickname ?? "").ToLower().Contains(needle) ||
-                (x.Customer.CompanyName ?? "").ToLower().Contains(needle) ||
-                x.Customer.CustomerNo.ToLower().Contains(needle) ||
-                (x.Customer.InvoiceTitle ?? "").ToLower().Contains(needle) ||
-                (x.Customer.InvoiceTaxNo ?? "").ToLower().Contains(needle) ||
-                (x.Customer.InvoiceEmail ?? "").ToLower().Contains(needle) ||
-                x.Account.Email.ToLower().Contains(needle) ||
-                (x.Account.Phone ?? "").ToLower().Contains(needle));
-        }
-
-        var take = needle.Length > 0 ? 100 : 50;
-        var rows = await query.OrderByDescending(x => x.Customer.Id).Take(take)
-            .Select(x => new
-            {
-                x.Customer.Id,
-                x.Customer.CustomerNo,
-                x.Customer.Name,
-                x.Customer.Nickname,
-                x.Customer.CompanyName,
-                x.Account.Phone,
-                Email = x.Account.Email,
-                x.Customer.InvoiceTitle,
-                x.Customer.InvoiceTaxNo,
-                x.Customer.InvoiceEmail,
-                x.Customer.InvoiceLicense,
-                x.Customer.DirectProviderId,
-                x.Customer.CreatedAt,
-                x.Customer.Status
-            }).ToListAsync();
-
-        var ids = rows.Select(x => x.Id).ToList();
-        var auths = await _db.SubscriptionAuths.Where(x => ids.Contains(x.CustomerId))
-            .Select(x => new { x.CustomerId, x.ProductId, x.AuthEndTime, x.DeviceLimit })
-            .ToListAsync();
-        var latest = auths.GroupBy(x => x.CustomerId)
-            .ToDictionary(g => g.Key, g => g.OrderByDescending(x => x.AuthEndTime).First());
-        var productIds = latest.Values.Select(x => x.ProductId).Distinct().ToList();
-        var products = await _db.Products.Where(x => productIds.Contains(x.Id))
-            .ToDictionaryAsync(x => x.Id);
-
-        return Ok(new
-        {
-            ok = true,
-            rows = rows.Select(x =>
-            {
-                latest.TryGetValue(x.Id, out var auth);
-                products.TryGetValue(auth?.ProductId ?? 0, out var product);
-                return new
-                {
-                    x.Id,
-                    x.CustomerNo,
-                    x.Name,
-                    x.Nickname,
-                    x.CompanyName,
-                    x.Phone,
-                    email = x.Email,
-                    x.InvoiceTitle,
-                    x.InvoiceTaxNo,
-                    x.InvoiceEmail,
-                    x.InvoiceLicense,
-                    x.DirectProviderId,
-                    x.CreatedAt,
-                    x.Status,
-                    authEndTime = auth == null ? (DateTime?)null : auth.AuthEndTime,
-                    productNo = product?.ProductNo,
-                    productName = product?.Name,
-                    maxDevices = product == null ? (int?)null : OrderService.DeviceCap(product.ProductNo, product.MaxDevices, auth?.DeviceLimit)
-                };
-            })
-        });
+        var rows = await _customerAuth.SearchAsync(q);
+        return Ok(new { ok = true, rows });
     }
 
     [HttpPost("customers/{id:long}/edition")]
     public async Task<IActionResult> ChangeEdition(long id, [FromBody] EditionBody body)
     {
         if (!Vendor()) return NotFound();
-        var customer = await _db.Customers.SingleOrDefaultAsync(x => x.Id == id);
-        if (customer == null) return BadRequest(new { ok = false, error = "客户不存在" });
-        var productNo = (body.ProductNo ?? "").Trim().ToUpperInvariant();
-        if (string.IsNullOrEmpty(productNo)) return BadRequest(new { ok = false, error = "请选择账号类型" });
-        var product = await _db.Products.SingleOrDefaultAsync(x => x.ProductNo == productNo);
-        if (product == null || product.Status != 1) return BadRequest(new { ok = false, error = "产品不存在或已下架" });
-        var limitError = CustomLimitError(product, body.MaxDevices);
-        if (limitError != null) return BadRequest(new { ok = false, error = limitError });
-
-        var auth = await _db.SubscriptionAuths
-            .Where(x => x.CustomerId == customer.Id)
-            .OrderByDescending(x => x.AuthEndTime)
-            .FirstOrDefaultAsync();
-        if (auth == null) return BadRequest(new { ok = false, error = "客户尚未开通授权，请先增加期限" });
-
-        var beforeProduct = await _db.Products.SingleOrDefaultAsync(x => x.Id == auth.ProductId);
-        var nextLimit = product.ProductNo == OrderService.CustomProductNo ? body.MaxDevices : null;
-        var sameProduct = beforeProduct != null && beforeProduct.Id == product.Id;
-        var sameLimit = auth.DeviceLimit == nextLimit;
-        if (sameProduct && sameLimit)
-            return BadRequest(new { ok = false, error = "账号类型未变化" });
-
-        var account = await _db.Accounts.SingleOrDefaultAsync(x => x.Id == customer.AccountId);
-        var email = account?.Email ?? customer.CustomerNo;
-        var before = (beforeProduct?.ProductNo ?? "?") + " " + (beforeProduct?.Name ?? "");
-        var after = product.ProductNo + " " + product.Name;
-        var now = DateTime.UtcNow;
-        auth.ProductId = product.Id;
-        auth.DeviceLimit = nextLimit;
-        auth.UpdatedAt = now;
-        if (!string.IsNullOrWhiteSpace(body.Reason))
-            auth.GrantReason = body.Reason.Trim();
-
-        _db.OperationLogs.Add(new OperationLog
-        {
-            Module = "customer",
-            Action = "edition",
-            BeforeValue = email + " " + before,
-            AfterValue = email + " " + after,
-            CreatedAt = now
-        });
-        _db.Messages.Add(new SiteMessage
-        {
-            AccountId = customer.AccountId,
-            Title = "账号类型已变更",
-            Content = "已调整为 " + product.Name + "（最多 " + OrderService.DeviceCap(product.ProductNo, product.MaxDevices, nextLimit) + " 台设备）",
-            CreatedAt = now
-        });
-        await _db.SaveChangesAsync();
-        return Ok(new
-        {
-            ok = true,
-            productNo = product.ProductNo,
-            productName = product.Name,
-            maxDevices = OrderService.DeviceCap(product.ProductNo, product.MaxDevices, nextLimit)
-        });
-    }
-
-    static string? CustomLimitError(Product product, int? maxDevices)
-    {
-        if (product.ProductNo != OrderService.CustomProductNo) return null;
-        if (maxDevices is not > 0) return "定制版人数要大于 0";
-        if (maxDevices > 9999) return "定制版人数最多 9999";
-        return null;
+        var result = await _customerAuth.ChangeEditionAsync(
+            id,
+            new CustomerEditionCommand(body.ProductNo, body.Reason, body.MaxDevices));
+        return result.Ok
+            ? Ok(new
+            {
+                ok = true,
+                productNo = result.Value!.ProductNo,
+                productName = result.Value.ProductName,
+                maxDevices = result.Value.MaxDevices
+            })
+            : BadRequest(new { ok = false, error = result.Error });
     }
 
     [HttpPost("customers/{id:long}/provider")]
     public async Task<IActionResult> Assign(long id, [FromBody] AssignBody body)
     {
         if (!Vendor()) return NotFound();
-        var customer = await _db.Customers.SingleOrDefaultAsync(x => x.Id == id);
-        if (customer == null) return BadRequest(new { ok = false, error = "客户不存在" });
-        long? providerId = null;
-        if (!string.IsNullOrWhiteSpace(body.ProviderNo))
-        {
-            var provider = await _db.Providers.SingleOrDefaultAsync(x => x.ProviderNo == body.ProviderNo);
-            if (provider == null) return BadRequest(new { ok = false, error = "服务商不存在" });
-            providerId = provider.Id;
-        }
-        var before = customer.DirectProviderId?.ToString() ?? "";
-        customer.DirectProviderId = providerId;
-        customer.UpdatedAt = DateTime.UtcNow;
-        _db.OperationLogs.Add(new OperationLog
-        {
-            Module = "customer",
-            Action = "assign",
-            BeforeValue = before,
-            AfterValue = providerId?.ToString() ?? "",
-            CreatedAt = customer.UpdatedAt
-        });
-        await _db.SaveChangesAsync();
-        return Ok(new { ok = true });
+        var result = await _customerAuth.AssignProviderAsync(id, body.ProviderNo);
+        return result.Ok ? Ok(new { ok = true }) : BadRequest(new { ok = false, error = result.Error });
     }
 
     [HttpPost("customers/{id:long}/delete")]
     public async Task<IActionResult> DeleteCustomer(long id)
     {
         if (!Vendor()) return NotFound();
-        var customer = await _db.Customers.SingleOrDefaultAsync(x => x.Id == id);
-        if (customer == null) return BadRequest(new { ok = false, error = "客户不存在" });
-        var account = await _db.Accounts.SingleOrDefaultAsync(x => x.Id == customer.AccountId);
-        if (await _db.Providers.AnyAsync(x => x.AccountId == customer.AccountId))
-            return BadRequest(new { ok = false, error = "该账号是服务商，不能直接删除" });
-        var orderIds = await _db.Orders.Where(x => x.CustomerId == customer.Id).Select(x => x.Id).ToListAsync();
-        var payments = await _db.Payments.Where(x => orderIds.Contains(x.OrderId)).ToListAsync();
-        var commissions = await _db.Commissions.Where(x => orderIds.Contains(x.OrderId)).ToListAsync();
-        var orders = await _db.Orders.Where(x => x.CustomerId == customer.Id).ToListAsync();
-        var auths = await _db.SubscriptionAuths.Where(x => x.CustomerId == customer.Id).ToListAsync();
-        var invoices = await _db.InvoiceApplies.Where(x => x.CustomerId == customer.Id).ToListAsync();
-        var messages = await _db.Messages.Where(x => x.AccountId == customer.AccountId).ToListAsync();
-        var tokens = await _db.AuthTokens.Where(x => x.AccountId == customer.AccountId).ToListAsync();
-        var loginLogs = await _db.LoginLogs.Where(x => x.AccountId == customer.AccountId).ToListAsync();
-        var applies = await _db.ProviderApplies.Where(x => x.AccountId == customer.AccountId).ToListAsync();
-        var email = account?.Email ?? "";
-        var codes = string.IsNullOrEmpty(email)
-            ? new List<EmailCodeRow>()
-            : await _db.EmailCodes.Where(x => x.Email == email).ToListAsync();
-        _db.Payments.RemoveRange(payments);
-        _db.Commissions.RemoveRange(commissions);
-        _db.Orders.RemoveRange(orders);
-        _db.SubscriptionAuths.RemoveRange(auths);
-        _db.InvoiceApplies.RemoveRange(invoices);
-        _db.Messages.RemoveRange(messages);
-        _db.AuthTokens.RemoveRange(tokens);
-        _db.LoginLogs.RemoveRange(loginLogs);
-        _db.ProviderApplies.RemoveRange(applies);
-        _db.EmailCodes.RemoveRange(codes);
-        _db.Customers.Remove(customer);
-        if (account != null) _db.Accounts.Remove(account);
-        var now = DateTime.UtcNow;
-        _db.OperationLogs.Add(new OperationLog
-        {
-            Module = "customer",
-            Action = "delete",
-            BeforeValue = email,
-            AfterValue = "",
-            CreatedAt = now
-        });
-        await _db.SaveChangesAsync();
-        return Ok(new { ok = true });
+        var result = await _customerAuth.DeleteCustomerAsync(id);
+        return result.Ok ? Ok(new { ok = true }) : BadRequest(new { ok = false, error = result.Error });
     }
 
     [HttpPost("providers/{id:long}/status")]

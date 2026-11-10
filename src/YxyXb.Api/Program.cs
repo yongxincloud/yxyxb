@@ -41,6 +41,7 @@ builder.Services.AddScoped<CaptchaService>();
 builder.Services.AddScoped<AccountService>();
 builder.Services.AddScoped<DeviceRegistryService>();
 builder.Services.AddScoped<ClientAuthService>();
+builder.Services.AddScoped<VendorCustomerAuthService>();
 builder.Services.AddHttpClient("alipay", client => client.Timeout = TimeSpan.FromSeconds(20));
 builder.Services.AddScoped<IAlipayGateway, AlipayGateway>();
 builder.Services.AddScoped<OrderService>();
