@@ -50,6 +50,7 @@ public sealed class VendorController : ControllerBase
     private readonly IPasswordHasher _hasher;
     private readonly VendorCustomerAuthService _customerAuth;
     private readonly VendorProviderService _providers;
+    private readonly VendorSettlementService _settlements;
     public VendorController(
         WebDb db,
         MailSettingsService mail,
@@ -57,7 +58,8 @@ public sealed class VendorController : ControllerBase
         IEmailSender email,
         IPasswordHasher hasher,
         VendorCustomerAuthService customerAuth,
-        VendorProviderService providers)
+        VendorProviderService providers,
+        VendorSettlementService settlements)
     {
         _db = db;
         _mail = mail;
@@ -66,6 +68,7 @@ public sealed class VendorController : ControllerBase
         _hasher = hasher;
         _customerAuth = customerAuth;
         _providers = providers;
+        _settlements = settlements;
     }
 
     [HttpPost("login")]
@@ -307,42 +310,24 @@ public sealed class VendorController : ControllerBase
     public async Task<IActionResult> ApproveSettlement(long id)
     {
         if (!Vendor()) return NotFound();
-        var row = await _db.Settlements.SingleOrDefaultAsync(x => x.Id == id && x.Status == 1);
-        if (row == null || string.IsNullOrWhiteSpace(row.InvoiceFile))
-            return BadRequest(new { ok = false, error = "结算单不能审批" });
-        row.Status = 2;
-        row.UpdatedAt = DateTime.UtcNow;
-        await _db.SaveChangesAsync();
-        return Ok(new { ok = true });
+        var result = await _settlements.ApproveSettlementAsync(id);
+        return result.Ok ? Ok(new { ok = true }) : BadRequest(new { ok = false, error = result.Error });
     }
 
     [HttpPost("settlements/{id:long}/pay")]
     public async Task<IActionResult> PaySettlement(long id, [FromBody] PayBody body)
     {
         if (!Vendor()) return NotFound();
-        if (string.IsNullOrWhiteSpace(body.VoucherNo))
-            return BadRequest(new { ok = false, error = "请填写付款流水号" });
-        var row = await _db.Settlements.SingleOrDefaultAsync(x => x.Id == id && x.Status == 2);
-        if (row == null) return BadRequest(new { ok = false, error = "结算单不能付款" });
-        var now = DateTime.UtcNow;
-        row.Status = 3;
-        row.PayVoucherNo = body.VoucherNo.Trim();
-        row.PaidAt = now;
-        row.UpdatedAt = now;
-        await _db.SaveChangesAsync();
-        return Ok(new { ok = true });
+        var result = await _settlements.PaySettlementAsync(id, body.VoucherNo);
+        return result.Ok ? Ok(new { ok = true }) : BadRequest(new { ok = false, error = result.Error });
     }
 
     [HttpPost("invoice-applies/{id:long}/issue")]
     public async Task<IActionResult> IssueInvoice(long id)
     {
         if (!Vendor()) return NotFound();
-        var row = await _db.InvoiceApplies.SingleOrDefaultAsync(x => x.Id == id && x.Status == 1);
-        if (row == null) return BadRequest(new { ok = false, error = "开票申请不存在" });
-        row.Status = 3;
-        row.UpdatedAt = DateTime.UtcNow;
-        await _db.SaveChangesAsync();
-        return Ok(new { ok = true });
+        var result = await _settlements.IssueInvoiceAsync(id);
+        return result.Ok ? Ok(new { ok = true }) : BadRequest(new { ok = false, error = result.Error });
     }
 
     [HttpPost("grants")]
@@ -489,8 +474,7 @@ public sealed class VendorController : ControllerBase
     public async Task<IActionResult> Settlements()
     {
         if (!Vendor()) return NotFound();
-        var rows = await _db.Settlements.OrderByDescending(x => x.Id)
-            .Select(x => new { x.Id, x.SettlementNo, x.Amount, x.Status, x.InvoiceFile }).ToListAsync();
+        var rows = await _settlements.ListSettlementsAsync();
         return Ok(new { ok = true, rows });
     }
 
@@ -498,8 +482,7 @@ public sealed class VendorController : ControllerBase
     public async Task<IActionResult> Invoices()
     {
         if (!Vendor()) return NotFound();
-        var rows = await _db.InvoiceApplies.Where(x => x.Status == 1).OrderBy(x => x.Id)
-            .Select(x => new { x.Id, x.ApplyNo, x.TitleName, x.Amount, x.Email }).ToListAsync();
+        var rows = await _settlements.ListPendingInvoicesAsync();
         return Ok(new { ok = true, rows });
     }
 
