@@ -120,6 +120,74 @@ namespace YxyXb.SiteSession.Tests
             }
         }
 
+        [Test]
+        public void Verify_UsesStoredTokenAndDeviceContext()
+        {
+            var store = new FakeStore
+            {
+                Session = new SiteSessionState
+                {
+                    LoggedIn = true,
+                    Email = "a@example.invalid",
+                    Token = "stored-token"
+                }
+            };
+            var transport = new FakeTransport(200, LoginJson("verified-token", true));
+            var service = new SiteSessionService(transport, store);
+
+            var result = service.Verify(Device());
+
+            Assert.That(result.Ok, Is.True);
+            Assert.That(transport.Path, Is.EqualTo("/api/client/verify"));
+            Assert.That(transport.Payload["token"], Is.EqualTo("stored-token"));
+            Assert.That(store.Session.Token, Is.EqualTo("verified-token"));
+            Assert.That(store.Session.Email, Is.EqualTo("a@example.invalid"));
+        }
+
+        [Test]
+        public void ListDevices_MapsStructuredDevicesAndUpdatesEdition()
+        {
+            var store = new FakeStore
+            {
+                Session = new SiteSessionState
+                {
+                    LoggedIn = true,
+                    Email = "a@example.invalid",
+                    Token = "stored-token"
+                }
+            };
+            var transport = new FakeTransport(200,
+                "{\"ok\":true,\"maxDevices\":10,\"productNo\":\"PRO\",\"productName\":\"专业版\","
+                + "\"devices\":[{\"deviceId\":\"device-1\",\"displayName\":\"PC-1\","
+                + "\"firstSeenAt\":\"2029-01-02T03:04:05Z\",\"lastSeenAt\":\"2029-01-03T03:04:05Z\"}]}");
+            var service = new SiteSessionService(transport, store);
+
+            var result = service.ListDevices();
+
+            Assert.That(result.Devices, Has.Count.EqualTo(1));
+            Assert.That(result.Devices[0].DeviceId, Is.EqualTo("device-1"));
+            Assert.That(result.Devices[0].FirstSeenUtc, Is.Not.Null);
+            Assert.That(store.Session.MaxDevices, Is.EqualTo(10));
+            Assert.That(store.Session.ProductNo, Is.EqualTo("PRO"));
+        }
+
+        [Test]
+        public void KickDevice_SendsSelectedDevice()
+        {
+            var store = new FakeStore
+            {
+                Session = new SiteSessionState { Token = "stored-token" }
+            };
+            var transport = new FakeTransport(200, "{\"ok\":true}");
+            var service = new SiteSessionService(transport, store);
+
+            service.KickDevice("device-2");
+
+            Assert.That(transport.Path, Is.EqualTo("/api/client/devices/kick"));
+            Assert.That(transport.Payload["token"], Is.EqualTo("stored-token"));
+            Assert.That(transport.Payload["deviceId"], Is.EqualTo("device-2"));
+        }
+
         private static SiteDeviceContext Device()
         {
             return new SiteDeviceContext
@@ -163,7 +231,7 @@ namespace YxyXb.SiteSession.Tests
 
         private sealed class FakeStore : ISiteSessionStore
         {
-            public SiteSessionState Session { get; private set; }
+            public SiteSessionState Session { get; set; }
 
             public SiteSessionState Load()
             {

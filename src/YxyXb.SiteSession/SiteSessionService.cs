@@ -54,6 +54,94 @@ namespace YxyXb.SiteSession
             return Login("/api/client/login-code", email, "code", code, device);
         }
 
+        public SiteLoginOutcome Verify(SiteDeviceContext device)
+        {
+            var token = _store.LoadToken();
+            if (string.IsNullOrEmpty(token))
+            {
+                throw new InvalidOperationException("登录已失效");
+            }
+
+            device = device ?? new SiteDeviceContext();
+            var response = _transport.Post("/api/client/verify", new Dictionary<string, object>
+            {
+                { "token", token },
+                { "deviceId", device.DeviceId ?? "" },
+                { "displayName", device.DisplayName ?? "" },
+                { "note", device.Note ?? "" },
+                { "taskStatus", device.TaskStatus ?? "" }
+            });
+            return HandleSessionResponse(response, _store.Load().Email, true);
+        }
+
+        public SiteDeviceListState ListDevices()
+        {
+            var token = RequireToken();
+            var response = _transport.Post("/api/client/devices", new Dictionary<string, object>
+            {
+                { "token", token }
+            });
+            var json = ParseObject(response.Body);
+            EnsureSuccess(response, json);
+            var list = new SiteDeviceListState
+            {
+                MaxDevices = GetInt(json, "maxDevices"),
+                ProductNo = GetString(json, "productNo"),
+                ProductName = GetString(json, "productName"),
+                Devices = new List<SiteDeviceInfo>()
+            };
+            object devices;
+            var rows = TryGet(json, "devices", out devices) ? devices as System.Collections.IEnumerable : null;
+            if (rows != null)
+            {
+                foreach (var value in rows)
+                {
+                    var row = value as IDictionary<string, object>;
+                    if (row == null)
+                    {
+                        continue;
+                    }
+
+                    list.Devices.Add(new SiteDeviceInfo
+                    {
+                        DeviceId = GetString(row, "deviceId"),
+                        DisplayName = GetString(row, "displayName"),
+                        Note = GetString(row, "note"),
+                        FirstSeenUtc = GetDate(row, "firstSeenAt"),
+                        LastSeenUtc = GetDate(row, "lastSeenAt"),
+                        WanIp = GetString(row, "wanIp"),
+                        TaskStatus = GetString(row, "taskStatus")
+                    });
+                }
+            }
+
+            var session = _store.Load();
+            if (session.LoggedIn)
+            {
+                session.MaxDevices = list.MaxDevices;
+                session.ProductNo = list.ProductNo;
+                session.ProductName = list.ProductName;
+                _store.Save(session);
+            }
+
+            return list;
+        }
+
+        public void KickDevice(string deviceId)
+        {
+            if (string.IsNullOrWhiteSpace(deviceId))
+            {
+                throw new InvalidOperationException("缺少设备标识");
+            }
+
+            var response = _transport.Post("/api/client/devices/kick", new Dictionary<string, object>
+            {
+                { "token", RequireToken() },
+                { "deviceId", deviceId }
+            });
+            EnsureSuccess(response, ParseObject(response.Body));
+        }
+
         private SiteLoginOutcome Login(string path, string email, string credentialName, string credential, SiteDeviceContext device)
         {
             device = device ?? new SiteDeviceContext();
@@ -66,10 +154,16 @@ namespace YxyXb.SiteSession
                 { "note", device.Note ?? "" },
                 { "taskStatus", device.TaskStatus ?? "" }
             });
+            return HandleSessionResponse(response, email, true);
+        }
+
+        private SiteLoginOutcome HandleSessionResponse(SiteHttpResponse response, string email, bool allowDeviceLimit)
+        {
             var json = ParseObject(response.Body);
             var errorCode = GetString(json, "errorCode");
             var error = GetString(json, "error");
-            if (!string.Equals(errorCode, "DEVICE_LIMIT", StringComparison.Ordinal)
+            var deviceLimited = allowDeviceLimit && string.Equals(errorCode, "DEVICE_LIMIT", StringComparison.Ordinal);
+            if (!deviceLimited
                 && (response.StatusCode < 200 || response.StatusCode > 299 || !GetBool(json, "ok", true)))
             {
                 throw new InvalidOperationException(string.IsNullOrEmpty(error) ? "登录失败" : error);
@@ -84,8 +178,8 @@ namespace YxyXb.SiteSession
             _store.Save(session);
             return new SiteLoginOutcome
             {
-                Ok = !string.Equals(errorCode, "DEVICE_LIMIT", StringComparison.Ordinal),
-                DeviceLimited = string.Equals(errorCode, "DEVICE_LIMIT", StringComparison.Ordinal),
+                Ok = !deviceLimited,
+                DeviceLimited = deviceLimited,
                 ErrorCode = errorCode,
                 Error = error,
                 Session = session
@@ -189,6 +283,30 @@ namespace YxyXb.SiteSession
             }
 
             return null;
+        }
+
+        private static DateTime? GetDate(IDictionary<string, object> json, string key)
+        {
+            var text = GetString(json, key);
+            DateTime parsed;
+            if (!string.IsNullOrEmpty(text)
+                && DateTime.TryParse(text, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out parsed))
+            {
+                return parsed.ToUniversalTime();
+            }
+
+            return null;
+        }
+
+        private string RequireToken()
+        {
+            var token = _store.LoadToken();
+            if (string.IsNullOrEmpty(token))
+            {
+                throw new InvalidOperationException("请先登录。");
+            }
+
+            return token;
         }
 
         private static bool TryGet(IDictionary<string, object> json, string key, out object value)

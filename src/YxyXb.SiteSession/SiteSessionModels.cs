@@ -44,6 +44,25 @@ namespace YxyXb.SiteSession
         public string Error { get; set; }
     }
 
+    public sealed class SiteDeviceInfo
+    {
+        public string DeviceId { get; set; }
+        public string DisplayName { get; set; }
+        public string Note { get; set; }
+        public DateTime? FirstSeenUtc { get; set; }
+        public DateTime? LastSeenUtc { get; set; }
+        public string WanIp { get; set; }
+        public string TaskStatus { get; set; }
+    }
+
+    public sealed class SiteDeviceListState
+    {
+        public int? MaxDevices { get; set; }
+        public string ProductNo { get; set; }
+        public string ProductName { get; set; }
+        public List<SiteDeviceInfo> Devices { get; set; }
+    }
+
     public sealed class SiteHttpResponse
     {
         public int StatusCode { get; set; }

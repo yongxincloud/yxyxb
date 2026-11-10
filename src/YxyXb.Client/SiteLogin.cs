@@ -1,12 +1,8 @@
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Net;
 using System.Net.NetworkInformation;
-using System.Text;
-using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -258,7 +254,7 @@ namespace YxyXb.Client
 
             try
             {
-                SoftVerify(session.Email, db);
+                SoftVerify(db);
                 var list = ListDevices();
                 var local = DeviceId();
                 for (var i = 0; i < list.Items.Count; i++)
@@ -284,20 +280,11 @@ namespace YxyXb.Client
             }
         }
 
-        private static void SoftVerify(string email, SqliteDb db)
+        private static void SoftVerify(SqliteDb db)
         {
             try
             {
-                if (string.IsNullOrEmpty(email) || !File.Exists(TokenFile)) return;
-                var token = File.ReadAllText(TokenFile).Trim();
-                if (string.IsNullOrEmpty(token)) return;
-                var body = Post("/api/client/verify",
-                    "{\"token\":\"" + Escape(token)
-                    + "\",\"deviceId\":\"" + Escape(DeviceId())
-                    + "\",\"displayName\":\"" + Escape(DeviceDisplayName())
-                    + "\",\"note\":\"" + Escape(CustomerNote(db))
-                    + "\",\"taskStatus\":\"" + Escape(CurrentTaskStatus(db)) + "\"}");
-                Save(email, body);
+                CreateSessionService().Verify(CurrentDeviceContext(db));
             }
             catch (Exception)
             {
@@ -306,74 +293,39 @@ namespace YxyXb.Client
 
         public static SiteDeviceList ListDevices()
         {
-            var token = File.Exists(TokenFile) ? File.ReadAllText(TokenFile).Trim() : "";
-            if (string.IsNullOrEmpty(token))
-            {
-                throw new InvalidOperationException("请先登录。");
-            }
-
-            var body = Post("/api/client/devices", "{\"token\":\"" + Escape(token) + "\"}");
-            var maxText = Match(body, "\"maxDevices\"\\s*:\\s*(\\d+)");
-            int? max = null;
-            int parsed;
-            if (int.TryParse(maxText, out parsed)) max = parsed;
-            var productNo = Match(body, "\"productNo\"\\s*:\\s*\"([^\"]*)\"");
-            var productName = Match(body, "\"productName\"\\s*:\\s*\"([^\"]*)\"");
-            RememberEdition(productNo, productName, max);
-
+            var list = CreateSessionService().ListDevices();
             var localId = DeviceId();
             var items = new List<SiteDeviceItem>();
-            foreach (Match block in Regex.Matches(body ?? "", "\\{[^{}]*\"deviceId\"\\s*:\\s*\"([^\"]+)\"[^{}]*\\}"))
+            for (var i = 0; i < list.Devices.Count; i++)
             {
-                var id = block.Groups[1].Value;
-                var name = Match(block.Value, "\"displayName\"\\s*:\\s*\"([^\"]*)\"");
+                var item = list.Devices[i];
                 items.Add(new SiteDeviceItem
                 {
-                    DeviceId = id,
-                    DisplayName = string.IsNullOrEmpty(name) ? id : name,
-                    FirstSeenLocal = FormatUtcLocal(Match(block.Value, "\"firstSeenAt\"\\s*:\\s*\"([^\"]*)\"")),
-                    LastSeenLocal = FormatUtcLocal(Match(block.Value, "\"lastSeenAt\"\\s*:\\s*\"([^\"]*)\"")),
-                    IsThisDevice = string.Equals(id, localId, StringComparison.OrdinalIgnoreCase)
+                    DeviceId = item.DeviceId,
+                    DisplayName = string.IsNullOrEmpty(item.DisplayName) ? item.DeviceId : item.DisplayName,
+                    FirstSeenLocal = FormatLocal(item.FirstSeenUtc),
+                    LastSeenLocal = FormatLocal(item.LastSeenUtc),
+                    IsThisDevice = string.Equals(item.DeviceId, localId, StringComparison.OrdinalIgnoreCase)
                 });
             }
 
             return new SiteDeviceList
             {
-                MaxDevices = max,
-                ProductNo = productNo,
-                ProductName = productName,
+                MaxDevices = list.MaxDevices,
+                ProductNo = list.ProductNo,
+                ProductName = list.ProductName,
                 Items = items
             };
         }
 
         public static void KickDevice(string deviceId)
         {
-            var token = File.Exists(TokenFile) ? File.ReadAllText(TokenFile).Trim() : "";
-            if (string.IsNullOrEmpty(token))
-            {
-                throw new InvalidOperationException("请先登录。");
-            }
-
-            if (string.IsNullOrWhiteSpace(deviceId))
-            {
-                throw new InvalidOperationException("缺少设备标识");
-            }
-
-            Post("/api/client/devices/kick",
-                "{\"token\":\"" + Escape(token) + "\",\"deviceId\":\"" + Escape(deviceId) + "\"}");
+            CreateSessionService().KickDevice(deviceId);
         }
 
-        private static string FormatUtcLocal(string raw)
+        private static string FormatLocal(DateTime? utc)
         {
-            DateTime utc;
-            if (string.IsNullOrEmpty(raw)
-                || !DateTime.TryParse(raw, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out utc))
-            {
-                return raw ?? "";
-            }
-
-            if (utc.Kind == DateTimeKind.Unspecified) utc = DateTime.SpecifyKind(utc, DateTimeKind.Utc);
-            return utc.ToLocalTime().ToString("yyyy-MM-dd HH:mm");
+            return utc.HasValue ? utc.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm") : "";
         }
 
         public static void Prompt(Window owner, Action saved)
@@ -501,13 +453,7 @@ namespace YxyXb.Client
 
         public static void Login(string email, string password, string code)
         {
-            var device = new SiteDeviceContext
-            {
-                DeviceId = DeviceId(),
-                DisplayName = DeviceDisplayName(),
-                Note = CustomerNote(null),
-                TaskStatus = CurrentTaskStatus(null)
-            };
+            var device = CurrentDeviceContext(null);
             var service = CreateSessionService();
             var outcome = string.IsNullOrEmpty(code)
                 ? service.LoginPassword(email, password, device)
@@ -540,6 +486,17 @@ namespace YxyXb.Client
                 new FileSiteSessionStore(AppPaths.DataDirectory, TokenFile, SessionFile));
         }
 
+        private static SiteDeviceContext CurrentDeviceContext(SqliteDb db)
+        {
+            return new SiteDeviceContext
+            {
+                DeviceId = DeviceId(),
+                DisplayName = DeviceDisplayName(),
+                Note = CustomerNote(db),
+                TaskStatus = CurrentTaskStatus(db)
+            };
+        }
+
         private static SiteSession ToClientSession(SiteSessionState state)
         {
             state = state ?? new SiteSessionState();
@@ -558,164 +515,6 @@ namespace YxyXb.Client
                 ProductName = state.ProductName,
                 MaxDevices = state.MaxDevices
             };
-        }
-
-        private static string Post(string path, string json)
-        {
-            TlsPolicy.Apply();
-
-            var urlFile = Path.Combine(AppPaths.DataDirectory, "site.url");
-            var raw = File.Exists(urlFile) ? File.ReadAllText(urlFile) : "";
-            var baseUrl = SiteUrlFile.Read(raw, SiteUrlFile.DefaultSite);
-            var url = baseUrl.TrimEnd('/') + path;
-            var bytes = Encoding.UTF8.GetBytes(json ?? "");
-            try
-            {
-                var request = (HttpWebRequest)WebRequest.Create(url);
-                request.Method = "POST";
-                request.ContentType = "application/json; charset=utf-8";
-                request.Timeout = 30000;
-                request.ReadWriteTimeout = 30000;
-                request.KeepAlive = false;
-                request.ContentLength = bytes.Length;
-                using (var stream = request.GetRequestStream())
-                {
-                    stream.Write(bytes, 0, bytes.Length);
-                }
-
-                using (var response = (HttpWebResponse)request.GetResponse())
-                using (var reader = new StreamReader(response.GetResponseStream() ?? Stream.Null, Encoding.UTF8))
-                {
-                    return ReadLoginBody(response.StatusCode, reader.ReadToEnd());
-                }
-            }
-            catch (WebException ex)
-            {
-                var http = ex.Response as HttpWebResponse;
-                if (http != null)
-                {
-                    using (var reader = new StreamReader(http.GetResponseStream() ?? Stream.Null, Encoding.UTF8))
-                    {
-                        return ReadLoginBody(http.StatusCode, reader.ReadToEnd());
-                    }
-                }
-
-                throw new InvalidOperationException("无法连接网站 " + baseUrl + "：" + ExceptionText.RootMessage(ex));
-            }
-            catch (Exception ex)
-            {
-                if (ex is InvalidOperationException)
-                {
-                    throw;
-                }
-
-                throw new InvalidOperationException("无法连接网站 " + baseUrl + "：" + ExceptionText.RootMessage(ex));
-            }
-        }
-
-        private static string ReadLoginBody(HttpStatusCode status, string body)
-        {
-            var code = (int)status;
-            if (code >= 200 && code < 300)
-            {
-                return body;
-            }
-
-            var err = Regex.Match(body ?? "", "\"error\"\\s*:\\s*\"([^\"]*)\"");
-            var errorCode = Regex.Match(body ?? "", "\"errorCode\"\\s*:\\s*\"([^\"]*)\"");
-            if (errorCode.Success && errorCode.Groups[1].Value == "DEVICE_LIMIT")
-            {
-                return body ?? "";
-            }
-
-            throw new InvalidOperationException(err.Success ? err.Groups[1].Value : "登录失败");
-        }
-
-        private static void Save(string email, string body)
-        {
-            var token = Match(body, "\"token\"\\s*:\\s*\"([^\"]+)\"");
-            if (string.IsNullOrEmpty(token))
-            {
-                throw new InvalidOperationException("登录失败");
-            }
-
-            AppPaths.EnsureDirectories();
-            File.WriteAllText(TokenFile, token);
-            var valid = Match(body, "\"valid\"\\s*:\\s*(true|false)");
-            var end = Match(body, "\"authEndTime\"\\s*:\\s*\"([^\"]+)\"");
-            var status = Match(body, "\"authStatus\"\\s*:\\s*\"([^\"]+)\"");
-            var days = Match(body, "\"nextCheckDays\"\\s*:\\s*(\\d+)");
-            var name = Match(body, "\"name\"\\s*:\\s*\"([^\"]*)\"");
-            var nickname = Match(body, "\"nickname\"\\s*:\\s*\"([^\"]*)\"");
-            var company = Match(body, "\"companyName\"\\s*:\\s*\"([^\"]*)\"");
-            var productNo = Match(body, "\"productNo\"\\s*:\\s*\"([^\"]*)\"");
-            var productName = Match(body, "\"productName\"\\s*:\\s*\"([^\"]*)\"");
-            var maxDevices = Match(body, "\"maxDevices\"\\s*:\\s*(\\d+)");
-            WriteSession(email, name, nickname, company, valid, end, status, days, productNo, productName, maxDevices);
-        }
-
-        private static void RememberEdition(string productNo, string productName, int? maxDevices)
-        {
-            try
-            {
-                if (!File.Exists(SessionFile)) return;
-                var session = Load();
-                if (!session.LoggedIn) return;
-                WriteSession(
-                    session.Email,
-                    session.Name,
-                    session.Nickname,
-                    session.CompanyName,
-                    session.Valid ? "true" : "false",
-                    session.AuthEndUtc == null ? "" : session.AuthEndUtc.Value.ToString("o"),
-                    session.AuthStatus,
-                    session.NextCheckDays.ToString(),
-                    productNo,
-                    productName,
-                    maxDevices == null ? "" : maxDevices.Value.ToString());
-            }
-            catch (IOException)
-            {
-            }
-        }
-
-        private static void WriteSession(
-            string email,
-            string name,
-            string nickname,
-            string company,
-            string valid,
-            string end,
-            string status,
-            string days,
-            string productNo,
-            string productName,
-            string maxDevices)
-        {
-            AppPaths.EnsureDirectories();
-            var text = "email=" + OneLine(email) + "\r\n"
-                + "name=" + OneLine(name) + "\r\n"
-                + "nickname=" + OneLine(nickname) + "\r\n"
-                + "company=" + OneLine(company) + "\r\n"
-                + "valid=" + OneLine(valid) + "\r\n"
-                + "end=" + OneLine(end) + "\r\n"
-                + "status=" + OneLine(status) + "\r\n"
-                + "days=" + OneLine(days) + "\r\n"
-                + "productNo=" + OneLine(productNo) + "\r\n"
-                + "productName=" + OneLine(productName) + "\r\n"
-                + "maxDevices=" + OneLine(maxDevices) + "\r\n";
-            File.WriteAllText(SessionFile, text);
-        }
-
-        private static string OneLine(string value)
-        {
-            return (value ?? "").Replace("\r", "").Replace("\n", "").Trim();
-        }
-
-        private static string Match(string body, string pattern)
-        {
-            var found = Regex.Match(body ?? "", pattern);
-            return found.Success ? found.Groups[1].Value : "";
         }
 
         private static string DeviceId()
@@ -803,19 +602,6 @@ namespace YxyXb.Client
             {
                 return "无MAC";
             }
-        }
-
-        private static string Escape(string value)
-        {
-            var source = value ?? "";
-            var text = new StringBuilder(source.Length);
-            foreach (var ch in source)
-            {
-                if (ch == '\\' || ch == '"') text.Append('\\').Append(ch);
-                else if (ch < 32) text.Append("\\u").Append(((int)ch).ToString("x4"));
-                else text.Append(ch);
-            }
-            return text.ToString();
         }
 
         private static TextBlock Label(string text)
