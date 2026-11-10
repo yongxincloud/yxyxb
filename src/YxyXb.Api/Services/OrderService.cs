@@ -27,49 +27,25 @@ public sealed class OrderService
     private readonly TimeProvider _time;
     private readonly IAlipayGateway _alipay;
     private readonly DeviceRegistryService _devices;
+    private readonly DatabaseSeedService _seed;
 
-    public OrderService(WebDb db, TimeProvider time, IAlipayGateway alipay, DeviceRegistryService devices)
+    public OrderService(
+        WebDb db,
+        TimeProvider time,
+        IAlipayGateway alipay,
+        DeviceRegistryService devices,
+        DatabaseSeedService seed)
     {
         _db = db;
         _time = time;
         _alipay = alipay;
         _devices = devices;
+        _seed = seed;
     }
 
     public async Task EnsureCatalogAsync()
     {
-        var now = _time.GetUtcNow().UtcDateTime;
-        await EnsureTierAsync(PersonalProductNo, "个人版", "最多 3 台设备", 36m, 3, 1, now);
-        await EnsureTierAsync(StandardProductNo, "标准版", "最多 10 台设备", 98m, 10, 2, now);
-        await EnsureTierAsync(ProProductNo, "专业版", "最多 50 台设备", 198m, 50, 3, now);
-        await EnsureTierAsync(CustomProductNo, "定制版", "人数由后台填写", 0m, 1, 4, now);
-        var legacy = await _db.Products.SingleOrDefaultAsync(x => x.ProductNo == "STD");
-        if (legacy != null)
-        {
-            legacy.Status = 0;
-            legacy.UpdatedAt = now;
-        }
-        await PutConfigAsync("trial_price_1", "0.10");
-        await PutConfigAsync("trial_price_2", "0.50");
-        await _db.SaveChangesAsync();
-    }
-
-    async Task EnsureTierAsync(string productNo, string name, string description, decimal price, int maxDevices, int sortOrder, DateTime now)
-    {
-        if (await _db.Products.AnyAsync(x => x.ProductNo == productNo)) return;
-        _db.Products.Add(new Product
-        {
-            ProductNo = productNo,
-            Name = name,
-            Description = description,
-            Price = price,
-            MaxDevices = maxDevices,
-            SortOrder = sortOrder,
-            PeriodDays = FormalDays,
-            Status = 1,
-            CreatedAt = now,
-            UpdatedAt = now
-        });
+        await _seed.EnsureCatalogAsync();
     }
 
     public async Task<UpgradePreview> PreviewUpgradeAsync(long accountId, string? targetProductNo)
@@ -363,12 +339,6 @@ public sealed class OrderService
             order.UpdatedAt = now;
         }
         if (due.Count > 0) await _db.SaveChangesAsync();
-    }
-
-    async Task PutConfigAsync(string key, string value)
-    {
-        if (await _db.Configs.AnyAsync(x => x.CfgKey == key)) return;
-        _db.Configs.Add(new SystemConfigRow { CfgKey = key, CfgValue = value });
     }
 
     async Task<string> ConfigAsync(string key)

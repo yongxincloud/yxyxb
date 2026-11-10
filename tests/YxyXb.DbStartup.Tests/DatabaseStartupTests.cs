@@ -2,6 +2,7 @@ using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using NUnit.Framework;
 using YxyXb.Api.Data;
+using YxyXb.Api.Services;
 
 namespace YxyXb.DbStartup.Tests;
 
@@ -69,6 +70,38 @@ public class DatabaseStartupTests
         Assert.That(ScalarLong(db, "SELECT COUNT(*) FROM SchemaVersions;"), Is.EqualTo(1));
     }
 
+    [Test]
+    public async Task Seed_IsIdempotentAndDoesNotOverwriteExistingProduct()
+    {
+        using var db = Open();
+        new DatabaseStartupService().Initialize(db);
+        db.Products.Add(new Product
+        {
+            ProductNo = "PERSONAL",
+            Name = "客户自定义名称",
+            Price = 1,
+            MaxDevices = 1,
+            PeriodDays = 365,
+            Status = 0,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        });
+        await db.SaveChangesAsync();
+        var seed = new DatabaseSeedService(db, new FixedTimeProvider(new DateTimeOffset(2030, 1, 2, 3, 4, 5, TimeSpan.Zero)));
+
+        await seed.EnsureCatalogAsync();
+        await seed.EnsureCatalogAsync();
+        await seed.EnsureAdminAsync("admin", "password", "admin@example.invalid", false, new FakeHasher());
+        await seed.EnsureAdminAsync("admin", "other-password", "admin@example.invalid", false, new FakeHasher());
+
+        Assert.That(await db.Products.CountAsync(), Is.EqualTo(4));
+        Assert.That((await db.Products.SingleAsync(x => x.ProductNo == "PERSONAL")).Name, Is.EqualTo("客户自定义名称"));
+        Assert.That((await db.Products.SingleAsync(x => x.ProductNo == "PERSONAL")).Status, Is.Zero);
+        Assert.That(await db.Configs.CountAsync(), Is.EqualTo(2));
+        Assert.That(await db.AdminUsers.CountAsync(), Is.EqualTo(1));
+        Assert.That((await db.AdminUsers.SingleAsync()).PasswordHash, Is.EqualTo("hash:password"));
+    }
+
     private WebDb Open()
     {
         var options = new DbContextOptionsBuilder<WebDb>()
@@ -84,5 +117,18 @@ public class DatabaseStartupTests
         using var command = connection.CreateCommand();
         command.CommandText = sql;
         return Convert.ToInt64(command.ExecuteScalar());
+    }
+
+    private sealed class FixedTimeProvider : TimeProvider
+    {
+        private readonly DateTimeOffset _value;
+        public FixedTimeProvider(DateTimeOffset value) => _value = value;
+        public override DateTimeOffset GetUtcNow() => _value;
+    }
+
+    private sealed class FakeHasher : IPasswordHasher
+    {
+        public string Hash(string password) => "hash:" + password;
+        public bool Verify(string password, string hash) => hash == Hash(password);
     }
 }

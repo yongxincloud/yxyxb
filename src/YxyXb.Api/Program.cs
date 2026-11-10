@@ -45,6 +45,7 @@ builder.Services.AddScoped<VendorCustomerAuthService>();
 builder.Services.AddScoped<VendorProviderService>();
 builder.Services.AddScoped<VendorSettlementService>();
 builder.Services.AddScoped<VendorProductService>();
+builder.Services.AddScoped<DatabaseSeedService>();
 builder.Services.AddHttpClient("alipay", client => client.Timeout = TimeSpan.FromSeconds(20));
 builder.Services.AddScoped<IAlipayGateway, AlipayGateway>();
 builder.Services.AddScoped<OrderService>();
@@ -61,7 +62,8 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<WebDb>();
     new DatabaseStartupService().Initialize(db);
-    await scope.ServiceProvider.GetRequiredService<OrderService>().EnsureCatalogAsync();
+    var seed = scope.ServiceProvider.GetRequiredService<DatabaseSeedService>();
+    await seed.EnsureCatalogAsync();
 
     var username = app.Configuration["Admin:Username"];
     var password = app.Configuration["Admin:Password"];
@@ -70,32 +72,7 @@ using (var scope = app.Services.CreateScope())
     if (string.IsNullOrWhiteSpace(username)) username = VendorController.DefaultAdminUser;
     if (string.IsNullOrWhiteSpace(password)) password = VendorController.DefaultAdminPassword;
     var hasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher>();
-    if (!db.AdminUsers.Any())
-    {
-        db.AdminUsers.Add(new AdminUser
-        {
-            Username = username.Trim(),
-            PasswordHash = hasher.Hash(password),
-            Email = string.IsNullOrEmpty(adminEmail) ? null : adminEmail,
-            CreatedAt = DateTime.UtcNow
-        });
-        db.SaveChanges();
-    }
-    else
-    {
-        var admin = db.AdminUsers.SingleOrDefault(x => x.Username == username.Trim());
-        if (admin != null && resetPassword)
-        {
-            admin.PasswordHash = hasher.Hash(password);
-            if (!string.IsNullOrEmpty(adminEmail)) admin.Email = adminEmail;
-            db.SaveChanges();
-        }
-        else if (admin != null && !string.IsNullOrEmpty(adminEmail) && string.IsNullOrEmpty(admin.Email))
-        {
-            admin.Email = adminEmail;
-            db.SaveChanges();
-        }
-    }
+    await seed.EnsureAdminAsync(username, password, adminEmail, resetPassword, hasher);
 }
 
 app.UseAuthentication();
